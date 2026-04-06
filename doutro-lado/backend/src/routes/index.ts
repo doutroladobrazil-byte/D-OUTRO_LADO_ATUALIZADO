@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { getAdminOrders, getAdminOverview } from "../domains/admin/admin.controller.js";
 import { getCampaigns } from "../domains/campaigns/campaigns.controller.js";
 import { listContentBlocks } from "../domains/content/content.controller.js";
@@ -13,7 +13,7 @@ import { requireAuth, requireRole } from "../middlewares/auth.js";
 
 export const router = Router();
 
-router.get("/health", (_req, res) => res.json({ ok: true, name: "doutro-lado-api" }));
+router.get("/health", (_req: Request, res: Response) => res.json({ ok: true, name: "doutro-lado-api" }));
 router.get("/campaigns", getCampaigns);
 router.get("/products", listProducts);
 router.get("/products/:slug", getProduct);

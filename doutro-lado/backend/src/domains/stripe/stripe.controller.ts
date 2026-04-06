@@ -7,7 +7,7 @@ import { buildOrder } from "../orders/orders.service.js";
 
 export async function createCheckoutSession(req: Request, res: Response) {
   try {
-    const orderPreview = buildOrder(req.body, req.user?.role);
+    const orderPreview = await buildOrder(req.body, req.user?.role);
 
     if (!stripe || env.PAYMENTS_MODE !== "stripe") {
       return ok(res, {
