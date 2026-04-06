@@ -118,6 +118,7 @@ export const freightRates: FreightRate[] = [
 export const adminOrders: AdminOrderRow[] = [
   {
     id: "DL-1001",
+    brand: "casa",
     customer: "Amelia Foster",
     region: "North America",
     totalBRL: 2840,
@@ -128,6 +129,7 @@ export const adminOrders: AdminOrderRow[] = [
   },
   {
     id: "DL-1002",
+    brand: "moda",
     customer: "Maison Elan",
     region: "Europe",
     totalBRL: 9340,
@@ -138,6 +140,7 @@ export const adminOrders: AdminOrderRow[] = [
   },
   {
     id: "DL-1003",
+    brand: "casa",
     customer: "Nora Finch",
     region: "Middle East",
     totalBRL: 1180,

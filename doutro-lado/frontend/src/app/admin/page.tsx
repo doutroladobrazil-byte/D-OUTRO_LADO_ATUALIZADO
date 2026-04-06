@@ -3,21 +3,23 @@ import { AdminModulePage } from "@/features/admin/AdminModulePage";
 
 export default async function AdminDashboardPage() {
   const { overview, orders } = await getAdminDashboard();
+  const casaSummary = overview.brandSummaries.find((item) => item.brand === "casa");
+  const modaSummary = overview.brandSummaries.find((item) => item.brand === "moda");
 
   return (
     <AdminModulePage
       eyebrow="Dashboard"
-      title="Operacao premium com clareza executiva."
-      description="Uma leitura inspirada em Linear, Stripe e Notion para faturamento, pedidos, atendimento e ritmo da operacao internacional."
+      title="Operacao premium unica, com jornadas separadas por site."
+      description="O painel administrativo permanece unico, enquanto Casa e Moda seguem separados para o cliente e segmentados para a operacao."
       metrics={[
         { label: "Faturamento", value: `R$ ${overview.revenueBRL.toFixed(2)}` },
         { label: "Pedidos", value: String(overview.orders) },
-        { label: "Ticket medio", value: `R$ ${overview.averageTicketBRL.toFixed(2)}` },
-        { label: "Novos clientes", value: String(overview.newCustomers) }
+        { label: "Casa", value: `${casaSummary?.orders ?? 0} pedidos` },
+        { label: "Moda", value: `${modaSummary?.orders ?? 0} pedidos` }
       ]}
       rows={orders.slice(0, 4).map((order) => ({
-        label: `${order.id} • ${order.customer}`,
-        value: `${order.orderStatus} • ${order.paymentStatus}`
+        label: `${order.id} | ${order.customer} | ${order.brand === "casa" ? "Casa" : "Moda"}`,
+        value: `${order.orderStatus} | ${order.paymentStatus}`
       }))}
     />
   );

@@ -43,6 +43,7 @@ export type FreightRateRecord = {
 
 export type AdminOrderRecord = {
   id: string;
+  brand: Brand;
   customer: string;
   region: Region;
   totalBRL: number;
@@ -50,6 +51,12 @@ export type AdminOrderRecord = {
   fiscalStatus: string;
   orderStatus: string;
   createdAt: string;
+};
+
+export type BrandOrderSummary = {
+  brand: Brand;
+  revenueBRL: number;
+  orders: number;
 };
 
 export type ContentBlockRecord = {
@@ -79,6 +86,7 @@ export type OrderItemInput = {
 
 export type BuiltOrderItem = {
   productId: string;
+  brand: Brand;
   slug: string;
   sku: string;
   name: string;
@@ -90,6 +98,7 @@ export type BuiltOrderItem = {
 
 export type BuiltOrder = {
   publicId: string;
+  brand: Brand;
   currency: string;
   region: Region;
   pricingTier: "retail" | "wholesale";
@@ -101,4 +110,13 @@ export type BuiltOrder = {
   orderStatus: "created";
   fiscalStatus: "pending";
   estimatedWeightRange: WeightRange;
+};
+
+export type AdminOverview = {
+  revenueBRL: number;
+  orders: number;
+  averageTicketBRL: number;
+  newCustomers: number;
+  alerts: string[];
+  brandSummaries: BrandOrderSummary[];
 };

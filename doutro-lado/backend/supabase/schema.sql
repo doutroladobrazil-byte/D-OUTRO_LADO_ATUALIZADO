@@ -82,9 +82,11 @@ create table if not exists favorites (
 create table if not exists carts (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid references profiles(id) on delete cascade,
+  brand text not null check (brand in ('casa', 'moda')),
   currency text not null default 'USD',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (profile_id, brand)
 );
 
 create table if not exists cart_items (
@@ -158,6 +160,7 @@ create table if not exists orders (
   public_id text unique not null,
   profile_id uuid references profiles(id) on delete set null,
   address_id uuid references addresses(id),
+  brand text not null check (brand in ('casa', 'moda')),
   currency text not null default 'USD',
   subtotal_brl numeric(12,2) not null default 0,
   freight_brl numeric(12,2) not null default 0,
@@ -175,6 +178,7 @@ create table if not exists order_items (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references orders(id) on delete cascade,
   product_id uuid references products(id),
+  brand text not null check (brand in ('casa', 'moda')),
   product_name text not null,
   sku text,
   quantity integer not null,

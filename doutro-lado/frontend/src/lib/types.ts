@@ -42,6 +42,7 @@ export type FreightRate = {
 
 export type AdminOrderRow = {
   id: string;
+  brand: Brand;
   customer: string;
   region: string;
   totalBRL: number;
@@ -51,12 +52,19 @@ export type AdminOrderRow = {
   createdAt: string;
 };
 
+export type BrandOrderSummary = {
+  brand: Brand;
+  revenueBRL: number;
+  orders: number;
+};
+
 export type AdminOverview = {
   revenueBRL: number;
   orders: number;
   averageTicketBRL: number;
   newCustomers: number;
   alerts: string[];
+  brandSummaries: BrandOrderSummary[];
 };
 
 export type ApiEnvelope<T> = {

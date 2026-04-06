@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { WEIGHT_RANGES, weightRangeUpperBoundsKg } from "../../config/constants.js";
 import { products } from "../../data/mock-store.js";
-import type { BuiltOrder, Role, WeightRange } from "../../types/domain.js";
+import type { Brand, BuiltOrder, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight } from "../freight/freight.service.js";
 
 const itemSchema = z.object({
@@ -10,6 +10,7 @@ const itemSchema = z.object({
 });
 
 const orderSchema = z.object({
+  brand: z.enum(["casa", "moda"]),
   region: z.enum(["North America", "Europe", "Middle East"]),
   currency: z.string().default("USD"),
   items: z.array(itemSchema).min(1)
@@ -36,6 +37,7 @@ export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrde
 
     return {
       productId: product.id,
+      brand: product.brand,
       slug: product.slug,
       sku: product.sku,
       name: product.name,
@@ -45,6 +47,8 @@ export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrde
       weightRange: product.weightRange
     };
   });
+
+  ensureSingleBrandOrder(parsed.brand, normalizedItems.map((item) => item.brand));
 
   const subtotalBRL = normalizedItems.reduce((sum, item) => sum + item.lineTotalBRL, 0);
   const estimatedTotalKg = normalizedItems.reduce((sum, item) => {
@@ -60,6 +64,7 @@ export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrde
 
   return {
     publicId: `DL-${Date.now()}`,
+    brand: parsed.brand,
     currency: parsed.currency,
     region: parsed.region,
     pricingTier: role === "wholesale" ? "wholesale" : "retail",
@@ -72,4 +77,11 @@ export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrde
     orderStatus: "created",
     fiscalStatus: "pending"
   };
+}
+
+function ensureSingleBrandOrder(expectedBrand: Brand, itemBrands: Brand[]) {
+  const uniqueBrands = [...new Set(itemBrands)];
+  if (uniqueBrands.length !== 1 || uniqueBrands[0] !== expectedBrand) {
+    throw new Error("Order items must belong to a single site brand. Casa and Moda cannot be mixed.");
+  }
 }

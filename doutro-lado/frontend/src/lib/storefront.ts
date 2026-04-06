@@ -2,6 +2,17 @@ import { adminOrders, campaigns, freightRates, products } from "@/lib/mock-data"
 import { fetchApiData } from "@/lib/api";
 import type { AdminOrderRow, AdminOverview, Brand, Campaign, FreightRate, Product } from "@/lib/types";
 
+function getFallbackBrandSummaries() {
+  return (["casa", "moda"] as const).map((brand) => {
+    const brandOrders = adminOrders.filter((order) => order.brand === brand);
+    return {
+      brand,
+      revenueBRL: brandOrders.reduce((sum, order) => sum + order.totalBRL, 0),
+      orders: brandOrders.length
+    };
+  });
+}
+
 export async function getCampaigns() {
   return (await fetchApiData<Campaign[]>("/campaigns")) ?? campaigns;
 }
@@ -22,13 +33,15 @@ export async function getFreightRates() {
 export async function getAdminDashboard() {
   const token = process.env.API_ADMIN_TOKEN?.trim();
   if (!token) {
+    const fallbackRevenueBRL = adminOrders.reduce((sum, order) => sum + order.totalBRL, 0);
     return {
       overview: {
-        revenueBRL: adminOrders.reduce((sum, order) => sum + order.totalBRL, 0),
+        revenueBRL: fallbackRevenueBRL,
         orders: adminOrders.length,
-        averageTicketBRL: Math.round(adminOrders.reduce((sum, order) => sum + order.totalBRL, 0) / adminOrders.length),
+        averageTicketBRL: Math.round(fallbackRevenueBRL / adminOrders.length),
         newCustomers: 18,
-        alerts: ["Configure API_ADMIN_TOKEN para consumir o backend protegido."]
+        alerts: ["Configure API_ADMIN_TOKEN para consumir o backend protegido."],
+        brandSummaries: getFallbackBrandSummaries()
       },
       orders: adminOrders
     };
@@ -45,7 +58,8 @@ export async function getAdminDashboard() {
       orders: adminOrders.length,
       averageTicketBRL: Math.round(adminOrders.reduce((sum, order) => sum + order.totalBRL, 0) / adminOrders.length),
       newCustomers: 18,
-      alerts: ["Backend indisponivel. Exibindo base local de continuidade."]
+      alerts: ["Backend indisponivel. Exibindo base local de continuidade."],
+      brandSummaries: getFallbackBrandSummaries()
     },
     orders: orders ?? adminOrders
   };
