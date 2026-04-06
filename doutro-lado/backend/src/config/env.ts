@@ -17,6 +17,7 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.string().default("4000"),
   APP_URL: z.string().url().default("http://localhost:3000"),
+  DATABASE_URL: optionalString,
   AUTH_MODE: z.enum(["token", "header"]).default("token"),
   ALLOW_DEV_AUTH_HEADERS: z.preprocess((value) => value === "true" || value === true, z.boolean()).default(false),
   DEV_CUSTOMER_TOKEN: z.string().default("dev-customer-token"),

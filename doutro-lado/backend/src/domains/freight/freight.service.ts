@@ -10,9 +10,10 @@ const schema = z.object({
 
 export type FreightQuoteInput = z.infer<typeof schema>;
 
-export function quoteFreight(input: unknown) {
+export async function quoteFreight(input: unknown) {
   const parsed = schema.parse(input);
-  const rate = listFreightRates(parsed.weightRange).find((entry) => entry.region === parsed.region);
+  const rates = await listFreightRates(parsed.weightRange);
+  const rate = rates.find((entry) => entry.region === parsed.region);
   if (!rate) {
     throw new Error(`Freight rate not found for ${parsed.region} / ${parsed.weightRange}`);
   }

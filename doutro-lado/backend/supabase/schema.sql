@@ -47,6 +47,7 @@ create table if not exists products (
   weight_range text not null check (weight_range in ('100g-1kg','1-3kg','3-5kg','5-10kg','10-15kg','15-20kg')),
   stock integer not null default 0,
   badge text,
+  tags text[] not null default '{}',
   is_featured boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -168,6 +169,7 @@ create table if not exists orders (
   order_status text not null default 'created',
   payment_status text not null default 'pending',
   fiscal_status text not null default 'pending',
+  shipping_region text,
   is_export_order boolean not null default true,
   notes text,
   created_at timestamptz not null default now(),
@@ -183,6 +185,7 @@ create table if not exists order_items (
   sku text,
   quantity integer not null,
   unit_price_brl numeric(12,2) not null,
+  line_total_brl numeric(12,2) not null,
   weight_range text not null
 );
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { WEIGHT_RANGES, weightRangeUpperBoundsKg } from "../../config/constants.js";
-import { products } from "../../data/mock-store.js";
+import { db } from "../../lib/db.js";
+import { getProductsBySlug } from "../../services/catalog.service.js";
 import type { Brand, BuiltOrder, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight } from "../freight/freight.service.js";
 
@@ -20,11 +21,14 @@ function resolveWeightRangeFromTotalKg(totalKg: number): WeightRange {
   return WEIGHT_RANGES.find((range) => totalKg <= weightRangeUpperBoundsKg[range]) ?? "15-20kg";
 }
 
-export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrder {
+export async function buildOrder(payload: unknown, role: Role = "customer"): Promise<BuiltOrder> {
   const parsed = orderSchema.parse(payload);
 
+  const slugs = parsed.items.map((i) => i.productSlug);
+  const products = await getProductsBySlug(slugs);
+
   const normalizedItems = parsed.items.map((item) => {
-    const product = products.find((entry) => entry.slug === item.productSlug);
+    const product = products.find((p) => p.slug === item.productSlug);
     if (!product) {
       throw new Error(`Product not found: ${item.productSlug}`);
     }
@@ -55,15 +59,41 @@ export function buildOrder(payload: unknown, role: Role = "customer"): BuiltOrde
     return sum + weightRangeUpperBoundsKg[item.weightRange] * item.quantity;
   }, 0);
   const estimatedWeightRange = resolveWeightRangeFromTotalKg(estimatedTotalKg);
-  const freight = quoteFreight({
+  const freight = await quoteFreight({
     region: parsed.region,
     weightRange: estimatedWeightRange,
     quantity: normalizedItems.reduce((sum, item) => sum + item.quantity, 0)
   });
   const totalBRL = Number((subtotalBRL + freight.amountBRL).toFixed(2));
+  const publicId = `DL-${Date.now()}`;
+
+  // Persist to database
+  const [order] = await db`
+    INSERT INTO orders
+      (public_id, brand, currency, subtotal_brl, freight_brl, total_brl, shipping_region)
+    VALUES
+      (${publicId}, ${parsed.brand}, ${parsed.currency}, ${subtotalBRL}, ${freight.amountBRL}, ${totalBRL}, ${parsed.region})
+    RETURNING id
+  `;
+
+  await db`
+    INSERT INTO order_items ${db(
+      normalizedItems.map((item) => ({
+        order_id: order.id as string,
+        product_id: item.productId,
+        brand: item.brand,
+        product_name: item.name,
+        sku: item.sku,
+        quantity: item.quantity,
+        unit_price_brl: item.unitPriceBRL,
+        weight_range: item.weightRange,
+        line_total_brl: item.lineTotalBRL,
+      }))
+    )}
+  `;
 
   return {
-    publicId: `DL-${Date.now()}`,
+    publicId,
     brand: parsed.brand,
     currency: parsed.currency,
     region: parsed.region,
