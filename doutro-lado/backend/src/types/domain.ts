@@ -1,31 +1,83 @@
+// =============================================================================
+// Scalar / Enum types
+// =============================================================================
+
 export type Brand = "casa" | "moda";
 export type Role = "customer" | "wholesale" | "admin";
 export type Region = "North America" | "Europe" | "Middle East";
 export type WeightRange = "100g-1kg" | "1-3kg" | "3-5kg" | "5-10kg" | "10-15kg" | "15-20kg";
+export type PricingTier = "retail" | "wholesale";
+export type OrderStatus = "created" | "processing" | "packing" | "shipped" | "delivered" | "cancelled";
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
 
-export type ProductRecord = {
+// =============================================================================
+// Catalog
+// =============================================================================
+
+export type ProductImage = {
+  id: string;
+  url: string;
+  altText?: string;
+  position: number;
+};
+
+/**
+ * Canonical product shape — returned by the API and consumed by the frontend.
+ * All optional fields are safe to omit for list contexts (e.g. product grids).
+ * Images are only populated on single-product queries.
+ */
+export type Product = {
   id: string;
   brand: Brand;
+
+  // Category references (IDs for relinking, names for display)
+  categoryId?: string;
+  category: string;
+  subcategoryId?: string;
+  subcategory: string;
+
+  // Identity
   name: string;
   slug: string;
-  category: string;
-  subcategory: string;
   sku: string;
+
+  // Copy
   shortDescription: string;
   longDescription: string;
+  seoTitle?: string;
+  seoDescription?: string;
+
+  // Physical metadata
   material: string;
   dimensions: string;
+  origin?: string;
+  careInstructions?: string;
+
+  // Weight — range is required (freight bands); grams is optional (precision)
   weightRange: WeightRange;
+  weightGrams?: number;
+
+  // Pricing
   retailPriceBRL: number;
   wholesalePriceBRL: number;
   wholesaleMinQty: number;
+
+  // Stock
   stock: number;
+
+  // Merchandising
   badge?: string;
   featured?: boolean;
+  collection?: string;
   tags: string[];
+  position?: number;
+
+  // Media — populated only on getProductBySlug
+  images?: ProductImage[];
 };
 
-export type CampaignRecord = {
+export type Campaign = {
   id: string;
   brand: Brand;
   title: string;
@@ -35,49 +87,15 @@ export type CampaignRecord = {
   highlight: string;
 };
 
-export type FreightRateRecord = {
+export type FreightRate = {
   region: Region;
   weightRange: WeightRange;
   amountBRL: number;
 };
 
-export type AdminOrderRecord = {
-  id: string;
-  brand: Brand;
-  customer: string;
-  region: Region;
-  totalBRL: number;
-  paymentStatus: string;
-  fiscalStatus: string;
-  orderStatus: string;
-  createdAt: string;
-};
-
-export type BrandOrderSummary = {
-  brand: Brand;
-  revenueBRL: number;
-  orders: number;
-};
-
-export type ContentBlockRecord = {
-  id: string;
-  type: string;
-  brand: Brand;
-  active: boolean;
-};
-
-export type FiscalStatusRecord = {
-  orderId: string;
-  status: string;
-  invoiceNumber: string | null;
-  accessKey: string | null;
-};
-
-export type UserRecord = {
-  id: string;
-  name: string;
-  role: Role;
-};
+// =============================================================================
+// Orders — backend-internal build types
+// =============================================================================
 
 export type OrderItemInput = {
   productSlug: string;
@@ -101,7 +119,7 @@ export type BuiltOrder = {
   brand: Brand;
   currency: string;
   region: Region;
-  pricingTier: "retail" | "wholesale";
+  pricingTier: PricingTier;
   items: BuiltOrderItem[];
   subtotalBRL: number;
   freightBRL: number;
@@ -112,6 +130,28 @@ export type BuiltOrder = {
   estimatedWeightRange: WeightRange;
 };
 
+// =============================================================================
+// Admin
+// =============================================================================
+
+export type AdminOrderRow = {
+  id: string;
+  brand: Brand;
+  customer: string;
+  region: string;
+  totalBRL: number;
+  paymentStatus: string;
+  fiscalStatus: string;
+  orderStatus: string;
+  createdAt: string;
+};
+
+export type BrandOrderSummary = {
+  brand: Brand;
+  revenueBRL: number;
+  orders: number;
+};
+
 export type AdminOverview = {
   revenueBRL: number;
   orders: number;
@@ -119,4 +159,36 @@ export type AdminOverview = {
   newCustomers: number;
   alerts: string[];
   brandSummaries: BrandOrderSummary[];
+};
+
+// =============================================================================
+// Users & Auth
+// =============================================================================
+
+export type UserRecord = {
+  id: string;
+  name: string;
+  role: Role;
+};
+
+// =============================================================================
+// Content
+// =============================================================================
+
+export type ContentBlockRecord = {
+  id: string;
+  type: string;
+  brand: Brand;
+  active: boolean;
+};
+
+// =============================================================================
+// Fiscal
+// =============================================================================
+
+export type FiscalStatusRecord = {
+  orderId: string;
+  status: string;
+  invoiceNumber: string | null;
+  accessKey: string | null;
 };

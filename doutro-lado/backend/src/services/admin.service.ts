@@ -1,6 +1,6 @@
 import { db } from "../lib/db.js";
 import type {
-  AdminOrderRecord,
+  AdminOrderRow,
   AdminOverview,
   Brand,
   ContentBlockRecord,
@@ -64,7 +64,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   };
 }
 
-export async function listAdminOrders(): Promise<AdminOrderRecord[]> {
+export async function listAdminOrders(): Promise<AdminOrderRow[]> {
   const rows = await db`
     SELECT
       o.public_id          AS id,
@@ -86,7 +86,7 @@ export async function listAdminOrders(): Promise<AdminOrderRecord[]> {
     id: row.id as string,
     brand: row.brand as Brand,
     customer: row.customer as string,
-    region: (row.region as AdminOrderRecord["region"]) ?? "North America",
+    region: (row.region as string) ?? "N/A",
     totalBRL: Number(row.total_brl),
     paymentStatus: row.payment_status as string,
     fiscalStatus: row.fiscal_status as string,
