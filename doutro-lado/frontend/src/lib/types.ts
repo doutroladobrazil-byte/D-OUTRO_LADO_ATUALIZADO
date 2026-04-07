@@ -10,11 +10,66 @@ export type PricingTier = "retail" | "wholesale";
 export type OrderStatus = "created" | "processing" | "packing" | "shipped" | "delivered" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
+export type MediaType = "image" | "video";
+
+// =============================================================================
+// Media — Stage 2
+// =============================================================================
+
+/**
+ * A registered media asset stored in Supabase Storage.
+ * Physical file lives in storage; this holds metadata and the public CDN URL.
+ */
+export type MediaAsset = {
+  id: string;
+  brand: Brand;
+  mediaType: MediaType;
+
+  // Storage location
+  bucket: string;
+  storagePath: string;
+  publicUrl: string;
+
+  // File metadata
+  mimeType?: string;
+  fileSizeBytes?: number;
+
+  // Image-specific
+  width?: number;
+  height?: number;
+
+  // Video-specific
+  durationSeconds?: number;
+  posterUrl?: string;
+
+  // Presentation
+  altText?: string;
+  caption?: string;
+
+  isActive: boolean;
+  createdAt: string;
+};
+
+/**
+ * Join record binding a media asset to a product with ordering + primary flag.
+ * This is the shape returned by GET /products/:slug  (media[]).
+ */
+export type ProductMedia = {
+  id: string;           // product_media.id
+  productId: string;
+  position: number;
+  isPrimary: boolean;
+  createdAt: string;
+  asset: MediaAsset;
+};
 
 // =============================================================================
 // Catalog
 // =============================================================================
 
+/**
+ * @deprecated Use ProductMedia instead. Kept for backward compat.
+ */
 export type ProductImage = {
   id: string;
   url: string;
@@ -25,13 +80,13 @@ export type ProductImage = {
 /**
  * Canonical product shape returned by the API.
  * Optional fields may be absent in list contexts.
- * `images` is only populated by getProductBySlug (single-product queries).
+ * `media` is only populated by getProductBySlug (single-product queries).
  */
 export type Product = {
   id: string;
   brand: Brand;
 
-  // Category references (IDs for relinking, names for display)
+  // Category references
   categoryId?: string;
   category: string;
   subcategoryId?: string;
@@ -54,7 +109,7 @@ export type Product = {
   origin?: string;
   careInstructions?: string;
 
-  // Weight — range is required (freight bands); grams is optional (precision)
+  // Weight
   weightRange: WeightRange;
   weightGrams?: number;
 
@@ -74,6 +129,9 @@ export type Product = {
   position?: number;
 
   // Media — populated only on getProductBySlug
+  media?: ProductMedia[];
+
+  /** @deprecated Use media instead */
   images?: ProductImage[];
 };
 

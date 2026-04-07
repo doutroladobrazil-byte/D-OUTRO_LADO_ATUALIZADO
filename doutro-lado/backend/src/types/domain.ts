@@ -10,11 +10,66 @@ export type PricingTier = "retail" | "wholesale";
 export type OrderStatus = "created" | "processing" | "packing" | "shipped" | "delivered" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
+export type MediaType = "image" | "video";
+
+// =============================================================================
+// Media — Stage 2
+// =============================================================================
+
+/**
+ * A registered media asset stored in Supabase Storage.
+ * Physical file lives in storage; this row holds metadata and the public URL.
+ */
+export type MediaAsset = {
+  id: string;
+  brand: Brand;
+  mediaType: MediaType;
+
+  // Storage location
+  bucket: string;
+  storagePath: string;
+  publicUrl: string;
+
+  // File metadata
+  mimeType?: string;
+  fileSizeBytes?: number;
+
+  // Image-specific
+  width?: number;
+  height?: number;
+
+  // Video-specific
+  durationSeconds?: number;
+  posterUrl?: string;
+
+  // Presentation
+  altText?: string;
+  caption?: string;
+
+  isActive: boolean;
+  createdAt: string;
+};
+
+/**
+ * Join record: a media asset attached to a specific product with ordering and
+ * primary-selection logic. Consumed by product detail and admin media manager.
+ */
+export type ProductMedia = {
+  id: string;           // product_media.id
+  productId: string;
+  position: number;
+  isPrimary: boolean;
+  createdAt: string;
+  asset: MediaAsset;    // embedded for convenience
+};
 
 // =============================================================================
 // Catalog
 // =============================================================================
 
+/**
+ * @deprecated Use ProductMedia instead. Kept for backward compat during transition.
+ */
 export type ProductImage = {
   id: string;
   url: string;
@@ -25,7 +80,7 @@ export type ProductImage = {
 /**
  * Canonical product shape — returned by the API and consumed by the frontend.
  * All optional fields are safe to omit for list contexts (e.g. product grids).
- * Images are only populated on single-product queries.
+ * `media` is only populated on single-product queries (getProductBySlug).
  */
 export type Product = {
   id: string;
@@ -74,6 +129,9 @@ export type Product = {
   position?: number;
 
   // Media — populated only on getProductBySlug
+  media?: ProductMedia[];
+
+  /** @deprecated use media instead */
   images?: ProductImage[];
 };
 

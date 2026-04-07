@@ -1,9 +1,37 @@
 import { db } from "../lib/db.js";
-import type { Brand, Campaign, FreightRate, Product, ProductImage } from "../types/domain.js";
+import type { Brand, Campaign, FreightRate, Product, ProductMedia } from "../types/domain.js";
 
 // =============================================================================
 // Mappers
 // =============================================================================
+
+function mapProductMedia(row: Record<string, unknown>): ProductMedia {
+  return {
+    id: row.pm_id as string,
+    productId: row.product_id as string,
+    position: row.pm_position as number,
+    isPrimary: row.pm_is_primary as boolean,
+    createdAt: row.pm_created_at as string,
+    asset: {
+      id: row.ma_id as string,
+      brand: row.brand as Brand,
+      mediaType: row.media_type as "image" | "video",
+      bucket: row.bucket as string,
+      storagePath: row.storage_path as string,
+      publicUrl: row.public_url as string,
+      mimeType: (row.mime_type as string | null) ?? undefined,
+      fileSizeBytes: (row.file_size_bytes as number | null) ?? undefined,
+      width: (row.width as number | null) ?? undefined,
+      height: (row.height as number | null) ?? undefined,
+      durationSeconds: (row.duration_seconds as number | null) ?? undefined,
+      posterUrl: (row.poster_url as string | null) ?? undefined,
+      altText: (row.alt_text as string | null) ?? undefined,
+      caption: (row.caption as string | null) ?? undefined,
+      isActive: row.ma_is_active as boolean,
+      createdAt: row.ma_created_at as string,
+    },
+  };
+}
 
 function mapProduct(row: Record<string, unknown>): Product {
   return {
@@ -44,12 +72,13 @@ function mapProduct(row: Record<string, unknown>): Product {
     tags: (row.tags as string[]) ?? [],
     position: (row.position as number) ?? 0,
 
-    images: row.images ? (row.images as ProductImage[]) : undefined,
+    // media is injected separately in getProductBySlug
+    media: undefined,
   };
 }
 
 // =============================================================================
-// Column fragment shared by list queries (no image aggregation)
+// Column fragment shared by list queries (no media aggregation)
 // =============================================================================
 
 const PRODUCT_SELECT = `
@@ -92,35 +121,62 @@ export async function listProducts(brand?: Brand): Promise<Product[]> {
   return rows.map(mapProduct);
 }
 
-/** Single product — includes images aggregated from product_images. */
+/**
+ * Single product — includes full media (images + videos) ordered by primary, then position.
+ * Uses product_media + media_assets (Stage 2). Falls back gracefully if no media exists.
+ */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const rows = await db`
-    SELECT
-      ${db.unsafe(PRODUCT_SELECT)},
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'id',       pi.id,
-            'url',      pi.url,
-            'altText',  pi.alt_text,
-            'position', pi.position
-          ) ORDER BY pi.position
-        ) FILTER (WHERE pi.id IS NOT NULL),
-        '[]'::json
-      ) AS images
+  // 1. Fetch the product row
+  const productRows = await db`
+    SELECT ${db.unsafe(PRODUCT_SELECT)}
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
-    LEFT JOIN product_images pi ON pi.product_id = p.id
     WHERE p.slug = ${slug} AND p.is_active = true
-    GROUP BY p.id, c.name, s.name
     LIMIT 1
   `;
 
-  return rows.length > 0 ? mapProduct(rows[0]) : null;
+  if (productRows.length === 0) return null;
+
+  const product = mapProduct(productRows[0]);
+
+  // 2. Fetch media for this product
+  const mediaRows = await db`
+    SELECT
+      pm.id          AS pm_id,
+      pm.product_id,
+      pm.position    AS pm_position,
+      pm.is_primary  AS pm_is_primary,
+      pm.created_at  AS pm_created_at,
+      ma.id          AS ma_id,
+      ma.brand,
+      ma.media_type,
+      ma.bucket,
+      ma.storage_path,
+      ma.public_url,
+      ma.mime_type,
+      ma.file_size_bytes,
+      ma.width,
+      ma.height,
+      ma.duration_seconds,
+      ma.poster_url,
+      ma.alt_text,
+      ma.caption,
+      ma.is_active   AS ma_is_active,
+      ma.created_at  AS ma_created_at
+    FROM product_media pm
+    JOIN media_assets ma ON ma.id = pm.media_asset_id
+    WHERE pm.product_id = ${product.id}
+      AND ma.is_active = true
+    ORDER BY pm.is_primary DESC, pm.position
+  `;
+
+  product.media = mediaRows.map(mapProductMedia);
+
+  return product;
 }
 
-/** Batch product lookup for order building — no images needed. */
+/** Batch product lookup for order building — no media needed. */
 export async function getProductsBySlug(slugs: string[]): Promise<Product[]> {
   if (slugs.length === 0) return [];
   const rows = await db`

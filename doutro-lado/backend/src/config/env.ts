@@ -27,8 +27,10 @@ const schema = z.object({
   PAYMENTS_MODE: z.enum(["mock", "stripe"]).default("mock"),
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  // Stage 2: Supabase Storage bucket for all product media (images + videos)
+  SUPABASE_STORAGE_BUCKET_MEDIA: z.string().default("product-media"),
   STRIPE_SECRET_KEY: optionalString,
-  STRIPE_WEBHOOK_SECRET: optionalString
+  STRIPE_WEBHOOK_SECRET: optionalString,
 });
 
 export const env = schema.parse(process.env);

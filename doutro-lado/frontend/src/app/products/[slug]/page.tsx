@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductGallery } from "@/components/ProductGallery";
 import { getBrandCartPath, getBrandCheckoutPath, isBrand } from "@/lib/brand";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -29,14 +30,10 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
     <main className="px-6 py-10">
       <div className="mx-auto max-w-luxe space-y-16">
         <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="grid gap-6 md:grid-cols-[1fr_0.34fr]">
-            <GlassCard className="min-h-[720px] bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.1),rgba(0,0,0,0.75))]" />
-            <div className="grid gap-6">
-              <GlassCard className="min-h-[220px]" />
-              <GlassCard className="min-h-[220px]" />
-              <GlassCard className="min-h-[220px]" />
-            </div>
-          </div>
+          {/* ── Gallery — Stage 2 (replaces static GlassCard placeholders) ── */}
+          <ProductGallery media={product.media} name={product.name} />
+
+          {/* ── Product info ──────────────────────────────────────────────── */}
           <div className="space-y-6">
             <div className="space-y-4">
               <p className="text-[13px] uppercase tracking-[0.28em] text-white/45">{product.category} / {product.subcategory}</p>

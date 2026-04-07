@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh-keygen -t ed25519 -C \"render-doutro-lado\" -f ~/.ssh/render_doutro_lado -N \"\")",
+      "Read(//c/Users/vinic/.ssh/**)",
+      "Bash(ssh:*)"
+    ]
+  }
+}

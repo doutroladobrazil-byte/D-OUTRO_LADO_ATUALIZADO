@@ -94,6 +94,8 @@ create table if not exists products (
   updated_at timestamptz not null default now()
 );
 
+-- product_images is kept for backward compatibility during migration.
+-- New code should use product_media + media_assets instead.
 create table if not exists product_images (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references products(id) on delete cascade,
@@ -101,6 +103,61 @@ create table if not exists product_images (
   alt_text text,
   position integer not null default 0
 );
+
+-- =============================================================================
+-- Stage 2 — Media System
+-- =============================================================================
+
+-- Central registry for all physical media assets stored in Supabase Storage.
+-- One row per file. No binary data is stored here — only metadata and the path.
+create table if not exists media_assets (
+  id uuid primary key default gen_random_uuid(),
+
+  -- Ownership / routing
+  brand text not null check (brand in ('casa', 'moda')),
+  media_type text not null check (media_type in ('image', 'video')),
+
+  -- Storage location
+  bucket text not null,                  -- e.g. "product-media"
+  storage_path text not null unique,     -- e.g. "casa/uuid/image/1712345678-frente.webp"
+  public_url text not null,              -- CDN-ready URL from Supabase Storage
+
+  -- File metadata
+  mime_type text,                        -- e.g. "image/webp", "video/mp4"
+  file_size_bytes bigint,
+
+  -- Image-specific
+  width integer,
+  height integer,
+
+  -- Video-specific
+  duration_seconds numeric(10,2),
+  poster_url text,                       -- Static thumbnail for video
+
+  -- Presentation
+  alt_text text,
+  caption text,
+
+  -- Lifecycle
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Join table: links media assets to products with ordering and primary flag.
+create table if not exists product_media (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references products(id) on delete cascade,
+  media_asset_id uuid not null references media_assets(id) on delete cascade,
+  position integer not null default 0,
+  is_primary boolean not null default false,
+  created_at timestamptz not null default now(),
+
+  unique (product_id, media_asset_id)
+);
+
+-- Index to speed up ordered lookups per product
+create index if not exists idx_product_media_product_position
+  on product_media (product_id, position);
 
 -- =============================================================================
 -- Catalog — Wholesale Rules
@@ -357,3 +414,37 @@ create table if not exists admin_logs (
 --   check (payment_status in ('pending','paid','failed','refunded'));
 -- alter table orders        add constraint if not exists orders_fiscal_status_check
 --   check (fiscal_status in ('pending','in_review','issued','rejected'));
+
+-- =============================================================================
+-- Stage 2 migration — apply these statements on existing databases.
+-- On a fresh database, the CREATE TABLE IF NOT EXISTS above handles everything.
+-- =============================================================================
+-- create table if not exists media_assets (
+--   id uuid primary key default gen_random_uuid(),
+--   brand text not null check (brand in ('casa', 'moda')),
+--   media_type text not null check (media_type in ('image', 'video')),
+--   bucket text not null,
+--   storage_path text not null unique,
+--   public_url text not null,
+--   mime_type text,
+--   file_size_bytes bigint,
+--   width integer,
+--   height integer,
+--   duration_seconds numeric(10,2),
+--   poster_url text,
+--   alt_text text,
+--   caption text,
+--   is_active boolean not null default true,
+--   created_at timestamptz not null default now()
+-- );
+-- create table if not exists product_media (
+--   id uuid primary key default gen_random_uuid(),
+--   product_id uuid not null references products(id) on delete cascade,
+--   media_asset_id uuid not null references media_assets(id) on delete cascade,
+--   position integer not null default 0,
+--   is_primary boolean not null default false,
+--   created_at timestamptz not null default now(),
+--   unique (product_id, media_asset_id)
+-- );
+-- create index if not exists idx_product_media_product_position
+--   on product_media (product_id, position);

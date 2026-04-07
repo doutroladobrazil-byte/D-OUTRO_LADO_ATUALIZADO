@@ -5,6 +5,14 @@ import { listContentBlocks } from "../domains/content/content.controller.js";
 import { getFreightQuote } from "../domains/freight/freight.controller.js";
 import { listShippingRates } from "../domains/freight/shipping.controller.js";
 import { listFiscalStatuses } from "../domains/fiscal/fiscal.controller.js";
+import {
+  deleteMedia,
+  getUploadUrl,
+  listMedia,
+  registerMedia,
+  reorderMedia,
+  setPrimary,
+} from "../domains/media/media.controller.js";
 import { createOrder } from "../domains/orders/orders.controller.js";
 import { getProduct, listProducts } from "../domains/products/products.controller.js";
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
@@ -13,16 +21,43 @@ import { requireAuth, requireRole } from "../middlewares/auth.js";
 
 export const router = Router();
 
+// ---------------------------------------------------------------------------
+// Public
+// ---------------------------------------------------------------------------
 router.get("/health", (_req: Request, res: Response) => res.json({ ok: true, name: "doutro-lado-api" }));
 router.get("/campaigns", getCampaigns);
 router.get("/products", listProducts);
 router.get("/products/:slug", getProduct);
 router.get("/freight/quote", getFreightQuote);
 router.get("/shipping/rates", listShippingRates);
+
+// ---------------------------------------------------------------------------
+// Authenticated (customer+)
+// ---------------------------------------------------------------------------
 router.post("/orders", requireAuth, createOrder);
 router.post("/stripe/checkout", requireAuth, createCheckoutSession);
+
+// ---------------------------------------------------------------------------
+// Admin — general
+// ---------------------------------------------------------------------------
 router.get("/admin/overview", requireAuth, requireRole("admin"), getAdminOverview);
 router.get("/admin/orders", requireAuth, requireRole("admin"), getAdminOrders);
 router.get("/users", requireAuth, requireRole("admin"), listUsers);
 router.get("/content", requireAuth, requireRole("admin"), listContentBlocks);
 router.get("/fiscal/status", requireAuth, requireRole("admin"), listFiscalStatuses);
+
+// ---------------------------------------------------------------------------
+// Admin — media system (Stage 2)
+// ---------------------------------------------------------------------------
+// Step 1: get a signed upload URL → client uploads directly to Supabase Storage
+router.post("/admin/media/upload-url", requireAuth, requireRole("admin"), getUploadUrl);
+// Step 2: after upload, register the asset metadata in the DB
+router.post("/admin/media/register", requireAuth, requireRole("admin"), registerMedia);
+// List all media for a product
+router.get("/admin/products/:productId/media", requireAuth, requireRole("admin"), listMedia);
+// Reorder media for a product
+router.patch("/admin/products/:productId/media/reorder", requireAuth, requireRole("admin"), reorderMedia);
+// Set primary media for a product
+router.patch("/admin/products/:productId/media/:pmId/primary", requireAuth, requireRole("admin"), setPrimary);
+// Delete a specific media asset (unlinks from product, hard-deletes if unused)
+router.delete("/admin/media/:assetId", requireAuth, requireRole("admin"), deleteMedia);
