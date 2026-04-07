@@ -16,14 +16,19 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(
+          cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]
+        ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              // options is typed as Record<string,unknown> to satisfy noImplicitAny;
+              // cast to any here so Next.js cookie store accepts it at runtime.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              cookieStore.set(name, value, options as any)
             );
           } catch {
-            // Called from a Server Component — cookie writes are safe to ignore here.
-            // Cookies are set by the middleware on the response path instead.
+            // Called from a Server Component — cookie writes are a no-op here.
+            // The middleware handles session cookie refresh on the response path.
           }
         },
       },

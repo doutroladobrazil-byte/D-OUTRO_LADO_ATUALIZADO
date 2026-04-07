@@ -2,19 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Next.js middleware — runs on every matched request.
+ * Next.js 16 proxy (replaces middleware.ts convention).
  *
  * Responsibilities:
  *  1. Refresh Supabase session cookies (token rotation).
  *  2. Redirect unauthenticated users away from protected paths.
  *
  * Role-level authorization (e.g. admin-only) is enforced in Server Components
- * (admin/layout.tsx) to avoid DB calls in the middleware.
+ * (admin/layout.tsx) to avoid DB calls here.
  */
 
 const PROTECTED_PATHS = ["/account", "/admin"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,23 +25,23 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
-          // Apply cookies to the request first, then recreate the response
-          // so the updated cookies are forwarded downstream.
+        setAll(
+          cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]
+        ) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            supabaseResponse.cookies.set(name, value, options as any)
           );
         },
       },
     }
   );
 
-  // IMPORTANT: use getUser() (validates JWT) not getSession() (reads cookie only).
-  // This is the Supabase-recommended pattern for middleware auth checks.
+  // IMPORTANT: use getUser() (validates JWT), not getSession() (reads cookie only).
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -61,13 +61,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - _next/static  (static files)
-     * - _next/image   (image optimization)
-     * - favicon.ico
-     * - Common static asset extensions
-     */
     "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };
