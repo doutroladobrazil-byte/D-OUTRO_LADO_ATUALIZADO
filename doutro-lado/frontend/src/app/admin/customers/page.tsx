@@ -1,22 +1,60 @@
-import { AdminModulePage } from "@/features/admin/AdminModulePage";
+import { createClient } from "@/lib/supabase/server";
+import { fetchAdminCustomers } from "@/lib/admin-api";
+import type { AdminCustomer } from "@/lib/admin-api";
+import {
+  AdminPageHeader,
+  AdminSection,
+  AdminTable,
+  MetricCard,
+  StatusBadge,
+} from "@/features/admin/AdminComponents";
+import type { Metadata } from "next";
 
-export default function AdminCustomersPage() {
+export const metadata: Metadata = { title: "Usuários — D'OUTRO LADO Admin" };
+
+export default async function AdminCustomersPage() {
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const customers = (await fetchAdminCustomers(session?.access_token ?? "")) ?? [];
+
+  const roleCount = (role: string) => customers.filter((c) => c.role === role).length;
+
+  const columns = [
+    { key: "fullName", label: "Nome" },
+    { key: "role", label: "Perfil", render: (r: AdminCustomer) => <StatusBadge status={r.role} /> },
+    { key: "preferredCurrency", label: "Moeda" },
+    { key: "preferredLanguage", label: "Idioma" },
+    {
+      key: "isActive",
+      label: "Status",
+      render: (r: AdminCustomer) => <StatusBadge status={r.isActive ? "active" : "inactive"} />,
+    },
+    { key: "createdAt", label: "Desde", render: (r: AdminCustomer) => <span>{r.createdAt.split("T")[0]}</span> },
+  ];
+
   return (
-    <AdminModulePage
-      eyebrow="Usuarios"
-      title="Clientes, importadores e administradores."
-      description="Segmentacao elegante por perfil, wholesale access, recorrencia e valor de ciclo."
-      metrics={[
-        { label: "Clientes", value: "4.281" },
-        { label: "Importadores", value: "62" },
-        { label: "Admins", value: "5" },
-        { label: "Novos", value: "48" }
-      ]}
-      rows={[
-        { label: "Amelia Foster", value: "customer" },
-        { label: "Maison Elan", value: "wholesale" },
-        { label: "Admin Root", value: "admin" }
-      ]}
-    />
+    <div className="space-y-10">
+      <AdminPageHeader
+        eyebrow="Gestão de usuários"
+        title="Clientes e usuários."
+        description="Todos os perfis registrados na plataforma. Wholesale, clientes e administradores."
+      />
+
+      <div className="grid gap-4 sm:grid-cols-4">
+        <MetricCard label="Total" value={customers.length} />
+        <MetricCard label="Clientes" value={roleCount("customer")} />
+        <MetricCard label="Importadores" value={roleCount("wholesale")} highlight="gold" />
+        <MetricCard label="Admins" value={roleCount("admin")} />
+      </div>
+
+      <AdminSection title="Todos os usuários" eyebrow={`${customers.length} registros`}>
+        <AdminTable
+          columns={columns}
+          rows={customers as AdminCustomer[]}
+          rowKey={(r) => r.id}
+          emptyMessage="Nenhum usuário encontrado."
+        />
+      </AdminSection>
+    </div>
   );
 }

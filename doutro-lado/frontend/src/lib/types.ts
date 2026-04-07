@@ -317,3 +317,20 @@ export type CheckoutResult = {
   };
 };
 
+// =============================================================================
+// Fiscal & Content — admin records
+// =============================================================================
+
+export type FiscalStatusRecord = {
+  orderId: string;
+  status: FiscalStatus;
+  invoiceNumber: string | null;
+  accessKey: string | null;
+};
+
+export type ContentBlockRecord = {
+  id: string;
+  type: string;
+  brand: Brand;
+  active: boolean;
+};

@@ -1,6 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import { getSession, patchProfile } from "../domains/auth/auth.controller.js";
-import { getAdminOrders, getAdminOverview } from "../domains/admin/admin.controller.js";
+import {
+  getAdminOrders,
+  getAdminOverview,
+  getAdminOrderDetailHandler,
+  getStockOverviewHandler,
+  listAdminCustomersHandler,
+  listAdminProductsHandler,
+  patchAdminOrderHandler,
+  patchAdminProductHandler,
+} from "../domains/admin/admin.controller.js";
 import { getCart, putCartItem, removeCartItem } from "../domains/cart/cart.controller.js";
 import { getCampaigns } from "../domains/campaigns/campaigns.controller.js";
 import { listContentBlocks } from "../domains/content/content.controller.js";
@@ -90,6 +99,19 @@ router.delete("/gift-kits/:id", requireAuth, removeKit);
 // ---------------------------------------------------------------------------
 router.get("/admin/overview", requireAuth, requireRole("admin"), getAdminOverview);
 router.get("/admin/orders", requireAuth, requireRole("admin"), getAdminOrders);
+router.get("/admin/orders/:id", requireAuth, requireRole("admin"), getAdminOrderDetailHandler);
+router.patch("/admin/orders/:id", requireAuth, requireRole("admin"), patchAdminOrderHandler);
+
+// Admin — products (catalog management)
+router.get("/admin/products", requireAuth, requireRole("admin"), listAdminProductsHandler);
+router.patch("/admin/products/:id", requireAuth, requireRole("admin"), patchAdminProductHandler);
+
+// Admin — customers
+router.get("/admin/customers", requireAuth, requireRole("admin"), listAdminCustomersHandler);
+
+// Admin — stock
+router.get("/admin/stock", requireAuth, requireRole("admin"), getStockOverviewHandler);
+
 router.get("/users", requireAuth, requireRole("admin"), listUsers);
 router.get("/content", requireAuth, requireRole("admin"), listContentBlocks);
 router.get("/fiscal/status", requireAuth, requireRole("admin"), listFiscalStatuses);

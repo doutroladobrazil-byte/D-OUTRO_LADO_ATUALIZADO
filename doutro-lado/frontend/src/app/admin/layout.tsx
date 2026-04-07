@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchApiData } from "@/lib/api";
 import type { AuthProfile } from "@/lib/types";
-import { adminLinks } from "@/styles/tokens";
+import { AdminSidebar } from "@/features/admin/AdminSidebar";
 
 /**
  * Admin layout — server component.
  * Enforces: (1) authenticated session, (2) admin role.
- * Middleware already blocks unauthenticated access; this adds role enforcement.
  */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -25,28 +23,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== "admin") redirect("/");
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.12),transparent_26%),linear-gradient(180deg,#090909,#050505)] px-4 py-4 text-white">
-      <div className="mx-auto grid max-w-luxe gap-4 lg:grid-cols-[280px_1fr]">
-        <aside className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 shadow-halo backdrop-blur-2xl">
-          <p className="text-[12px] uppercase tracking-[0.28em] text-white/38">Admin premium</p>
-          <h1 className="mt-4 font-display text-[36px] tracking-[-0.5px] text-white">D&apos;OUTRO LADO</h1>
-          <p className="mt-1 truncate text-[12px] text-white/38">{profile.email}</p>
-          <nav className="mt-8 space-y-2">
-            {adminLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-[18px] border border-transparent px-4 py-3 text-sm uppercase tracking-[0.18em] text-white/58 transition duration-300 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        <section className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6 shadow-halo backdrop-blur-2xl lg:p-8">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(198,169,107,0.09),transparent_36%),linear-gradient(180deg,#080808,#040404)] text-white">
+      <div className="mx-auto flex max-w-[1600px] gap-0">
+        {/* Sidebar */}
+        <AdminSidebar email={profile.email} name={profile.fullName ?? "Admin"} />
+        {/* Content */}
+        <main className="min-h-screen flex-1 overflow-auto px-8 py-8 lg:px-10 lg:py-10">
           {children}
-        </section>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
