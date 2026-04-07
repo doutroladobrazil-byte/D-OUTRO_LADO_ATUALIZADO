@@ -1,6 +1,6 @@
 import { adminOrders, campaigns, freightRates, products } from "@/lib/mock-data";
 import { fetchApiData } from "@/lib/api";
-import type { AdminOrderRow, AdminOverview, Brand, Campaign, FreightRate, Product } from "@/lib/types";
+import type { AdminOrderRow, AdminOverview, Brand, Campaign, FreightRate, FreightQuote, Product, Region, WeightRange } from "@/lib/types";
 
 function getFallbackBrandSummaries() {
   return (["casa", "moda"] as const).map((brand) => {
@@ -26,8 +26,17 @@ export async function getProductBySlug(slug: string) {
   return (await fetchApiData<Product>(`/products/${slug}`)) ?? products.find((product) => product.slug === slug) ?? null;
 }
 
-export async function getFreightRates() {
-  return (await fetchApiData<FreightRate[]>("/shipping/rates")) ?? freightRates;
+export async function getFreightRates(weightRange?: WeightRange) {
+  const query = weightRange ? `?weightRange=${weightRange}` : "";
+  return (await fetchApiData<FreightRate[]>(`/freight/rates${query}`)) ?? freightRates;
+}
+
+export async function getFreightQuote(region: Region, weightRange: WeightRange) {
+  return (await fetchApiData<FreightQuote>(`/freight/quote?region=${encodeURIComponent(region)}&weightRange=${encodeURIComponent(weightRange)}`));
+}
+
+export async function getShippingRegions() {
+  return (await fetchApiData<Region[]>("/freight/regions")) ?? ["North America", "Europe", "Middle East"];
 }
 
 export async function getAdminDashboard() {

@@ -1,5 +1,5 @@
 import { db } from "../lib/db.js";
-import type { Brand, Campaign, FreightRate, Product, ProductMedia } from "../types/domain.js";
+import type { Brand, Campaign, Product, ProductMedia } from "../types/domain.js";
 
 // =============================================================================
 // Mappers
@@ -211,32 +211,3 @@ export async function listCampaigns(): Promise<Campaign[]> {
   }));
 }
 
-// =============================================================================
-// Freight rates
-// =============================================================================
-
-export async function listFreightRates(
-  weightRange?: FreightRate["weightRange"]
-): Promise<FreightRate[]> {
-  const rows = weightRange
-    ? await db`
-        SELECT sr.name AS region, s.weight_range, s.amount_brl
-        FROM shipping_rates s
-        JOIN shipping_regions sr ON sr.id = s.shipping_region_id
-        WHERE s.weight_range = ${weightRange} AND sr.is_active = true
-        ORDER BY sr.name
-      `
-    : await db`
-        SELECT sr.name AS region, s.weight_range, s.amount_brl
-        FROM shipping_rates s
-        JOIN shipping_regions sr ON sr.id = s.shipping_region_id
-        WHERE sr.is_active = true
-        ORDER BY sr.name, s.weight_range
-      `;
-
-  return rows.map((row) => ({
-    region: row.region as FreightRate["region"],
-    weightRange: row.weight_range as FreightRate["weightRange"],
-    amountBRL: Number(row.amount_brl),
-  }));
-}

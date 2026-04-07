@@ -151,6 +151,12 @@ export type FreightRate = {
   amountBRL: number;
 };
 
+export type FreightQuote = {
+  region: Region;
+  weightRange: WeightRange;
+  amountBRL: number;
+};
+
 // =============================================================================
 // Admin
 // =============================================================================

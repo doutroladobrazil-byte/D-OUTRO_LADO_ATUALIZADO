@@ -2,9 +2,12 @@ import { Router, type Request, type Response } from "express";
 import { getAdminOrders, getAdminOverview } from "../domains/admin/admin.controller.js";
 import { getCampaigns } from "../domains/campaigns/campaigns.controller.js";
 import { listContentBlocks } from "../domains/content/content.controller.js";
-import { getFreightQuote } from "../domains/freight/freight.controller.js";
-import { listShippingRates } from "../domains/freight/shipping.controller.js";
 import { listFiscalStatuses } from "../domains/fiscal/fiscal.controller.js";
+import {
+  getFreightQuote,
+  getShippingRegions,
+  getShippingRates,
+} from "../domains/freight/freight.controller.js";
 import {
   deleteMedia,
   getUploadUrl,
@@ -28,8 +31,11 @@ router.get("/health", (_req: Request, res: Response) => res.json({ ok: true, nam
 router.get("/campaigns", getCampaigns);
 router.get("/products", listProducts);
 router.get("/products/:slug", getProduct);
+
+// Freight — public (used by product detail, cart preview, checkout)
 router.get("/freight/quote", getFreightQuote);
-router.get("/shipping/rates", listShippingRates);
+router.get("/freight/regions", getShippingRegions);
+router.get("/freight/rates", getShippingRates);
 
 // ---------------------------------------------------------------------------
 // Authenticated (customer+)
@@ -49,15 +55,9 @@ router.get("/fiscal/status", requireAuth, requireRole("admin"), listFiscalStatus
 // ---------------------------------------------------------------------------
 // Admin — media system (Stage 2)
 // ---------------------------------------------------------------------------
-// Step 1: get a signed upload URL → client uploads directly to Supabase Storage
 router.post("/admin/media/upload-url", requireAuth, requireRole("admin"), getUploadUrl);
-// Step 2: after upload, register the asset metadata in the DB
 router.post("/admin/media/register", requireAuth, requireRole("admin"), registerMedia);
-// List all media for a product
 router.get("/admin/products/:productId/media", requireAuth, requireRole("admin"), listMedia);
-// Reorder media for a product
 router.patch("/admin/products/:productId/media/reorder", requireAuth, requireRole("admin"), reorderMedia);
-// Set primary media for a product
 router.patch("/admin/products/:productId/media/:pmId/primary", requireAuth, requireRole("admin"), setPrimary);
-// Delete a specific media asset (unlinks from product, hard-deletes if unused)
 router.delete("/admin/media/:assetId", requireAuth, requireRole("admin"), deleteMedia);

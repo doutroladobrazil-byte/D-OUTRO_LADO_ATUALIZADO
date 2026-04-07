@@ -151,6 +151,16 @@ export type FreightRate = {
   amountBRL: number;
 };
 
+/**
+ * Typed snapshot of a freight quote — persisted in order records.
+ * Created by quoteFreight() and stored in BuiltOrder.
+ */
+export type FreightQuote = {
+  region: Region;
+  weightRange: WeightRange;
+  amountBRL: number;
+};
+
 // =============================================================================
 // Orders — backend-internal build types
 // =============================================================================
@@ -180,6 +190,9 @@ export type BuiltOrder = {
   pricingTier: PricingTier;
   items: BuiltOrderItem[];
   subtotalBRL: number;
+  /** Full typed freight snapshot — use this for UI display and payment metadata. */
+  freight: FreightQuote;
+  /** Convenience alias for freight.amountBRL. */
   freightBRL: number;
   totalBRL: number;
   paymentStatus: "pending";
@@ -187,6 +200,7 @@ export type BuiltOrder = {
   fiscalStatus: "pending";
   estimatedWeightRange: WeightRange;
 };
+
 
 // =============================================================================
 // Admin

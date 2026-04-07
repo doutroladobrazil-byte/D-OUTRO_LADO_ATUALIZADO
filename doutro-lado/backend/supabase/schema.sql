@@ -288,6 +288,7 @@ create table if not exists orders (
   fiscal_status text not null default 'pending'
     check (fiscal_status in ('pending','in_review','issued','rejected')),
   shipping_region text,
+  estimated_weight_range text,
   is_export_order boolean not null default true,
   notes text,
   created_at timestamptz not null default now(),
@@ -444,7 +445,7 @@ create table if not exists admin_logs (
 --   position integer not null default 0,
 --   is_primary boolean not null default false,
 --   created_at timestamptz not null default now(),
---   unique (product_id, media_asset_id)
--- );
--- create index if not exists idx_product_media_product_position
---   on product_media (product_id, position);
+-- =============================================================================
+-- Stage 3 migration — apply these statements on existing databases.
+-- =============================================================================
+-- alter table orders add column if not exists estimated_weight_range text;
