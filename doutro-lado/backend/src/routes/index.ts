@@ -40,6 +40,7 @@ import { getProduct, listProducts } from "../domains/products/products.controlle
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
 import { listUsers } from "../domains/users/users.controller.js";
 import { requireAuth, requireAnyRole, requireRole } from "../middlewares/auth.js";
+import { getCurrencies, getLanguages, getRates } from "../domains/i18n/i18n.controller.js";
 
 export const router = Router();
 
@@ -59,6 +60,13 @@ router.get("/products/:slug", getProduct);
 router.get("/freight/quote", getFreightQuote);
 router.get("/freight/regions", getShippingRegions);
 router.get("/freight/rates", getShippingRates);
+
+// ---------------------------------------------------------------------------
+// i18n — public (currencies, languages, exchange rates)
+// ---------------------------------------------------------------------------
+router.get("/i18n/currencies", getCurrencies);
+router.get("/i18n/languages", getLanguages);
+router.get("/i18n/rates", getRates);
 
 // ---------------------------------------------------------------------------
 // Auth — session and profile (authenticated)

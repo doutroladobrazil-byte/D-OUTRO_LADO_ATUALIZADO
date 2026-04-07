@@ -481,3 +481,76 @@ create table if not exists admin_logs (
 -- alter table orders add column if not exists stripe_session_id text unique;
 -- alter table orders add column if not exists profile_id uuid references profiles(id) on delete set null;
 -- (cart and cart_items tables are assumed to exist from original schema)
+
+-- =============================================================================
+-- Stage 9 migration — Internationalization & Global Commerce Foundation
+-- Apply these on existing databases. Fresh schema already has everything.
+-- =============================================================================
+
+-- 1. Seed canonical currencies into the currencies table.
+--    The platform's base is BRL (source of truth for all prices).
+--    Display currencies: USD, EUR, AED for international markets.
+insert into currencies (code, symbol, is_active)
+values
+  ('BRL', 'R$',  true),
+  ('USD', '$',   true),
+  ('EUR', '€',   true),
+  ('AED', 'AED', true)
+on conflict (code) do update set symbol = excluded.symbol, is_active = excluded.is_active;
+
+-- 2. Seed canonical languages into the languages table.
+insert into languages (code, label, is_active)
+values
+  ('pt', 'Português', true),
+  ('en', 'English',   true),
+  ('ar', 'العربية',   false)   -- RTL (Arabic): activated in future stage
+on conflict (code) do update set label = excluded.label, is_active = excluded.is_active;
+
+-- 3. Exchange rates table for future live rate support.
+--    Stage 9: populated with static rates. Stage 10+: replaced by scheduled job.
+create table if not exists exchange_rates (
+  id           uuid primary key default gen_random_uuid(),
+  from_currency text not null default 'BRL',
+  to_currency   text not null references currencies(code),
+  rate          numeric(18,8) not null,    -- units of to_currency per 1 BRL
+  source        text not null default 'static',  -- 'static' | 'live' | 'manual'
+  fetched_at    timestamptz not null default now(),
+  unique (from_currency, to_currency)
+);
+
+-- Seed initial static rates (1 BRL → target)
+insert into exchange_rates (from_currency, to_currency, rate, source)
+values
+  ('BRL', 'BRL', 1.0,    'static'),
+  ('BRL', 'USD', 0.18,   'static'),
+  ('BRL', 'EUR', 0.17,   'static'),
+  ('BRL', 'AED', 0.67,   'static')
+on conflict (from_currency, to_currency) do update set
+  rate = excluded.rate,
+  source = excluded.source,
+  fetched_at = now();
+
+-- 4. Product translations scaffold — enables multi-language catalog in future.
+--    Stage 9: table exists but is empty. Stage 10+: populated by CMS/editorial team.
+create table if not exists product_translations (
+  id          uuid primary key default gen_random_uuid(),
+  product_id  uuid not null references products(id) on delete cascade,
+  language    text not null references languages(code),
+  name        text not null,
+  short_description text,
+  long_description  text,
+  seo_title         text,
+  seo_description   text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (product_id, language)
+);
+
+-- 5. Seed initial platform site settings for global configuration.
+insert into site_settings (key, value)
+values
+  ('platform.defaultCurrency',  '"BRL"'),
+  ('platform.defaultLanguage',  '"pt"'),
+  ('platform.supportedRegions', '["North America","Europe","Middle East"]'),
+  ('platform.brands',           '["casa","moda"]')
+on conflict (key) do update set value = excluded.value, updated_at = now();

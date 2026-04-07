@@ -8,6 +8,7 @@ import type { Brand } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
 import { getBrandCheckoutPath } from "@/lib/brand";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { PriceDisplay } from "@/components/ui/PriceDisplay";
 
 type Props = { brand: Brand };
 
@@ -78,9 +79,10 @@ export function BrandCartView({ brand }: Props) {
                   </button>
                 </div>
 
-                <span className={`min-w-[80px] text-right text-sm font-medium ${textClass}`}>
-                  R$ {item.lineTotalBRL.toFixed(2)}
-                </span>
+                <PriceDisplay
+                  brl={item.lineTotalBRL}
+                  className={`min-w-[80px] text-right text-sm font-medium ${textClass}`}
+                />
 
                 <button
                   onClick={() => removeItem(brand, item.productSlug)}
@@ -99,7 +101,7 @@ export function BrandCartView({ brand }: Props) {
       <GlassCard className="h-fit space-y-5">
         <div className="flex items-center justify-between text-sm text-white/55">
           <span>Subtotal ({cart.items.reduce((s, i) => s + i.quantity, 0)} itens)</span>
-          <span className="font-medium text-white">R$ {cart.subtotalBRL.toFixed(2)}</span>
+          <PriceDisplay brl={cart.subtotalBRL} className="font-medium text-white" />
         </div>
         <div className="flex items-center justify-between text-sm text-white/55">
           <span>Frete</span>

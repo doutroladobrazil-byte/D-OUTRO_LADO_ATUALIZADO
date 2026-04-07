@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useUiStore } from "@/features/navigation/ui-store";
 import { getBrandCartPath, getBrandFromPath, isBrand } from "@/lib/brand";
+import { CurrencySwitcher } from "@/components/ui/PriceDisplay";
 
 function IconControl({
   href,
@@ -60,6 +61,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center justify-end gap-3">
+          <CurrencySwitcher className="hidden md:flex" />
           <IconControl href="/login" label="Conta" active={pathname.startsWith("/login") || pathname.startsWith("/account")}>
             <UserRound className="size-4" />
           </IconControl>

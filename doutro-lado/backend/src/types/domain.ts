@@ -13,6 +13,21 @@ export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
 export type MediaType = "image" | "video";
 
 // =============================================================================
+// i18n — canonical types (Stage 9)
+// =============================================================================
+
+/**
+ * ISO 4217 currency codes supported by the platform.
+ * BRL is the canonical base. Others are display currencies.
+ */
+export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED";
+
+/**
+ * ISO 639-1 language codes supported for platform content.
+ */
+export type SupportedLanguage = "pt" | "en" | "ar";
+
+// =============================================================================
 // Auth / Profile
 // =============================================================================
 

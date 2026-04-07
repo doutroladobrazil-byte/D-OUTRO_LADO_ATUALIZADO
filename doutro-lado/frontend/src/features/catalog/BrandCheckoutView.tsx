@@ -8,6 +8,9 @@ import { useCartStore } from "@/lib/cart-store";
 import { getShippingRegions } from "@/lib/storefront";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
+import { PriceDisplay } from "@/components/ui/PriceDisplay";
+import { useLocale } from "@/contexts/LocaleContext";
+import { REGION_DEFAULT_CURRENCY } from "@/lib/i18n";
 
 type Props = { brand: Brand };
 
@@ -21,6 +24,7 @@ export function BrandCheckoutView({ brand }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
+  const { currency, setCurrency } = useLocale();
 
   const getCart = useCartStore((s) => s.getCart);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -37,6 +41,14 @@ export function BrandCheckoutView({ brand }: Props) {
       if (r.length > 0 && !selectedRegion) setSelectedRegion(r[0]);
     });
   }, []);
+
+  // Auto-switch display currency when region changes
+  useEffect(() => {
+    if (selectedRegion) {
+      const regionCurrency = REGION_DEFAULT_CURRENCY[selectedRegion];
+      if (regionCurrency) setCurrency(regionCurrency);
+    }
+  }, [selectedRegion]);
 
   // Clear local cart once backend confirms payment (webhook does the rest)
   useEffect(() => {
@@ -138,7 +150,7 @@ export function BrandCheckoutView({ brand }: Props) {
     const payload = {
       brand,
       region: selectedRegion,
-      currency: "BRL",
+      currency,  // send the user's display currency preference to order metadata
       items: cart.items.map((i) => ({ productSlug: i.productSlug, quantity: i.quantity })),
     };
 
@@ -216,7 +228,7 @@ export function BrandCheckoutView({ brand }: Props) {
               <span className="truncate text-white/70">
                 {item.productName} × {item.quantity}
               </span>
-              <span className="shrink-0 text-white">R$ {item.lineTotalBRL.toFixed(2)}</span>
+              <PriceDisplay brl={item.lineTotalBRL} className="shrink-0 text-white" />
             </div>
           ))}
         </div>
@@ -224,7 +236,7 @@ export function BrandCheckoutView({ brand }: Props) {
         <div className="border-t border-white/10 pt-4 space-y-3">
           <div className="flex justify-between text-sm text-white/55">
             <span>Subtotal</span>
-            <span>R$ {cart.subtotalBRL.toFixed(2)}</span>
+            <PriceDisplay brl={cart.subtotalBRL} />
           </div>
           <div className="flex justify-between text-sm text-white/55">
             <span>Frete</span>

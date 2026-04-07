@@ -13,6 +13,12 @@ export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
 export type MediaType = "image" | "video";
 
 // =============================================================================
+// i18n — re-exported for convenience (source of truth: @/lib/i18n)
+// =============================================================================
+
+export type { SupportedCurrency, SupportedLanguage, SupportedLocale } from "@/lib/i18n";
+
+// =============================================================================
 // Auth / Profile — mirror backend AuthProfile
 // =============================================================================
 

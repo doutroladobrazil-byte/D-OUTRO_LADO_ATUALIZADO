@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Product } from "@/lib/types";
 import { getBrandCartPath } from "@/lib/brand";
+import { PriceDisplay } from "@/components/ui/PriceDisplay";
 
 export function ProductCard({ product, brandMode = product.brand }: { product: Product; brandMode?: Product["brand"] }) {
   return (
@@ -40,7 +41,7 @@ export function ProductCard({ product, brandMode = product.brand }: { product: P
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Desde</p>
-            <p className="text-lg text-white">R$ {product.retailPriceBRL.toFixed(2)}</p>
+            <PriceDisplay brl={product.retailPriceBRL} className="text-lg text-white" />
           </div>
           <Link
             href={`/products/${product.slug}?site=${brandMode}&next=${encodeURIComponent(getBrandCartPath(brandMode))}`}
