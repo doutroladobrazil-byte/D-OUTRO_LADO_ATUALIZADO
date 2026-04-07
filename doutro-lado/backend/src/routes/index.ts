@@ -10,6 +10,14 @@ import {
   getShippingRates,
 } from "../domains/freight/freight.controller.js";
 import {
+  createKit,
+  getKit,
+  listMyKits,
+  listPackagingOptions,
+  patchKit,
+  removeKit,
+} from "../domains/gift-kits/gift-kit.controller.js";
+import {
   deleteMedia,
   getUploadUrl,
   listMedia,
@@ -55,6 +63,19 @@ router.patch("/auth/profile", requireAuth, patchProfile);
 // ---------------------------------------------------------------------------
 router.post("/orders", requireAuth, createOrder);
 router.post("/stripe/checkout", requireAuth, createCheckoutSession);
+
+// ---------------------------------------------------------------------------
+// Gift Kits — Stage 6
+// ---------------------------------------------------------------------------
+// Public — used by the frontend to render packaging selector
+router.get("/gift-kits/packaging-options", listPackagingOptions);
+
+// Authenticated — kit lifecycle
+router.post("/gift-kits", requireAuth, createKit);
+router.get("/gift-kits/mine", requireAuth, listMyKits);
+router.get("/gift-kits/:id", requireAuth, getKit);
+router.patch("/gift-kits/:id", requireAuth, patchKit);
+router.delete("/gift-kits/:id", requireAuth, removeKit);
 
 // ---------------------------------------------------------------------------
 // Admin — overview and orders

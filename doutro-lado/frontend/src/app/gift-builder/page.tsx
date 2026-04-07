@@ -1,25 +1,45 @@
+import type { Metadata } from "next";
 import { GiftBuilderStudio } from "@/features/gift-builder/GiftBuilderStudio";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { getProducts } from "@/lib/storefront";
+import { getPackagingOptions, getProducts } from "@/lib/storefront";
+
+export const metadata: Metadata = {
+  title: "Gift Builder — D'OUTRO LADO",
+  description:
+    "Monte kits premium com produtos Casa & Decoração ou Moda & Acessórios. Escolha a embalagem, personalize a mensagem e crie um presente único.",
+};
 
 export default async function GiftBuilderPage() {
-  const products = await getProducts();
+  const [products, packagingOptions] = await Promise.all([
+    getProducts(),
+    getPackagingOptions(),
+  ]);
 
   return (
-    <main className="px-6 py-10">
+    <main className="min-h-screen px-6 py-10">
       <div className="mx-auto max-w-luxe space-y-10">
-        <GlassCard className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-          <div>
-            <SectionHeading
-              eyebrow="Gift builder"
-              title="Monte kits premium com drag-and-drop e preview imediato."
-              description="Uma experiencia simples, refinada e preparada para composicoes corporativas, presentes premium e checkout internacional."
-            />
+        {/* Hero section */}
+        <GlassCard className="relative overflow-hidden p-0">
+          <div className="grid min-h-[260px] gap-0 md:grid-cols-[1fr_0.6fr]">
+            <div className="flex flex-col justify-between p-8 md:p-12">
+              <SectionHeading
+                eyebrow="Gift Builder"
+                title="Monte kits premium com origem brasileira."
+                description="Selecione produtos de um universo, escolha a embalagem e personalize a mensagem. Kits prontos para o mercado internacional."
+              />
+            </div>
+            <div className="hidden bg-[radial-gradient(circle_at_center,rgba(198,169,107,0.2),transparent_55%),linear-gradient(160deg,rgba(198,169,107,0.08),rgba(0,0,0,0.85))] md:block" />
           </div>
-          <div className="rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.18),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.8))]" />
         </GlassCard>
-        <GiftBuilderStudio products={products} />
+
+        {/* Builder studio — kit composition */}
+        {/* Token is null for server render; client handles auth-gated save */}
+        <GiftBuilderStudio
+          products={products}
+          packagingOptions={packagingOptions}
+          token={null}
+        />
       </div>
     </main>
   );

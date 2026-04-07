@@ -253,19 +253,26 @@ create table if not exists languages (
 create table if not exists gift_kits (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid references profiles(id) on delete set null,
+  -- Brand isolation: a kit can only contain items from a single brand.
+  brand text not null check (brand in ('casa', 'moda')),
   name text not null,
-  message text,
-  packaging_type text,
+  message text check (char_length(message) <= 500),
+  packaging_type text not null default 'standard'
+    check (packaging_type in ('standard', 'premium', 'signature')),
+  subtotal_brl numeric(12,2) not null default 0,
+  packaging_surcharge_brl numeric(12,2) not null default 0,
+  total_amount_brl numeric(12,2) not null default 0,
   total_weight_range text,
-  total_amount_brl numeric(12,2) default 0,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists gift_kit_items (
   id uuid primary key default gen_random_uuid(),
   kit_id uuid not null references gift_kits(id) on delete cascade,
   product_id uuid not null references products(id) on delete cascade,
-  quantity integer not null default 1
+  quantity integer not null default 1 check (quantity >= 1),
+  unique (kit_id, product_id)
 );
 
 -- =============================================================================
@@ -449,3 +456,20 @@ create table if not exists admin_logs (
 -- Stage 3 migration — apply these statements on existing databases.
 -- =============================================================================
 -- alter table orders add column if not exists estimated_weight_range text;
+
+-- =============================================================================
+-- Stage 6 migration — apply these on existing databases with old gift_kits.
+-- =============================================================================
+-- alter table gift_kits add column if not exists brand text not null default 'casa';
+-- alter table gift_kits add constraint gift_kits_brand_check check (brand in ('casa', 'moda'));
+-- alter table gift_kits alter column packaging_type set not null;
+-- alter table gift_kits alter column packaging_type set default 'standard';
+-- alter table gift_kits add constraint gift_kits_packaging_check check (packaging_type in ('standard', 'premium', 'signature'));
+-- alter table gift_kits add column if not exists subtotal_brl numeric(12,2) not null default 0;
+-- alter table gift_kits add column if not exists packaging_surcharge_brl numeric(12,2) not null default 0;
+-- alter table gift_kits alter column total_amount_brl set not null;
+-- alter table gift_kits alter column total_amount_brl set default 0;
+-- alter table gift_kits add column if not exists updated_at timestamptz not null default now();
+-- alter table gift_kit_items add column if not exists quantity integer not null default 1;
+-- alter table gift_kit_items add constraint gift_kit_items_qty_check check (quantity >= 1);
+-- alter table gift_kit_items add constraint gift_kit_items_unique unique (kit_id, product_id);

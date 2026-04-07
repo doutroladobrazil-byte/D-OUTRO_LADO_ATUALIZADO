@@ -1,6 +1,19 @@
 import { adminOrders, campaigns, freightRates, products } from "@/lib/mock-data";
 import { fetchApiData } from "@/lib/api";
-import type { AdminOrderRow, AdminOverview, Brand, Campaign, FreightRate, FreightQuote, Product, Region, WeightRange } from "@/lib/types";
+import type {
+  AdminOrderRow,
+  AdminOverview,
+  Brand,
+  Campaign,
+  CreateGiftKitPayload,
+  FreightRate,
+  FreightQuote,
+  GiftKit,
+  PackagingOption,
+  Product,
+  Region,
+  WeightRange,
+} from "@/lib/types";
 
 function getFallbackBrandSummaries() {
   return (["casa", "moda"] as const).map((brand) => {
@@ -90,4 +103,50 @@ export async function getAdminDashboard(token: string) {
     overview: overview ?? fallbackOverview,
     orders: orders ?? adminOrders
   };
+}
+
+// =============================================================================
+// Gift Kits — Stage 6
+// =============================================================================
+
+/**
+ * Fetch available packaging options from the backend.
+ * Renders as a selector in GiftBuilderStudio.
+ */
+export async function getPackagingOptions(): Promise<PackagingOption[]> {
+  const fallback: PackagingOption[] = [
+    { type: "standard", label: "Standard Box", descriptionPT: "Caixa com papel de seda e laço simples.", surchargeMultiplier: 0 },
+    { type: "premium", label: "Premium Box", descriptionPT: "Caixa rígida com fita de cetim e papel especial.", surchargeMultiplier: 0.05 },
+    { type: "signature", label: "Signature Box", descriptionPT: "Caixa artesanal numerada com cartão editorial personalizado.", surchargeMultiplier: 0.10 },
+  ];
+  return (await fetchApiData<PackagingOption[]>("/gift-kits/packaging-options", { revalidate: 3600 })) ?? fallback;
+}
+
+/**
+ * Create a gift kit (authenticated).
+ * Must be called client-side with a bearer token.
+ */
+export async function createGiftKit(payload: CreateGiftKitPayload, token: string): Promise<GiftKit | null> {
+  const apiBaseUrl = typeof window === "undefined"
+    ? (process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000/api")
+    : (process.env.NEXT_PUBLIC_API_URL ?? "/api");
+
+  const res = await fetch(`${apiBaseUrl}/gift-kits`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) return null;
+  const envelope = await res.json();
+  return envelope.ok ? envelope.data : null;
+}
+
+/**
+ * List the authenticated user's gift kits.
+ */
+export async function getMyGiftKits(token: string): Promise<GiftKit[]> {
+  return (await fetchApiData<GiftKit[]>("/gift-kits/mine", { token })) ?? [];
 }

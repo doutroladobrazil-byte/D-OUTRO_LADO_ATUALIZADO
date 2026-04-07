@@ -217,3 +217,53 @@ export type ApiEnvelope<T> = {
   data: T;
   message?: string;
 };
+
+// =============================================================================
+// Gift Kits — Stage 6
+// =============================================================================
+
+export type PackagingType = "standard" | "premium" | "signature";
+
+export type PackagingOption = {
+  type: PackagingType;
+  label: string;
+  descriptionPT: string;
+  surchargeMultiplier: number;
+};
+
+export type GiftKitItem = {
+  id: string;
+  productId: string;
+  productSlug: string;
+  productName: string;
+  brand: Brand;
+  quantity: number;
+  unitPriceBRL: number;
+  lineTotalBRL: number;
+  weightRange: WeightRange;
+};
+
+export type GiftKit = {
+  id: string;
+  profileId: string | null;
+  brand: Brand;
+  name: string;
+  message: string | null;
+  packagingType: PackagingType;
+  packagingLabel: string;
+  items: GiftKitItem[];
+  subtotalBRL: number;
+  packagingSurchargeBRL: number;
+  totalBRL: number;
+  estimatedWeightRange: WeightRange;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateGiftKitPayload = {
+  brand: Brand;
+  name: string;
+  message?: string;
+  packagingType: PackagingType;
+  items: { productSlug: string; quantity: number }[];
+};
