@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { getSession, patchProfile } from "../domains/auth/auth.controller.js";
 import { getAdminOrders, getAdminOverview } from "../domains/admin/admin.controller.js";
+import { getCart, putCartItem, removeCartItem } from "../domains/cart/cart.controller.js";
 import { getCampaigns } from "../domains/campaigns/campaigns.controller.js";
 import { listContentBlocks } from "../domains/content/content.controller.js";
 import { listFiscalStatuses } from "../domains/fiscal/fiscal.controller.js";
@@ -63,6 +64,13 @@ router.patch("/auth/profile", requireAuth, patchProfile);
 // ---------------------------------------------------------------------------
 router.post("/orders", requireAuth, createOrder);
 router.post("/stripe/checkout", requireAuth, createCheckoutSession);
+
+// ---------------------------------------------------------------------------
+// Cart — Stage 7 (authenticated)
+// ---------------------------------------------------------------------------
+router.get("/cart", requireAuth, getCart);
+router.put("/cart/items", requireAuth, putCartItem);
+router.delete("/cart/items/:productSlug", requireAuth, removeCartItem);
 
 // ---------------------------------------------------------------------------
 // Gift Kits — Stage 6

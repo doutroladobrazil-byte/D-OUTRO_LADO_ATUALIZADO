@@ -267,3 +267,53 @@ export type CreateGiftKitPayload = {
   packagingType: PackagingType;
   items: { productSlug: string; quantity: number }[];
 };
+
+// =============================================================================
+// Cart & Checkout — Stage 7
+// =============================================================================
+
+export type CartItemLine = {
+  id?: string;      // undefined in local-only state; set after server sync
+  productId: string;
+  productSlug: string;
+  productName: string;
+  sku: string;
+  brand: Brand;
+  quantity: number;
+  unitPriceBRL: number;
+  lineTotalBRL: number;
+  weightRange: WeightRange;
+  stock: number;
+};
+
+export type Cart = {
+  id: string | null;
+  profileId: string | null;
+  brand: Brand;
+  currency: string;
+  items: CartItemLine[];
+  subtotalBRL: number;
+};
+
+export type CheckoutPayload = {
+  brand: Brand;
+  region: Region;
+  currency?: string;
+  items: { productSlug: string; quantity: number }[];
+};
+
+export type CheckoutResult = {
+  mode: "stripe" | "mock";
+  sessionId: string;
+  checkoutUrl: string | null;
+  orderPreview: {
+    publicId: string;
+    brand: Brand;
+    region: Region;
+    subtotalBRL: number;
+    freightBRL: number;
+    totalBRL: number;
+    estimatedWeightRange: WeightRange;
+  };
+};
+

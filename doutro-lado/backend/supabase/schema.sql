@@ -296,6 +296,7 @@ create table if not exists orders (
     check (fiscal_status in ('pending','in_review','issued','rejected')),
   shipping_region text,
   estimated_weight_range text,
+  stripe_session_id text unique,
   is_export_order boolean not null default true,
   notes text,
   created_at timestamptz not null default now(),
@@ -473,3 +474,10 @@ create table if not exists admin_logs (
 -- alter table gift_kit_items add column if not exists quantity integer not null default 1;
 -- alter table gift_kit_items add constraint gift_kit_items_qty_check check (quantity >= 1);
 -- alter table gift_kit_items add constraint gift_kit_items_unique unique (kit_id, product_id);
+
+-- =============================================================================
+-- Stage 7 migration — apply these on existing databases.
+-- =============================================================================
+-- alter table orders add column if not exists stripe_session_id text unique;
+-- alter table orders add column if not exists profile_id uuid references profiles(id) on delete set null;
+-- (cart and cart_items tables are assumed to exist from original schema)

@@ -3,29 +3,56 @@ import Stripe from "stripe";
 import { env } from "../../config/env.js";
 import { stripe } from "../../lib/stripe.js";
 import { fail, ok } from "../../utils/http.js";
-import { buildOrder } from "../orders/orders.service.js";
+import { attachStripeSession, buildOrder, updatePaymentStatus } from "../orders/orders.service.js";
+import { clearCart } from "../cart/cart.service.js";
+import { getCartByProfile } from "../cart/cart.service.js";
 
+// =============================================================================
+// POST /stripe/checkout
+// =============================================================================
+
+/**
+ * Full checkout flow:
+ * 1. Build + persist the order from cart items (or raw payload)
+ * 2. Create Stripe checkout session
+ * 3. Persist payment_records row + attach stripe_session_id to order
+ * 4. Clear the cart so it resets for next purchase
+ * 5. Return { sessionId, checkoutUrl }
+ */
 export async function createCheckoutSession(req: Request, res: Response) {
   try {
-    const orderPreview = await buildOrder(req.body, req.user?.role);
+    const profileId = req.user?.profileId;
+    const role = req.user?.role ?? "customer";
 
+    // Build the order — persisted to DB
+    const orderPreview = await buildOrder(req.body, role, profileId);
+
+    // ── Mock mode (no Stripe key) ───────────────────────────────────────────
     if (!stripe || env.PAYMENTS_MODE !== "stripe") {
+      // Still clear cart on successful mock order
+      if (profileId) {
+        const cart = await getCartByProfile(profileId, orderPreview.brand).catch(() => null);
+        if (cart?.id) await clearCart(cart.id);
+      }
       return ok(res, {
         mode: "mock",
         sessionId: `mock_${orderPreview.publicId}`,
         checkoutUrl: null,
-        orderPreview
+        orderPreview,
       });
     }
 
+    // ── Real Stripe checkout session ────────────────────────────────────────
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      success_url: `${env.APP_URL}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${env.APP_URL}/checkout?status=cancelled`,
+      success_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=cancelled`,
       metadata: {
+        orderId: orderPreview.orderId,
         publicId: orderPreview.publicId,
+        brand: orderPreview.brand,
         region: orderPreview.region,
-        pricingTier: orderPreview.pricingTier
+        pricingTier: orderPreview.pricingTier,
       },
       line_items: [
         ...orderPreview.items.map((item) => ({
@@ -35,12 +62,9 @@ export async function createCheckoutSession(req: Request, res: Response) {
             unit_amount: Math.round(item.unitPriceBRL * 100),
             product_data: {
               name: item.name,
-              metadata: {
-                sku: item.sku,
-                slug: item.slug
-              }
-            }
-          }
+              metadata: { sku: item.sku, slug: item.slug },
+            },
+          },
         })),
         {
           quantity: 1,
@@ -48,23 +72,36 @@ export async function createCheckoutSession(req: Request, res: Response) {
             currency: "brl",
             unit_amount: Math.round(orderPreview.freightBRL * 100),
             product_data: {
-              name: `Frete internacional (${orderPreview.estimatedWeightRange})`
-            }
-          }
-        }
-      ]
+              name: `Frete internacional — ${orderPreview.estimatedWeightRange}`,
+            },
+          },
+        },
+      ],
     });
+
+    // Persist payment record + attach session ID to order
+    await attachStripeSession(orderPreview.orderId, session.id);
+
+    // Clear cart after successful order + session creation
+    if (profileId) {
+      const cart = await getCartByProfile(profileId, orderPreview.brand).catch(() => null);
+      if (cart?.id) await clearCart(cart.id);
+    }
 
     return ok(res, {
       mode: "stripe",
       sessionId: session.id,
       checkoutUrl: session.url,
-      orderPreview
+      orderPreview,
     });
   } catch (error) {
     return fail(res, error instanceof Error ? error.message : "Unable to create checkout session", 400);
   }
 }
+
+// =============================================================================
+// POST /stripe/webhook (raw body — registered in app.ts BEFORE json middleware)
+// =============================================================================
 
 function readRawBody(body: unknown) {
   if (Buffer.isBuffer(body)) return body;
@@ -73,6 +110,7 @@ function readRawBody(body: unknown) {
 }
 
 export async function handleStripeWebhook(req: Request, res: Response) {
+  // Mock mode — acknowledge without processing
   if (!stripe || env.PAYMENTS_MODE !== "stripe" || !env.STRIPE_WEBHOOK_SECRET) {
     return ok(res, { received: true, mode: "mock" });
   }
@@ -83,17 +121,55 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return fail(res, "Missing webhook signature or raw body", 400);
   }
 
+  let event: Stripe.Event;
   try {
-    const event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
-    const checkoutSession = event.data.object as Stripe.Checkout.Session;
-
-    return ok(res, {
-      received: true,
-      mode: "stripe",
-      eventType: event.type,
-      publicId: checkoutSession.metadata?.publicId ?? null
-    });
+    event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
   } catch (error) {
     return fail(res, error instanceof Error ? error.message : "Invalid webhook payload", 400);
   }
+
+  const session = event.data.object as Stripe.Checkout.Session;
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        // Payment succeeded (card authorized and charged)
+        const paymentIntentId =
+          typeof session.payment_intent === "string" ? session.payment_intent : undefined;
+        await updatePaymentStatus(session.id, "paid", paymentIntentId);
+        break;
+      }
+      case "checkout.session.expired": {
+        // User abandoned checkout
+        await updatePaymentStatus(session.id, "failed");
+        break;
+      }
+      case "charge.refunded": {
+        // Refund issued — session ID stored in charge metadata or payment record
+        // Handled separately; mark as refunded if we have the session ID
+        const charge = event.data.object as Stripe.Charge;
+        const checkoutSessionId =
+          typeof charge.metadata?.checkout_session_id === "string"
+            ? charge.metadata.checkout_session_id
+            : null;
+        if (checkoutSessionId) {
+          await updatePaymentStatus(checkoutSessionId, "refunded");
+        }
+        break;
+      }
+      default:
+        // Unhandled event type — acknowledge safely
+        break;
+    }
+  } catch (err) {
+    // Log but do not return 4xx — Stripe will retry on 4xx but not on 2xx
+    console.error("[webhook] Processing error:", err);
+  }
+
+  return ok(res, {
+    received: true,
+    mode: "stripe",
+    eventType: event.type,
+    publicId: session.metadata?.publicId ?? null,
+  });
 }
