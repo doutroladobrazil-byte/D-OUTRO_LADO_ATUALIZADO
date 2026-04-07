@@ -17,9 +17,35 @@ export async function getCampaigns() {
   return (await fetchApiData<Campaign[]>("/campaigns")) ?? campaigns;
 }
 
-export async function getProducts(brand?: Brand) {
-  const query = brand ? `?brand=${brand}` : "";
-  return (await fetchApiData<Product[]>(`/products${query}`)) ?? (brand ? products.filter((product) => product.brand === brand) : products);
+export type GetProductsOptions = {
+  brand?: Brand;
+  category?: string;
+  search?: string;
+  sort?: string;
+};
+
+export async function getProducts(options?: Brand | GetProductsOptions) {
+  // Support legacy behavior where first param is just Brand string
+  const opts = typeof options === "string" ? { brand: options } : options || {};
+  
+  const params = new URLSearchParams();
+  if (opts.brand) params.set("brand", opts.brand);
+  if (opts.category) params.set("category", opts.category);
+  if (opts.search) params.set("search", opts.search);
+  if (opts.sort) params.set("sort", opts.sort);
+
+  const query = params.toString() ? `?${params.toString()}` : "";
+  
+  return (await fetchApiData<Product[]>(`/products${query}`)) ?? products.filter((product) => {
+    // Basic mock fallback filtering
+    if (opts.brand && product.brand !== opts.brand) return false;
+    if (opts.category && product.category.toLowerCase() !== opts.category.toLowerCase()) return false;
+    if (opts.search) {
+      const s = opts.search.toLowerCase();
+      if (!product.name.toLowerCase().includes(s) && !product.shortDescription.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
 }
 
 export async function getProductBySlug(slug: string) {

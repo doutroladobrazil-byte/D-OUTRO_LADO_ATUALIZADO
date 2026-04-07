@@ -99,24 +99,36 @@ const PRODUCT_SELECT = `
 // Catalog queries
 // =============================================================================
 
-export async function listProducts(brand?: Brand): Promise<Product[]> {
-  const rows = brand
-    ? await db`
-        SELECT ${db.unsafe(PRODUCT_SELECT)}
-        FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
-        LEFT JOIN subcategories s ON s.id = p.subcategory_id
-        WHERE p.brand = ${brand} AND p.is_active = true
-        ORDER BY p.is_featured DESC, p.position, p.name
-      `
-    : await db`
-        SELECT ${db.unsafe(PRODUCT_SELECT)}
-        FROM products p
-        LEFT JOIN categories c ON c.id = p.category_id
-        LEFT JOIN subcategories s ON s.id = p.subcategory_id
-        WHERE p.is_active = true
-        ORDER BY p.is_featured DESC, p.position, p.name
-      `;
+export type ListProductsOptions = {
+  brand?: Brand;
+  search?: string;
+  category?: string;
+  sort?: "price_asc" | "price_desc" | "newest";
+};
+
+export async function listProducts(options: ListProductsOptions = {}): Promise<Product[]> {
+  const { brand, search, category, sort } = options;
+
+  let orderClause = db`ORDER BY p.is_featured DESC, p.position, p.name`;
+  if (sort === "price_asc") orderClause = db`ORDER BY p.retail_price_brl ASC`;
+  else if (sort === "price_desc") orderClause = db`ORDER BY p.retail_price_brl DESC`;
+  else if (sort === "newest") orderClause = db`ORDER BY p.created_at DESC`;
+
+  const rows = await db`
+    SELECT ${db.unsafe(PRODUCT_SELECT)}
+    FROM products p
+    LEFT JOIN categories c ON c.id = p.category_id
+    LEFT JOIN subcategories s ON s.id = p.subcategory_id
+    WHERE p.is_active = true
+      ${brand ? db`AND p.brand = ${brand}` : db``}
+      ${category ? db`AND c.name ILIKE ${category}` : db``}
+      ${
+        search
+          ? db`AND (p.name ILIKE ${"%" + search + "%"} OR p.short_description ILIKE ${"%" + search + "%"})`
+          : db``
+      }
+    ${orderClause}
+  `;
 
   return rows.map(mapProduct);
 }

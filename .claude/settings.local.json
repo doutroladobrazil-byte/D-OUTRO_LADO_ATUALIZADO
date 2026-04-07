@@ -3,7 +3,9 @@
     "allow": [
       "Bash(ssh-keygen -t ed25519 -C \"render-doutro-lado\" -f ~/.ssh/render_doutro_lado -N \"\")",
       "Read(//c/Users/vinic/.ssh/**)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const l = JSON.parse\\(require\\('fs'\\).readFileSync\\('doutro-lado/backend/package-lock.json','utf8'\\)\\); console.log\\('jose:', !!l.packages?.['node_modules/jose'], '@supabase/ssr in frontend:', !!JSON.parse\\(require\\('fs'\\).readFileSync\\('doutro-lado/frontend/package-lock.json','utf8'\\)\\).packages?.['node_modules/@supabase/ssr']\\)\")"
     ]
   }
 }

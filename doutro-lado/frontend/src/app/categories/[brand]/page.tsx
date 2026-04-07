@@ -4,35 +4,60 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { isBrand } from "@/lib/brand";
 import { getProducts } from "@/lib/storefront";
+import { ProductFilterSidebar } from "@/features/catalog/ProductFilterSidebar";
 
-export default async function CategoryPage({ params }: { params: Promise<{ brand: string }> }) {
+type PageProps = {
+  params: Promise<{ brand: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function CategoryPage({ params, searchParams }: PageProps) {
   const { brand } = await params;
   if (!isBrand(brand)) notFound();
-  const products = await getProducts(brand);
+
+  const resolvedSearchParams = await searchParams;
+  const category = typeof resolvedSearchParams.category === "string" ? resolvedSearchParams.category : undefined;
+  const sort = typeof resolvedSearchParams.sort === "string" ? resolvedSearchParams.sort : undefined;
+
+  const products = await getProducts({ brand, category, sort });
+
+  const isModa = brand === "moda";
+  const bgClass = isModa ? "bg-[rgb(12,12,12)]" : "bg-[#F8F6F2]";
+  const textClass = isModa ? "text-white" : "text-[#17120d]";
 
   return (
-    <main className="px-6 py-10">
-      <div className="mx-auto grid max-w-luxe gap-8 lg:grid-cols-[300px_1fr]">
-        <GlassCard className="h-fit space-y-6">
-          <div>
-            <p className="text-[13px] uppercase tracking-[0.28em] text-white/42">Filtros refinados</p>
-            <h1 className="mt-4 font-display text-[36px] tracking-[-0.5px] text-white">Curadoria por textura.</h1>
-          </div>
-          <div className="space-y-4 text-sm text-white/60">
-            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">Faixa de preco premium</div>
-            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">Materiais naturais e couro</div>
-            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">Peso para logistica internacional</div>
-          </div>
-        </GlassCard>
-        <div className="space-y-8">
+    <main className={`min-h-screen px-6 py-10 ${bgClass}`}>
+      <div className="mx-auto grid max-w-luxe gap-8 lg:grid-cols-[260px_1fr]">
+        <div className="hidden lg:block relative">
+          <ProductFilterSidebar brandMode={brand} />
+        </div>
+        
+        {/* Mobile Filters (Simplified) */}
+        <div className="lg:hidden">
+           <GlassCard tone={isModa ? "dark" : "warm"} className="p-4 rounded-[16px]">
+             <p className={`text-sm ${isModa ? "text-white/70" : "text-black/70"}`}>
+               Filtros disponiveis via desktop (Phase 1)
+             </p>
+           </GlassCard>
+        </div>
+
+        <div className="space-y-8 min-h-[60vh]">
           <SectionHeading
-            eyebrow="Colecao"
-            title="Uma vitrine limpa, modular e pronta para escalar com API real."
-            description="Filtros, ranking editorial, recomendacao e descoberta premium preservados em qualquer viewport."
+            eyebrow={category ? `Buscando em ${category}` : "Colecao Completa"}
+            title={isModa ? "Couro com identidade." : "Curadoria por textura."}
+            description={isModa ? "Pecas premium limitadas." : "Materialidade e origem."}
+            tone={isModa ? "dark" : "light"}
           />
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {products.map((product) => <ProductCard key={product.id} product={product} brandMode={brand} />)}
-          </div>
+          
+          {products.length === 0 ? (
+            <div className={`py-20 text-center ${isModa ? "text-white/50" : "text-black/50"}`}>
+              Nenhum produto encontrado nesta combinacao de filtros.
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {products.map((product) => <ProductCard key={product.id} product={product} brandMode={brand} />)}
+            </div>
+          )}
         </div>
       </div>
     </main>
