@@ -13,6 +13,26 @@ export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
 export type MediaType = "image" | "video";
 
 // =============================================================================
+// Auth / Profile
+// =============================================================================
+
+/**
+ * Canonical profile shape — returned by /api/auth/session and consumed by
+ * frontend auth context and admin user management.
+ */
+export type AuthProfile = {
+  id: string;
+  authUserId: string | null;
+  email: string;
+  fullName: string | null;
+  role: Role;
+  isActive: boolean;
+  preferredLanguage: string;
+  preferredCurrency: string;
+  createdAt: string;
+};
+
+// =============================================================================
 // Media — Stage 2
 // =============================================================================
 
@@ -234,7 +254,7 @@ export type AdminOverview = {
 };
 
 // =============================================================================
-// Users & Auth
+// Users & Auth (legacy shapes — kept for admin service compat)
 // =============================================================================
 
 export type UserRecord = {

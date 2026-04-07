@@ -1,8 +1,13 @@
+import { createClient } from "@/lib/supabase/server";
 import { getAdminDashboard } from "@/lib/storefront";
 import { AdminModulePage } from "@/features/admin/AdminModulePage";
 
 export default async function AdminDashboardPage() {
-  const { overview, orders } = await getAdminDashboard();
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const { overview, orders } = await getAdminDashboard(session?.access_token ?? "");
+
   const casaSummary = overview.brandSummaries.find((item) => item.brand === "casa");
   const modaSummary = overview.brandSummaries.find((item) => item.brand === "moda");
 

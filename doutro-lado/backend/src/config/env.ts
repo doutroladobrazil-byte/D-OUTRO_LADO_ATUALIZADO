@@ -18,17 +18,28 @@ const schema = z.object({
   PORT: z.string().default("4000"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: optionalString,
-  AUTH_MODE: z.enum(["token", "header"]).default("token"),
-  ALLOW_DEV_AUTH_HEADERS: z.preprocess((value) => value === "true" || value === true, z.boolean()).default(false),
+
+  // ==========================================================================
+  // Auth — Supabase JWT
+  // Required in production. The JWT secret is found in:
+  // Supabase → Settings → API → JWT Settings → JWT Secret
+  // ==========================================================================
+  SUPABASE_JWT_SECRET: optionalString,
+
+  // Dev-only static tokens — mapped to roles for local testing without Supabase.
+  // Ignored in production when SUPABASE_JWT_SECRET is set.
   DEV_CUSTOMER_TOKEN: z.string().default("dev-customer-token"),
   DEV_WHOLESALE_TOKEN: z.string().default("dev-wholesale-token"),
   DEV_ADMIN_TOKEN: z.string().default("dev-admin-token"),
+
   DATA_SOURCE: z.enum(["memory", "supabase"]).default("memory"),
   PAYMENTS_MODE: z.enum(["mock", "stripe"]).default("mock"),
+
+  // Supabase SDK — required for Storage (media upload/delete)
   SUPABASE_URL: optionalUrl,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
-  // Stage 2: Supabase Storage bucket for all product media (images + videos)
   SUPABASE_STORAGE_BUCKET_MEDIA: z.string().default("product-media"),
+
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
 });

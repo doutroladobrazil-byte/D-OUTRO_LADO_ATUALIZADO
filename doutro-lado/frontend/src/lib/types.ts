@@ -13,6 +13,26 @@ export type FiscalStatus = "pending" | "in_review" | "issued" | "rejected";
 export type MediaType = "image" | "video";
 
 // =============================================================================
+// Auth / Profile — mirror backend AuthProfile
+// =============================================================================
+
+/**
+ * Canonical profile shape returned by GET /api/auth/session.
+ * Consumed by AuthContext and all account/admin UI.
+ */
+export type AuthProfile = {
+  id: string;
+  authUserId: string | null;
+  email: string;
+  fullName: string | null;
+  role: Role;
+  isActive: boolean;
+  preferredLanguage: string;
+  preferredCurrency: string;
+  createdAt: string;
+};
+
+// =============================================================================
 // Media — Stage 2
 // =============================================================================
 

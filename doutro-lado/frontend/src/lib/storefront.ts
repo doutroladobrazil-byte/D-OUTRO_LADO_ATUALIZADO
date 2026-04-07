@@ -39,22 +39,21 @@ export async function getShippingRegions() {
   return (await fetchApiData<Region[]>("/freight/regions")) ?? ["North America", "Europe", "Middle East"];
 }
 
-export async function getAdminDashboard() {
-  const token = process.env.API_ADMIN_TOKEN?.trim();
-  if (!token) {
-    const fallbackRevenueBRL = adminOrders.reduce((sum, order) => sum + order.totalBRL, 0);
-    return {
-      overview: {
-        revenueBRL: fallbackRevenueBRL,
-        orders: adminOrders.length,
-        averageTicketBRL: Math.round(fallbackRevenueBRL / adminOrders.length),
-        newCustomers: 18,
-        alerts: ["Configure API_ADMIN_TOKEN para consumir o backend protegido."],
-        brandSummaries: getFallbackBrandSummaries()
-      },
-      orders: adminOrders
-    };
-  }
+/**
+ * Fetches the admin dashboard data using the authenticated user's JWT.
+ * The token is obtained from the server-side Supabase session in admin/page.tsx.
+ * Falls back to mock data only if the backend is unreachable.
+ */
+export async function getAdminDashboard(token: string) {
+  const fallbackRevenueBRL = adminOrders.reduce((sum, order) => sum + order.totalBRL, 0);
+  const fallbackOverview: AdminOverview = {
+    revenueBRL: fallbackRevenueBRL,
+    orders: adminOrders.length,
+    averageTicketBRL: Math.round(fallbackRevenueBRL / adminOrders.length),
+    newCustomers: 0,
+    alerts: ["Backend indisponivel. Dados locais para continuidade."],
+    brandSummaries: getFallbackBrandSummaries()
+  };
 
   const [overview, orders] = await Promise.all([
     fetchApiData<AdminOverview>("/admin/overview", { token, revalidate: 30 }),
@@ -62,14 +61,7 @@ export async function getAdminDashboard() {
   ]);
 
   return {
-    overview: overview ?? {
-      revenueBRL: adminOrders.reduce((sum, order) => sum + order.totalBRL, 0),
-      orders: adminOrders.length,
-      averageTicketBRL: Math.round(adminOrders.reduce((sum, order) => sum + order.totalBRL, 0) / adminOrders.length),
-      newCustomers: 18,
-      alerts: ["Backend indisponivel. Exibindo base local de continuidade."],
-      brandSummaries: getFallbackBrandSummaries()
-    },
+    overview: overview ?? fallbackOverview,
     orders: orders ?? adminOrders
   };
 }
