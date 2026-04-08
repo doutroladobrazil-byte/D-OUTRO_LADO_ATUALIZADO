@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGallery } from "@/components/ProductGallery";
@@ -6,6 +5,7 @@ import { getBrandCartPath, getBrandCheckoutPath, isBrand } from "@/lib/brand";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getFreightRates, getProductBySlug, getProducts } from "@/lib/storefront";
+import { ProductPurchaseActions } from "@/features/catalog/ProductPurchaseActions";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -54,17 +54,12 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
                 <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">Material {product.material}</div>
                 <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">SKU {product.sku}</div>
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <Link href={cartHref} className="rounded-full border border-gold bg-gold px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5">
-                  Adicionar ao carrinho
-                </Link>
-                <Link href={checkoutHref} className="rounded-full border border-black/10 bg-black/5 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/10">
-                  Comprar agora
-                </Link>
-                <button className="rounded-full border border-black/10 bg-transparent px-5 py-4 text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/5">
-                  Favoritar
-                </button>
-              </div>
+              <ProductPurchaseActions
+                product={product}
+                activeBrand={activeBrand}
+                cartHref={cartHref}
+                checkoutHref={checkoutHref}
+              />
             </GlassCard>
             <GlassCard>
               <SectionHeading eyebrow="Frete internacional" title="Calculo automatico por peso e regiao." />
