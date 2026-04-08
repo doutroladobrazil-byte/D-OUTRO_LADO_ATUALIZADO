@@ -40,14 +40,26 @@ import { getProduct, listProducts } from "../domains/products/products.controlle
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
 import { listUsers } from "../domains/users/users.controller.js";
 import { requireAuth, requireAnyRole, requireRole } from "../middlewares/auth.js";
+import { authRateLimit, checkoutRateLimit } from "../middlewares/rate-limit.js";
 import { getCurrencies, getLanguages, getRates } from "../domains/i18n/i18n.controller.js";
+import { db } from "../lib/db.js";
 
 export const router = Router();
 
 // ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
-router.get("/health", (_req: Request, res: Response) => res.json({ ok: true, name: "doutro-lado-api" }));
+// Performs a live DB ping so Render's health check reflects real service
+// availability. Returns 503 if the database is unreachable so Render stops
+// routing traffic to this instance.
+router.get("/health", async (_req: Request, res: Response) => {
+  try {
+    await db`SELECT 1 AS up`;
+    return res.json({ ok: true, name: "doutro-lado-api", db: "connected" });
+  } catch {
+    return res.status(503).json({ ok: false, name: "doutro-lado-api", db: "unavailable" });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Public catalog
@@ -70,17 +82,17 @@ router.get("/i18n/rates", getRates);
 
 // ---------------------------------------------------------------------------
 // Auth — session and profile (authenticated)
-// GET  /auth/session  → returns the authenticated user's profile
-// PATCH /auth/profile → update own profile preferences (not role)
+// Rate-limited: prevents token validation spamming and session polling abuse.
 // ---------------------------------------------------------------------------
-router.get("/auth/session", requireAuth, getSession);
-router.patch("/auth/profile", requireAuth, patchProfile);
+router.get("/auth/session", authRateLimit, requireAuth, getSession);
+router.patch("/auth/profile", authRateLimit, requireAuth, patchProfile);
 
 // ---------------------------------------------------------------------------
 // Customer+ — requires any authenticated user
+// Rate-limited: prevents duplicate order creation and checkout spam.
 // ---------------------------------------------------------------------------
-router.post("/orders", requireAuth, createOrder);
-router.post("/stripe/checkout", requireAuth, createCheckoutSession);
+router.post("/orders", checkoutRateLimit, requireAuth, createOrder);
+router.post("/stripe/checkout", checkoutRateLimit, requireAuth, createCheckoutSession);
 
 // ---------------------------------------------------------------------------
 // Cart — Stage 7 (authenticated)

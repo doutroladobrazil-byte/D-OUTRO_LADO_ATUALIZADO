@@ -14,6 +14,20 @@ import {
 import { ok, fail } from "../../utils/http.js";
 
 // =============================================================================
+// Query schemas — validated at the boundary, not cast with `as`
+// =============================================================================
+
+const listProductsQuerySchema = z.object({
+  brand: z.enum(["casa", "moda"]).optional(),
+  search: z.string().max(200).optional(),
+});
+
+const listCustomersQuerySchema = z.object({
+  role: z.enum(["customer", "wholesale", "admin"]).optional(),
+  search: z.string().max(200).optional(),
+});
+
+// =============================================================================
 // Overview & orders
 // =============================================================================
 
@@ -30,9 +44,10 @@ export async function getAdminOrders(_req: Request, res: Response) {
 // =============================================================================
 
 export async function listAdminProductsHandler(req: Request, res: Response) {
-  const brand = req.query.brand as "casa" | "moda" | undefined;
-  const search = req.query.search as string | undefined;
-  const products = await listAdminProducts({ brand, search });
+  const parsed = listProductsQuerySchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, parsed.error.message, 400);
+
+  const products = await listAdminProducts(parsed.data);
   return ok(res, products);
 }
 
@@ -81,9 +96,10 @@ export async function patchAdminOrderHandler(req: Request, res: Response) {
 // =============================================================================
 
 export async function listAdminCustomersHandler(req: Request, res: Response) {
-  const role = req.query.role as string | undefined;
-  const search = req.query.search as string | undefined;
-  const customers = await listAdminCustomers({ role, search });
+  const parsed = listCustomersQuerySchema.safeParse(req.query);
+  if (!parsed.success) return fail(res, parsed.error.message, 400);
+
+  const customers = await listAdminCustomers(parsed.data);
   return ok(res, customers);
 }
 
