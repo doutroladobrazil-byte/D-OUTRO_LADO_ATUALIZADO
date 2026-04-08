@@ -5,7 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import type { Brand, Region } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
-import { getShippingRegions } from "@/lib/storefront";
+import { getBackendCart, getShippingRegions } from "@/lib/storefront";
+import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
@@ -28,6 +29,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
   const getCart = useCartStore((s) => s.getCart);
   const clearCart = useCartStore((s) => s.clearCart);
+  const setCart = useCartStore((s) => s.setCart);
   const cart = getCart(brand);
 
   const [regions, setRegions] = useState<Region[]>([]);
@@ -41,6 +43,21 @@ export function BrandCheckoutView({ brand }: Props) {
       if (r.length > 0 && !selectedRegion) setSelectedRegion(r[0]);
     });
   }, []);
+
+  // Hydrate cart from backend on mount when authenticated.
+  // Ensures the checkout summary is consistent with the server cart even when
+  // the user navigates here directly (without visiting the cart page first).
+  useEffect(() => {
+    async function hydrate() {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? null;
+      if (!token) return;
+      const serverCart = await getBackendCart(brand, token);
+      if (serverCart) setCart(brand, serverCart);
+    }
+    hydrate();
+  }, [brand]);
 
   // Auto-switch display currency when region changes
   useEffect(() => {

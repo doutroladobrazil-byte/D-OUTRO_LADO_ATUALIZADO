@@ -3,6 +3,7 @@ import { GiftBuilderStudio } from "@/features/gift-builder/GiftBuilderStudio";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getPackagingOptions, getProducts } from "@/lib/storefront";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Gift Builder — D'OUTRO LADO",
@@ -11,6 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function GiftBuilderPage() {
+  // Resolve the Supabase session server-side so GiftBuilderStudio receives the
+  // access token directly via prop — avoids a client-side auth roundtrip on
+  // every save attempt and keeps the component simpler.
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   const [products, packagingOptions] = await Promise.all([
     getProducts(),
     getPackagingOptions(),
@@ -34,11 +43,11 @@ export default async function GiftBuilderPage() {
         </GlassCard>
 
         {/* Builder studio — kit composition */}
-        {/* Token is null for server render; client handles auth-gated save */}
+        {/* token is null for guests; authenticated users receive the access token */}
         <GiftBuilderStudio
           products={products}
           packagingOptions={packagingOptions}
-          token={null}
+          token={session?.access_token ?? null}
         />
       </div>
     </main>

@@ -5,6 +5,7 @@ import type {
   AdminOverview,
   Brand,
   Campaign,
+  Cart,
   CreateGiftKitPayload,
   FreightRate,
   FreightQuote,
@@ -149,4 +150,53 @@ export async function createGiftKit(payload: CreateGiftKitPayload, token: string
  */
 export async function getMyGiftKits(token: string): Promise<GiftKit[]> {
   return (await fetchApiData<GiftKit[]>("/gift-kits/mine", { token })) ?? [];
+}
+
+// =============================================================================
+// Cart sync — Phase 3
+// These helpers call the existing backend cart endpoints.
+// They are safe to call from both server and client contexts (fetchApiData
+// selects the correct base URL per environment).
+// Guest callers (no token) should use the local Zustand store only.
+// =============================================================================
+
+/**
+ * Fetch the backend cart for the authenticated user and brand.
+ * Returns null for guests or on network failure.
+ */
+export async function getBackendCart(brand: Brand, token: string): Promise<Cart | null> {
+  return fetchApiData<Cart>(`/cart?brand=${brand}`, { token, revalidate: 0 });
+}
+
+/**
+ * Upsert one item in the backend cart.
+ * quantity must be ≥ 1 (backend validates min=1).
+ * Returns the updated cart or null on failure.
+ */
+export async function syncCartItemToBackend(
+  brand: Brand,
+  productSlug: string,
+  quantity: number,
+  token: string
+): Promise<Cart | null> {
+  return fetchApiData<Cart>("/cart/items", {
+    token,
+    method: "PUT",
+    body: { brand, productSlug, quantity },
+  });
+}
+
+/**
+ * Remove one item from the backend cart via DELETE.
+ * Returns the updated cart or null on failure.
+ */
+export async function removeBackendCartItem(
+  brand: Brand,
+  productSlug: string,
+  token: string
+): Promise<Cart | null> {
+  return fetchApiData<Cart>(
+    `/cart/items/${encodeURIComponent(productSlug)}?brand=${brand}`,
+    { token, method: "DELETE" }
+  );
 }

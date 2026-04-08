@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/cart-store";
+import { createClient } from "@/lib/supabase/client";
+import { syncCartItemToBackend } from "@/lib/storefront";
 import type { Brand, WeightRange } from "@/lib/types";
 
 type ProductForCart = {
@@ -23,14 +25,26 @@ type Props = {
 
 /**
  * Client-side purchase CTAs for the PDP.
- * Isolated so the parent page can remain a server component.
+ * Isolated so the parent page remains a server component.
  *
- * "Adicionar ao carrinho" → adds 1 unit to the Zustand cart, navigates to cart.
- * "Comprar agora"        → adds 1 unit to the Zustand cart, navigates to checkout.
- * "Favoritar"            → preserved with no implementation (future batch).
+ * Behaviour:
+ *   - Local Zustand cart is updated immediately (optimistic UX).
+ *   - If the user is authenticated, the backend cart is synced via PUT /cart/items.
+ *     Backend response replaces the local cart (single source of truth for auth users).
+ *   - Navigation happens immediately after the local update — sync is fire-and-forget.
+ *
+ * "Adicionar ao carrinho" → add 1 unit → navigate to cart.
+ * "Comprar agora"        → add 1 unit → navigate to checkout.
+ * "Favoritar"            → preserved as no-op (future batch).
  */
-export function ProductPurchaseActions({ product, activeBrand, cartHref, checkoutHref }: Props) {
+export function ProductPurchaseActions({
+  product,
+  activeBrand,
+  cartHref,
+  checkoutHref,
+}: Props) {
   const addItem = useCartStore((s) => s.addItem);
+  const setCart = useCartStore((s) => s.setCart);
   const router = useRouter();
 
   function buildCartItem() {
@@ -47,13 +61,29 @@ export function ProductPurchaseActions({ product, activeBrand, cartHref, checkou
     };
   }
 
+  /** Fire-and-forget backend sync — does not block navigation. */
+  async function syncToBackend() {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? null;
+      if (!token) return;
+      const serverCart = await syncCartItemToBackend(activeBrand, product.slug, 1, token);
+      if (serverCart) setCart(activeBrand, serverCart);
+    } catch {
+      // Sync failure is non-fatal — local Zustand cart is already updated.
+    }
+  }
+
   function handleAddToCart() {
     addItem(activeBrand, buildCartItem());
+    syncToBackend();
     router.push(cartHref);
   }
 
   function handleBuyNow() {
     addItem(activeBrand, buildCartItem());
+    syncToBackend();
     router.push(checkoutHref);
   }
 

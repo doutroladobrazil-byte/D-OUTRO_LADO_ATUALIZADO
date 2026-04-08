@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// NOTE: This schema is the declarative mirror of the runtime database.
+// The project uses the `postgres` client (raw SQL) for all queries —
+// Prisma is used only for migrations (prisma migrate deploy).
+// No Prisma Client query methods are used in the application code.
+
 // =============================================================================
 // Auth / Profiles
 // =============================================================================
@@ -72,38 +77,41 @@ model Subcategory {
 }
 
 model Product {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  brand            String
-  categoryId       String?  @map("category_id") @db.Uuid
-  subcategoryId    String?  @map("subcategory_id") @db.Uuid
-  name             String
-  slug             String   @unique
-  sku              String   @unique
-  shortDescription String?  @map("short_description")
-  longDescription  String?  @map("long_description")
-  seoTitle         String?  @map("seo_title")
-  seoDescription   String?  @map("seo_description")
-  material         String?
-  dimensions       String?
-  origin           String?
-  careInstructions String?  @map("care_instructions")
-  weightRange      String   @map("weight_range")
-  weightGrams      Int?     @map("weight_grams")
-  retailPriceBrl   Decimal  @map("retail_price_brl") @db.Decimal(12, 2)
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand             String
+  categoryId        String?  @map("category_id") @db.Uuid
+  subcategoryId     String?  @map("subcategory_id") @db.Uuid
+  name              String
+  slug              String   @unique
+  sku               String   @unique
+  shortDescription  String?  @map("short_description")
+  longDescription   String?  @map("long_description")
+  seoTitle          String?  @map("seo_title")
+  seoDescription    String?  @map("seo_description")
+  material          String?
+  dimensions        String?
+  origin            String?
+  careInstructions  String?  @map("care_instructions")
+  weightRange       String   @map("weight_range")
+  weightGrams       Int?     @map("weight_grams")
+  retailPriceBrl    Decimal  @map("retail_price_brl") @db.Decimal(12, 2)
   wholesalePriceBrl Decimal? @map("wholesale_price_brl") @db.Decimal(12, 2)
-  wholesaleMinQty  Int      @default(1) @map("wholesale_min_qty")
-  stock            Int      @default(0)
-  badge            String?
-  collection       String?
-  tags             String[] @default([])
-  isFeatured       Boolean  @default(false) @map("is_featured")
-  position         Int      @default(0)
-  isActive         Boolean  @default(true) @map("is_active")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wholesaleMinQty   Int      @default(1) @map("wholesale_min_qty")
+  stock             Int      @default(0)
+  badge             String?
+  collection        String?
+  tags              String[] @default([])
+  isFeatured        Boolean  @default(false) @map("is_featured")
+  position          Int      @default(0)
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   category             Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   subcategory          Subcategory?          @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  // product_media is the current media join table (Stage 2+)
+  productMedia         ProductMedia[]
+  // product_images is the legacy table — kept for migration safety, deprecated in application code
   images               ProductImage[]
   favorites            Favorite[]
   cartItems            CartItem[]
@@ -114,6 +122,54 @@ model Product {
   @@map("products")
 }
 
+// =============================================================================
+// Media — Stage 2
+// =============================================================================
+
+/// Stores metadata for media assets uploaded to Supabase Storage.
+/// Physical files live in the storage bucket; this row holds the URL and metadata.
+model MediaAsset {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand           String
+  mediaType       String   @map("media_type")
+  bucket          String
+  storagePath     String   @unique @map("storage_path")
+  publicUrl       String   @map("public_url")
+  mimeType        String?  @map("mime_type")
+  fileSizeBytes   Int?     @map("file_size_bytes")
+  width           Int?
+  height          Int?
+  durationSeconds Float?   @map("duration_seconds")
+  posterUrl       String?  @map("poster_url")
+  altText         String?  @map("alt_text")
+  caption         String?
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  productMedia ProductMedia[]
+
+  @@map("media_assets")
+}
+
+/// Join table between products and media_assets.
+/// Holds position and primary flag for ordered media galleries.
+model ProductMedia {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId    String   @map("product_id") @db.Uuid
+  mediaAssetId String   @map("media_asset_id") @db.Uuid
+  position     Int      @default(0)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, mediaAssetId])
+  @@map("product_media")
+}
+
+/// @deprecated Legacy image table — superseded by media_assets + product_media (Stage 2).
+/// Retained so existing migrations are not broken. Do not use in new application code.
 model ProductImage {
   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   productId String  @map("product_id") @db.Uuid
@@ -253,14 +309,19 @@ model Language {
 // =============================================================================
 
 model GiftKit {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId        String?  @map("profile_id") @db.Uuid
-  name             String
-  message          String?
-  packagingType    String?  @map("packaging_type")
-  totalWeightRange String?  @map("total_weight_range")
-  totalAmountBrl   Decimal? @default(0) @map("total_amount_brl") @db.Decimal(12, 2)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId            String?  @map("profile_id") @db.Uuid
+  /// Brand isolation — kit items must all belong to this brand (casa | moda)
+  brand                String?
+  name                 String
+  message              String?
+  packagingType        String?  @map("packaging_type")
+  subtotalBrl          Decimal? @map("subtotal_brl") @db.Decimal(12, 2)
+  packagingSurchargeBrl Decimal? @map("packaging_surcharge_brl") @db.Decimal(12, 2)
+  totalAmountBrl       Decimal? @default(0) @map("total_amount_brl") @db.Decimal(12, 2)
+  totalWeightRange     String?  @map("total_weight_range")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   profile      Profile?      @relation(fields: [profileId], references: [id], onDelete: SetNull)
   giftKitItems GiftKitItem[]
@@ -285,23 +346,27 @@ model GiftKitItem {
 // =============================================================================
 
 model Order {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  publicId      String   @unique @map("public_id")
-  profileId     String?  @map("profile_id") @db.Uuid
-  addressId     String?  @map("address_id") @db.Uuid
-  brand         String
-  currency      String   @default("USD")
-  subtotalBrl   Decimal  @default(0) @map("subtotal_brl") @db.Decimal(12, 2)
-  freightBrl    Decimal  @default(0) @map("freight_brl") @db.Decimal(12, 2)
-  totalBrl      Decimal  @default(0) @map("total_brl") @db.Decimal(12, 2)
-  orderStatus   String   @default("created") @map("order_status")
-  paymentStatus String   @default("pending") @map("payment_status")
-  fiscalStatus  String   @default("pending") @map("fiscal_status")
-  shippingRegion String? @map("shipping_region")
-  isExportOrder Boolean  @default(true) @map("is_export_order")
-  notes         String?
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicId             String   @unique @map("public_id")
+  profileId            String?  @map("profile_id") @db.Uuid
+  addressId            String?  @map("address_id") @db.Uuid
+  brand                String
+  currency             String   @default("USD")
+  subtotalBrl          Decimal  @default(0) @map("subtotal_brl") @db.Decimal(12, 2)
+  freightBrl           Decimal  @default(0) @map("freight_brl") @db.Decimal(12, 2)
+  totalBrl             Decimal  @default(0) @map("total_brl") @db.Decimal(12, 2)
+  orderStatus          String   @default("created") @map("order_status")
+  paymentStatus        String   @default("pending") @map("payment_status")
+  fiscalStatus         String   @default("pending") @map("fiscal_status")
+  shippingRegion       String?  @map("shipping_region")
+  /// Aggregated weight range of all order items — used for freight quoting.
+  estimatedWeightRange String?  @map("estimated_weight_range")
+  /// Stripe checkout session ID — set after session creation, used by webhook.
+  stripeSessionId      String?  @unique @map("stripe_session_id")
+  isExportOrder        Boolean  @default(true) @map("is_export_order")
+  notes                String?
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])

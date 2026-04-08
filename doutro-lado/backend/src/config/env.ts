@@ -32,7 +32,9 @@ const schema = z.object({
   DEV_WHOLESALE_TOKEN: z.string().default("dev-wholesale-token"),
   DEV_ADMIN_TOKEN: z.string().default("dev-admin-token"),
 
-  DATA_SOURCE: z.enum(["memory", "supabase"]).default("memory"),
+  // Retained for compatibility. Has no runtime switch effect — all services use
+  // DATABASE_URL directly. Will be removed in a future cleanup pass.
+  DATA_SOURCE: z.enum(["memory", "supabase"]).default("supabase"),
   PAYMENTS_MODE: z.enum(["mock", "stripe"]).default("mock"),
 
   // Supabase SDK — required for Storage (media upload/delete)
