@@ -8,7 +8,7 @@ import { UniverseSlider } from "@/features/home/UniverseSlider";
 import { getCampaigns, getProducts } from "@/lib/storefront";
 
 export default async function HomePage() {
-  const [campaigns, allProducts] = await Promise.all([getCampaigns(), getProducts()]);
+  const [campaigns, allProducts] = await Promise.all([getCampaigns(), getProducts("moda")]);
   const featured = allProducts.filter((p) => p.featured);
   const displayProducts = featured.length >= 4 ? featured.slice(0, 4) : allProducts.slice(0, 4);
 
@@ -22,25 +22,25 @@ export default async function HomePage() {
             <div className="relative grid gap-12 xl:grid-cols-[1fr_0.7fr] xl:items-end">
               <div className="space-y-8">
                 <p className="text-[11px] uppercase tracking-[0.42em] text-white/35">
-                  Plataforma internacional — Casa + Moda
+                  Moda premium — origem brasileira
                 </p>
                 <h1 className="max-w-3xl font-display text-[52px] leading-[1.02] tracking-[-1px] text-white md:text-[74px]">
-                  Presentes premium
+                  Couro, moda
                   <br />
-                  com origem brasileira.
+                  e presenca.
                 </h1>
                 <p className="max-w-xl text-[17px] leading-[1.88] text-white/55">
-                  Dois universos editoriais — casa e decoracao, couro e acessorios — pensados para o mercado internacional com curadoria e materialidade de referencia.
+                  Acessorios, bolsas, sapatos e vestuario com curadoria editorial e materialidade de referencia. Para o mercado internacional, com identidade brasileira.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <ButtonLink href="/brands/casa" variant="secondary">
-                    Casa e decoracao
+                  <ButtonLink href="/brands/moda">Explorar colecoes</ButtonLink>
+                  <ButtonLink href="/gift-builder" variant="secondary">
+                    Montar presente
                   </ButtonLink>
-                  <ButtonLink href="/brands/moda">Couro e acessorios</ButtonLink>
                 </div>
               </div>
               <div className="hidden xl:grid xl:gap-3 xl:pb-1">
-                {["Ceramica autoral brasileira", "Couro legitimo premium", "Envio para 3 regioes", "Atacado com rastreio"].map((item) => (
+                {["Couro bovino premium", "Series limitadas", "Envio para 3 regioes", "Atacado com rastreio"].map((item) => (
                   <div
                     key={item}
                     className="rounded-[16px] border border-white/8 bg-white/[0.03] px-5 py-3"
@@ -54,13 +54,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Universe entry ────────────────────────────────────────────────── */}
+      {/* ── Editorial slider ──────────────────────────────────────────────── */}
       <section className="px-6 py-16">
         <div className="mx-auto max-w-luxe space-y-10">
           <SectionHeading
-            eyebrow="Dois universos"
-            title="Escolha o universo que faz sentido para voce."
-            description="Casa e decoracao para interiores com materialidade. Couro e acessorios para um wardrobe de presenca."
+            eyebrow="Colecoes"
+            title="Moda, couro e acessorios com narrativa propria."
+            description="Pecas selecionadas por materialidade, exclusividade e leitura editorial para o mercado internacional."
           />
           <UniverseSlider />
         </div>
@@ -79,10 +79,10 @@ export default async function HomePage() {
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
               eyebrow="Selecao da semana"
-              title="Produtos com acabamento premium e leitura internacional."
+              title="Pecas com acabamento premium e leitura internacional."
             />
             <ButtonLink
-              href="/search"
+              href="/brands/moda"
               variant="ghost"
               className="hidden shrink-0 md:inline-flex"
             >
@@ -95,7 +95,7 @@ export default async function HomePage() {
             ))}
           </div>
           <div className="mt-8 text-center md:hidden">
-            <ButtonLink href="/search" variant="ghost">
+            <ButtonLink href="/brands/moda" variant="ghost">
               Explorar catalogo <ArrowRight className="ml-2 size-4" />
             </ButtonLink>
           </div>

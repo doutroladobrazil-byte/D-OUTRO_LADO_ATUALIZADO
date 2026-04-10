@@ -1,6 +1,7 @@
 /**
  * Static seed data — used only as fallback/reference.
  * Production data is served from Supabase via catalog.service.ts / admin.service.ts.
+ * D'OUTRO LADO opera exclusivamente moda (couro, bolsas, acessorios, vestuario).
  */
 import type {
   AdminOrderRow,
@@ -13,53 +14,6 @@ import type {
 } from "../types/domain.js";
 
 export const products: Product[] = [
-  {
-    id: "p1",
-    brand: "casa",
-    category: "ceramica artesanal",
-    subcategory: "mesa posta",
-    name: "Colecao Terracota Atelier",
-    slug: "colecao-terracota-atelier",
-    sku: "CASA-001",
-    shortDescription: "Ceramica autoral com acabamento quente e proporcao editorial.",
-    longDescription: "Colecao pensada para compor mesas com linguagem silenciosa, materialidade nobre e acabamento refinado.",
-    material: "Ceramica esmaltada",
-    dimensions: "32 x 32 x 14 cm",
-    origin: "Brasil",
-    weightRange: "1-3kg",
-    weightGrams: 1400,
-    retailPriceBRL: 389,
-    wholesalePriceBRL: 318,
-    wholesaleMinQty: 8,
-    stock: 24,
-    badge: "Mais vendido",
-    featured: true,
-    collection: "Terracota",
-    tags: ["mesa", "presente", "casa"]
-  },
-  {
-    id: "p2",
-    brand: "casa",
-    category: "enxoval",
-    subcategory: "mesa posta",
-    name: "Jogo de Linho Botanico",
-    slug: "jogo-de-linho-botanico",
-    sku: "CASA-002",
-    shortDescription: "Textura leve, desenho limpo e acabamento premium para receber.",
-    longDescription: "Linho com caimento elegante e paleta neutra para composicoes internacionais.",
-    material: "Linho premium",
-    dimensions: "45 x 35 cm",
-    origin: "Brasil",
-    weightRange: "100g-1kg",
-    weightGrams: 320,
-    retailPriceBRL: 269,
-    wholesalePriceBRL: 214,
-    wholesaleMinQty: 10,
-    stock: 40,
-    badge: "Lancamento",
-    collection: "Botanica",
-    tags: ["linho", "mesa", "gift"]
-  },
   {
     id: "p3",
     brand: "moda",
@@ -106,27 +60,77 @@ export const products: Product[] = [
     stock: 55,
     collection: "Signature",
     tags: ["couro", "editorial", "gift"]
+  },
+  {
+    id: "p5",
+    brand: "moda",
+    category: "sapatos",
+    subcategory: "couro",
+    name: "Derby Artesanal Escuro",
+    slug: "derby-artesanal-escuro",
+    sku: "MODA-003",
+    shortDescription: "Corte limpo, solado couro e acabamento premium para uso diario com presenca.",
+    longDescription: "Sapato derby com cabedal em couro curtido a vegetal, forro interno em couro e acabamento artesanal de referencia.",
+    material: "Couro bovino curtido a vegetal",
+    dimensions: "28 cm (40 BR)",
+    origin: "Brasil",
+    careInstructions: "Hidrate regularmente com creme neutro. Guarde em sapateira adequada.",
+    weightRange: "1-3kg",
+    weightGrams: 860,
+    retailPriceBRL: 890,
+    wholesalePriceBRL: 712,
+    wholesaleMinQty: 6,
+    stock: 18,
+    badge: "Artesanal",
+    featured: true,
+    collection: "Classic Dark",
+    tags: ["sapato", "couro", "editorial"]
+  },
+  {
+    id: "p6",
+    brand: "moda",
+    category: "acessorios",
+    subcategory: "carteiras",
+    name: "Carteira Slim Edition",
+    slug: "carteira-slim-edition",
+    sku: "MODA-004",
+    shortDescription: "Formato fino, couro premium e acabamento silencioso para quem entende.",
+    longDescription: "Carteira slim com porta-cartoes, couro pleno flor com envelhecimento digno e costura manual.",
+    material: "Couro pleno flor",
+    dimensions: "12 x 9 x 0,7 cm",
+    origin: "Brasil",
+    careInstructions: "Limpar com pano ligeiramente umido.",
+    weightRange: "100g-1kg",
+    weightGrams: 120,
+    retailPriceBRL: 279,
+    wholesalePriceBRL: 223,
+    wholesaleMinQty: 15,
+    stock: 42,
+    badge: "Bestseller",
+    featured: true,
+    collection: "Slim",
+    tags: ["carteira", "couro", "gift", "present"]
   }
 ];
 
 export const campaigns: Campaign[] = [
   {
-    id: "c1",
-    brand: "casa",
-    title: "Presentes com curadoria para casa, mesa e atmosfera",
-    subtitle: "Pecas brasileiras com leitura internacional, acabamento silencioso e vocacao para presente premium.",
-    ctaLabel: "Explorar curadoria",
-    ctaHref: "/brands/casa",
-    highlight: "Curadoria editorial"
-  },
-  {
     id: "c2",
     brand: "moda",
     title: "Couro, presenca e linguagem fashion de exportacao",
     subtitle: "Colecoes concebidas para mercados exigentes, com construcao visual forte e sofisticacao contemporanea.",
-    ctaLabel: "Entrar no universo moda",
+    ctaLabel: "Explorar colecoes",
     ctaHref: "/brands/moda",
     highlight: "Editorial premium"
+  },
+  {
+    id: "c3",
+    brand: "moda",
+    title: "Acessorios com narrativa — presentes que permanecem",
+    subtitle: "Couro, ferragem e acabamento manual para ocasioes que merecem presenca real.",
+    ctaLabel: "Montar presente",
+    ctaHref: "/gift-builder",
+    highlight: "Composicao editorial"
   }
 ];
 
@@ -153,17 +157,6 @@ export const freightRates: FreightRate[] = [
 
 export const adminOrders: AdminOrderRow[] = [
   {
-    id: "DL-1001",
-    brand: "casa",
-    customer: "Amelia Foster",
-    region: "North America",
-    totalBRL: 2840,
-    paymentStatus: "paid",
-    fiscalStatus: "pending",
-    orderStatus: "processing",
-    createdAt: "2026-04-05"
-  },
-  {
     id: "DL-1002",
     brand: "moda",
     customer: "Maison Elan",
@@ -175,30 +168,29 @@ export const adminOrders: AdminOrderRow[] = [
     createdAt: "2026-04-05"
   },
   {
-    id: "DL-1003",
-    brand: "casa",
-    customer: "Nora Finch",
-    region: "Middle East",
-    totalBRL: 1180,
-    paymentStatus: "pending",
+    id: "DL-1004",
+    brand: "moda",
+    customer: "Isabelle Moreau",
+    region: "North America",
+    totalBRL: 3870,
+    paymentStatus: "paid",
     fiscalStatus: "pending",
-    orderStatus: "created",
-    createdAt: "2026-04-04"
+    orderStatus: "processing",
+    createdAt: "2026-04-08"
   }
 ];
 
 export const users: UserRecord[] = [
-  { id: "u1", name: "Amelia Foster", role: "customer" },
-  { id: "u2", name: "Maison Elan", role: "wholesale" },
-  { id: "u3", name: "Admin Root", role: "admin" }
+  { id: "u1", name: "Maison Elan", role: "wholesale" },
+  { id: "u2", name: "Admin Root", role: "admin" }
 ];
 
 export const contentBlocks: ContentBlockRecord[] = [
-  { id: "hero-casa", type: "hero", brand: "casa", active: true },
-  { id: "slider-moda", type: "slider", brand: "moda", active: true }
+  { id: "slider-moda", type: "slider", brand: "moda", active: true },
+  { id: "hero-moda", type: "hero", brand: "moda", active: true }
 ];
 
 export const fiscalStatuses: FiscalStatusRecord[] = [
-  { orderId: "DL-1001", status: "pending", invoiceNumber: null, accessKey: null },
-  { orderId: "DL-1002", status: "in_review", invoiceNumber: null, accessKey: null }
+  { orderId: "DL-1002", status: "in_review", invoiceNumber: null, accessKey: null },
+  { orderId: "DL-1004", status: "pending", invoiceNumber: null, accessKey: null }
 ];

@@ -14,13 +14,13 @@ import type { Brand } from "../../types/domain.js";
 // =============================================================================
 
 /**
- * GET /cart?brand=casa|moda
+ * GET /cart?brand=moda
  * Returns or initialises the cart for the authenticated user's brand.
  */
 export async function getCart(req: Request, res: Response) {
-  const brand = req.query.brand as Brand;
+  const brand = (req.query.brand as Brand) ?? "moda";
   if (brand !== "casa" && brand !== "moda") {
-    return fail(res, "Query param `brand` must be 'casa' or 'moda'", 400);
+    return fail(res, "Query param `brand` must be a valid brand", 400);
   }
   const profileId = req.user?.profileId;
   if (!profileId) return fail(res, "Profile not found in token", 401);
@@ -61,13 +61,13 @@ export async function putCartItem(req: Request, res: Response) {
 }
 
 /**
- * DELETE /cart/items/:productSlug?brand=casa|moda
+ * DELETE /cart/items/:productSlug?brand=moda
  * Convenience: remove a specific item from the cart.
  */
 export async function removeCartItem(req: Request, res: Response) {
-  const brand = req.query.brand as Brand;
+  const brand = (req.query.brand as Brand) ?? "moda";
   if (brand !== "casa" && brand !== "moda") {
-    return fail(res, "Query param `brand` must be 'casa' or 'moda'", 400);
+    return fail(res, "Query param `brand` must be a valid brand", 400);
   }
   const productSlug = Array.isArray(req.params.productSlug)
     ? req.params.productSlug[0]

@@ -185,13 +185,11 @@ export function StockIndicator({ stock }: { stock: number }) {
 
 // ── BrandChip ─────────────────────────────────────────────────────────────────
 export function BrandChip({ brand }: { brand: string }) {
-  const cls =
-    brand === "casa"
-      ? "border-[#D9DDE3]/20 bg-[#F5F5F5]/6 text-[#D9DDE3]"
-      : "border-[#C6A96B]/30 bg-[#C6A96B]/8 text-[#C6A96B]";
+  const cls = "border-[#C6A96B]/30 bg-[#C6A96B]/8 text-[#C6A96B]";
+  const label = brand === "moda" ? "Moda" : brand.charAt(0).toUpperCase() + brand.slice(1);
   return (
     <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${cls}`}>
-      {brand === "casa" ? "Casa" : "Moda"}
+      {label}
     </span>
   );
 }

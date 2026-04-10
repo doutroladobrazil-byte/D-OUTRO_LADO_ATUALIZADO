@@ -8,7 +8,6 @@ import {
   AdminSection,
   AdminTable,
   AlertBanner,
-  BrandChip,
   MetricCard,
   StatusBadge,
 } from "@/features/admin/AdminComponents";
@@ -27,14 +26,12 @@ export default async function AdminDashboardPage() {
     fetchAdminOrders(token),
   ]);
 
-  const casaSummary = overview?.brandSummaries.find((b) => b.brand === "casa");
   const modaSummary = overview?.brandSummaries.find((b) => b.brand === "moda");
 
   const orderColumns = [
     { key: "id", label: "Pedido" },
-    { key: "brand", label: "Brand", render: (r: AdminOrderRow) => <BrandChip brand={r.brand} /> },
     { key: "customer", label: "Cliente" },
-    { key: "region", label: "Região" },
+    { key: "region", label: "Regiao" },
     {
       key: "totalBRL",
       label: "Total",
@@ -51,13 +48,13 @@ export default async function AdminDashboardPage() {
       <AdminPageHeader
         eyebrow="Painel administrativo"
         title="Dashboard operacional."
-        description="Visão consolidada de receita, pedidos e alertas para ambas as marcas."
+        description="Visao consolidada de receita, pedidos e alertas — D'OUTRO LADO Moda."
       />
 
       {overview?.alerts && <AlertBanner alerts={overview.alerts} />}
 
       {/* KPIs */}
-      <AdminSection title="Métricas globais" eyebrow="Resumo">
+      <AdminSection title="Metricas globais" eyebrow="Resumo">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Faturamento total"
@@ -66,35 +63,28 @@ export default async function AdminDashboardPage() {
           />
           <MetricCard label="Pedidos" value={overview?.orders ?? 0} />
           <MetricCard
-            label="Ticket médio"
+            label="Ticket medio"
             value={`R$ ${(overview?.averageTicketBRL ?? 0).toFixed(0)}`}
           />
           <MetricCard label="Novos clientes (30d)" value={overview?.newCustomers ?? 0} highlight="green" />
         </div>
       </AdminSection>
 
-      {/* Brand breakdown */}
-      <AdminSection title="Por marca" eyebrow="Segmentação">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[20px] border border-[#D9DDE3]/10 bg-white/[0.025] p-5 space-y-3">
-            <BrandChip brand="casa" />
-            <p className="text-[28px] font-light text-white">
-              R$ {(casaSummary?.revenueBRL ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-            <p className="text-sm text-white/45">{casaSummary?.orders ?? 0} pedidos</p>
-          </div>
-          <div className="rounded-[20px] border border-[#C6A96B]/15 bg-[rgba(198,169,107,0.04)] p-5 space-y-3">
-            <BrandChip brand="moda" />
+      {/* Moda summary */}
+      {modaSummary && (
+        <AdminSection title="Moda — Resumo" eyebrow="Colecoes">
+          <div className="rounded-[20px] border border-[#C6A96B]/15 bg-[rgba(198,169,107,0.04)] p-5 space-y-3 max-w-sm">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-[#C6A96B]">Moda / Couro / Acessorios</p>
             <p className="text-[28px] font-light text-[#C6A96B]">
-              R$ {(modaSummary?.revenueBRL ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              R$ {(modaSummary.revenueBRL ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-sm text-white/45">{modaSummary?.orders ?? 0} pedidos</p>
+            <p className="text-sm text-white/45">{modaSummary.orders ?? 0} pedidos</p>
           </div>
-        </div>
-      </AdminSection>
+        </AdminSection>
+      )}
 
       {/* Recent orders */}
-      <AdminSection title="Pedidos recentes" eyebrow="Últimos 10">
+      <AdminSection title="Pedidos recentes" eyebrow="Ultimos 10">
         <AdminTable
           columns={orderColumns}
           rows={(orders ?? []).slice(0, 10) as AdminOrderRow[]}

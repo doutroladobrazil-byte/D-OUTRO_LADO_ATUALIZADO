@@ -14,11 +14,7 @@ export function ProductCard({ product, brandMode = product.brand }: { product: P
       className="group overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] shadow-luxe"
     >
       <div
-        className={`relative aspect-[0.82] overflow-hidden ${
-          brandMode === "casa"
-            ? "bg-[radial-gradient(circle_at_top_left,rgba(245,245,245,0.32),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(217,221,227,0.22),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.1),rgba(8,8,8,0.78))]"
-            : "bg-[radial-gradient(circle_at_top,rgba(245,245,245,0.2),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(217,221,227,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.82))]"
-        }`}
+        className="relative aspect-[0.82] overflow-hidden bg-[radial-gradient(circle_at_top,rgba(245,245,245,0.2),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(217,221,227,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.82))]"
       >
         <motion.div
           className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.4))]"

@@ -74,13 +74,9 @@ type Props = {
   token?: string | null;
 };
 
-const BRAND_LABELS: Record<Brand, string> = {
-  casa: "Casa & Decoração",
-  moda: "Moda & Acessórios",
-};
-
 export function GiftBuilderStudio({ products, packagingOptions, token }: Props) {
-  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  // D'OUTRO LADO opera moda-only — brand fixado em "moda"
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>("moda");
   const [kitEntries, setKitEntries] = useState<KitEntry[]>([]);
   const [packagingType, setPackagingType] = useState<PackagingType>("standard");
   const [kitName, setKitName] = useState("");
@@ -96,7 +92,7 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
     ? products.filter((p) => p.brand === selectedBrand)
     : products;
 
-  const isModa = selectedBrand === "moda";
+  const isModa = true; // sempre moda
   const selectedPackaging = packagingOptions.find((o) => o.type === packagingType) ?? packagingOptions[0];
 
   // ── Totals ───────────────────────────────────────────────────────────────
@@ -142,7 +138,7 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
 
   function resetKit() {
     setKitEntries([]);
-    setSelectedBrand(null);
+    setSelectedBrand("moda");
     setKitName("");
     setMessage("");
     setPackagingType("standard");
@@ -178,8 +174,8 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
     }
   }
 
-  const textBase = isModa || !selectedBrand ? "text-white" : "text-[#17120d]";
-  const borderBase = isModa || !selectedBrand ? "border-white/10" : "border-black/10";
+  const textBase = "text-white";
+  const borderBase = "border-white/10";
 
   // ── Success state ─────────────────────────────────────────────────────────
   if (savedKit) {
@@ -223,39 +219,12 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
     <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
       {/* ── Left — product picker ──────────────────────────────────────── */}
       <div className="space-y-6">
-        {/* Brand selector */}
-        {!selectedBrand && (
-          <div className="space-y-3">
-            <p className="text-[12px] uppercase tracking-[0.28em] text-white/45">
-              Escolha o universo do kit
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              {(["casa", "moda"] as Brand[]).map((b) => (
-                <button
-                  key={b}
-                  onClick={() => setSelectedBrand(b)}
-                  className="rounded-[22px] border border-white/10 bg-white/[0.03] p-6 text-left transition-all hover:border-white/25 hover:bg-white/[0.06]"
-                >
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-white/45">Universo</p>
-                  <p className="mt-2 font-display text-[22px] tracking-[-0.3px] text-white">
-                    {BRAND_LABELS[b]}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedBrand && (
-          <div className="flex items-center justify-between">
-            <p className={`text-[12px] uppercase tracking-[0.24em] ${textBase}/55`}>
-              {BRAND_LABELS[selectedBrand]} — {availableProducts.length} produtos
-            </p>
-            <button onClick={resetKit} className="text-[12px] text-white/40 underline-offset-2 hover:underline">
-              Trocar universo
-            </button>
-          </div>
-        )}
+        {/* Colecao ativa */}
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] uppercase tracking-[0.24em] text-white/55">
+            Moda & Acessorios — {availableProducts.length} produtos
+          </p>
+        </div>
 
         {/* Product grid */}
         <div className="grid gap-4 sm:grid-cols-2">

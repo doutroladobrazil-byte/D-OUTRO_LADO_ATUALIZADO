@@ -7,8 +7,7 @@ type ProductFilterSidebarProps = {
   brandMode?: Brand;
 };
 
-const CASA_CATEGORIES = ["Ceramica Artesanal", "Mesa Posta", "Decoracao", "Linho e Fibras"];
-const MODA_CATEGORIES = ["Bolsas Couro", "Cintos", "Sapatos", "Acessorios"];
+const MODA_CATEGORIES = ["Bolsas Couro", "Cintos", "Sapatos", "Acessorios", "Vestuario"];
 
 const SORTS = [
   { value: "newest", label: "Mais recentes" },
@@ -24,7 +23,7 @@ export function ProductFilterSidebar({ brandMode }: ProductFilterSidebarProps) {
   const currentCategory = searchParams.get("category");
   const currentSort = searchParams.get("sort") || "newest";
 
-  const categories = brandMode === "casa" ? CASA_CATEGORIES : brandMode === "moda" ? MODA_CATEGORIES : [...CASA_CATEGORIES, ...MODA_CATEGORIES];
+  const categories = MODA_CATEGORIES;
 
   const updateParam = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -36,7 +35,7 @@ export function ProductFilterSidebar({ brandMode }: ProductFilterSidebarProps) {
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const isLight = brandMode !== "moda"; // default or casa = light theme accents, moda = dark accents
+  const isLight = false; // moda-only: sempre dark
 
   return (
     <aside className="sticky top-20 hidden space-y-10 lg:block">

@@ -1,47 +1,9 @@
 import type { AdminOrderRow, Campaign, FreightRate, Product } from "@/lib/types";
 
+// D'OUTRO LADO opera exclusivamente moda (couro, bolsas, acessorios, vestuario).
+// Dados de fallback usados apenas quando a API nao esta disponivel.
+
 export const products: Product[] = [
-  {
-    id: "p1",
-    brand: "casa",
-    name: "Colecao Terracota Atelier",
-    slug: "colecao-terracota-atelier",
-    category: "ceramica artesanal",
-    subcategory: "mesa posta",
-    sku: "CASA-001",
-    shortDescription: "Ceramica autoral com acabamento quente e proporcao editorial.",
-    longDescription: "Uma colecao pensada para compor mesas com linguagem silenciosa, materialidade nobre e acabamento refinado.",
-    material: "Ceramica esmaltada",
-    dimensions: "32 x 32 x 14 cm",
-    weightRange: "1-3kg",
-    retailPriceBRL: 389,
-    wholesalePriceBRL: 318,
-    wholesaleMinQty: 8,
-    stock: 24,
-    badge: "Mais vendido",
-    featured: true,
-    tags: ["mesa", "presente", "casa"]
-  },
-  {
-    id: "p2",
-    brand: "casa",
-    name: "Jogo de Linho Botanico",
-    slug: "jogo-de-linho-botanico",
-    category: "enxoval",
-    subcategory: "mesa posta",
-    sku: "CASA-002",
-    shortDescription: "Textura leve, desenho limpo e acabamento premium para receber.",
-    longDescription: "Linho com caimento elegante e paleta neutra para composicoes internacionais.",
-    material: "Linho premium",
-    dimensions: "45 x 35 cm",
-    weightRange: "100g-1kg",
-    retailPriceBRL: 269,
-    wholesalePriceBRL: 214,
-    wholesaleMinQty: 10,
-    stock: 40,
-    badge: "Lancamento",
-    tags: ["linho", "mesa", "gift"]
-  },
   {
     id: "p3",
     brand: "moda",
@@ -81,27 +43,69 @@ export const products: Product[] = [
     wholesaleMinQty: 12,
     stock: 55,
     tags: ["couro", "editorial", "gift"]
+  },
+  {
+    id: "p5",
+    brand: "moda",
+    name: "Derby Artesanal Escuro",
+    slug: "derby-artesanal-escuro",
+    category: "sapatos",
+    subcategory: "couro",
+    sku: "MODA-003",
+    shortDescription: "Corte limpo, solado couro e acabamento premium para uso diario com presenca.",
+    longDescription: "Sapato derby com cabedal em couro curtido a vegetal, forro interno em couro e acabamento artesanal de referencia.",
+    material: "Couro bovino curtido a vegetal",
+    dimensions: "28 cm (40 BR)",
+    weightRange: "1-3kg",
+    retailPriceBRL: 890,
+    wholesalePriceBRL: 712,
+    wholesaleMinQty: 6,
+    stock: 18,
+    badge: "Artesanal",
+    featured: true,
+    tags: ["sapato", "couro", "editorial"]
+  },
+  {
+    id: "p6",
+    brand: "moda",
+    name: "Carteira Slim Edition",
+    slug: "carteira-slim-edition",
+    category: "acessorios",
+    subcategory: "carteiras",
+    sku: "MODA-004",
+    shortDescription: "Formato fino, couro premium e acabamento silencioso para quem entende.",
+    longDescription: "Carteira slim com porta-cartoes, couro pleno flor com envelhecimento digno e costura manual.",
+    material: "Couro pleno flor",
+    dimensions: "12 x 9 x 0,7 cm",
+    weightRange: "100g-1kg",
+    retailPriceBRL: 279,
+    wholesalePriceBRL: 223,
+    wholesaleMinQty: 15,
+    stock: 42,
+    badge: "Bestseller",
+    featured: true,
+    tags: ["carteira", "couro", "gift", "present"]
   }
 ];
 
 export const campaigns: Campaign[] = [
   {
-    id: "c1",
-    brand: "casa",
-    title: "Presentes com curadoria para casa, mesa e atmosfera",
-    subtitle: "Pecas brasileiras com leitura internacional, acabamento silencioso e vocacao para presente premium.",
-    ctaLabel: "Explorar curadoria",
-    ctaHref: "/brands/casa",
-    highlight: "Curadoria editorial"
-  },
-  {
     id: "c2",
     brand: "moda",
     title: "Couro, presenca e linguagem fashion de exportacao",
     subtitle: "Colecoes concebidas para mercados exigentes, com construcao visual forte e sofisticacao contemporanea.",
-    ctaLabel: "Entrar no universo moda",
+    ctaLabel: "Explorar colecoes",
     ctaHref: "/brands/moda",
     highlight: "Editorial premium"
+  },
+  {
+    id: "c3",
+    brand: "moda",
+    title: "Acessorios com narrativa — presentes que permanecem",
+    subtitle: "Couro, ferragem e acabamento manual para ocasioes que merecem presenca real.",
+    ctaLabel: "Montar presente",
+    ctaHref: "/gift-builder",
+    highlight: "Composicao editorial"
   }
 ];
 
@@ -117,17 +121,6 @@ export const freightRates: FreightRate[] = [
 
 export const adminOrders: AdminOrderRow[] = [
   {
-    id: "DL-1001",
-    brand: "casa",
-    customer: "Amelia Foster",
-    region: "North America",
-    totalBRL: 2840,
-    paymentStatus: "paid",
-    fiscalStatus: "pending",
-    orderStatus: "processing",
-    createdAt: "2026-04-05"
-  },
-  {
     id: "DL-1002",
     brand: "moda",
     customer: "Maison Elan",
@@ -139,14 +132,14 @@ export const adminOrders: AdminOrderRow[] = [
     createdAt: "2026-04-05"
   },
   {
-    id: "DL-1003",
-    brand: "casa",
-    customer: "Nora Finch",
-    region: "Middle East",
-    totalBRL: 1180,
-    paymentStatus: "pending",
+    id: "DL-1004",
+    brand: "moda",
+    customer: "Isabelle Moreau",
+    region: "North America",
+    totalBRL: 3870,
+    paymentStatus: "paid",
     fiscalStatus: "pending",
-    orderStatus: "created",
-    createdAt: "2026-04-04"
+    orderStatus: "processing",
+    createdAt: "2026-04-08"
   }
 ];

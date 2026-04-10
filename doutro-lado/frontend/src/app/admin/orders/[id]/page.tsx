@@ -55,7 +55,7 @@ export default async function AdminOrderDetailPage({
       <AdminPageHeader
         eyebrow={`Pedido ${order.publicId}`}
         title={`${order.customerName}`}
-        description={`${order.brand === "casa" ? "Casa" : "Moda"} · ${order.shippingRegion} · ${order.createdAt.split("T")[0]}`}
+        description={`Moda · ${order.shippingRegion} · ${order.createdAt.split("T")[0]}`}
       />
 
       {/* Status Trinity */}

@@ -1,8 +1,7 @@
 import type { Brand } from "@/lib/types";
 
 export const navLinks = [
-  { href: "/brands/casa", label: "Casa" },
-  { href: "/brands/moda", label: "Moda" },
+  { href: "/brands/moda", label: "Colecoes" },
   { href: "/gift-builder", label: "Montar kit" },
   { href: "/wholesale", label: "Atacado" },
   { href: "/international-shipping", label: "Envio internacional" }
@@ -39,8 +38,9 @@ export const brandThemes: Record<Brand, { surface: string; accent: string; subtl
 };
 
 export const searchSuggestions = [
-  "Ceramicas esculturais",
   "Bolsas em couro premium",
+  "Sapatos artesanais",
   "Kits corporativos internacionais",
+  "Acessorios exclusivos",
   "Presentes editoriais"
 ];

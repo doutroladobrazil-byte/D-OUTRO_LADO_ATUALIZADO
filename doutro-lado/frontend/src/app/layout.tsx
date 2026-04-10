@@ -10,7 +10,8 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-displa
 
 export const metadata: Metadata = {
   title: "D'OUTRO LADO",
-  description: "Premium international platform for home, decor, fashion and leather goods — D'OUTRO LADO.",
+  description: "Moda, acessorios e couro premium com origem brasileira e leitura internacional — D'OUTRO LADO.",
+  keywords: ["moda premium", "acessorios couro", "bolsas premium", "sapatos couro", "moda brasileira internacional"],
   openGraph: {
     type: "website",
     siteName: "D'OUTRO LADO",

@@ -7,8 +7,8 @@ export default function AboutPage() {
       <div className="mx-auto max-w-luxe space-y-10">
         <SectionHeading
           eyebrow="Manifesto"
-          title="Uma casa de marcas brasileiras pensada para o mercado internacional."
-          description="D&apos;OUTRO LADO combina quiet luxury, operacao rigorosa e narrativa sensorial para produtos de casa, couro e acessorios."
+          title="Uma marca de moda brasileira pensada para o mercado internacional."
+          description="D&apos;OUTRO LADO combina quiet luxury, operacao rigorosa e narrativa sensorial para moda, couro e acessorios premium."
         />
         <div className="grid gap-6 lg:grid-cols-3">
           {["Curadoria", "Operacao", "Experiencia"].map((item) => (

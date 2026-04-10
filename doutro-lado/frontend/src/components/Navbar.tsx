@@ -6,12 +6,12 @@ export function Navbar() {
     <header className="navbar">
       <div className="container navbar-inner">
         <Link href="/" className="logo-mark">
-          <span className="eyebrow">Brazilian Premium Export</span>
+          <span className="eyebrow">Moda Premium Brasileira</span>
           <strong>D’OUTRO LADO</strong>
         </Link>
         <nav className="nav-links">
           <Link href="/">Início</Link>
-          <Link href="/brands/casa">Coleções</Link>
+          <Link href="/brands/moda">Colecoes</Link>
           <Link href="/gift-builder">Presentes</Link>
           <Link href="/about">Sobre</Link>
           <Link href="/wholesale">Atacado</Link>

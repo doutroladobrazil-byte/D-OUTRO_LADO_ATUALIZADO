@@ -40,7 +40,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
               <h1 className="font-display text-[48px] leading-[1.05] tracking-[-0.5px] text-white">{product.name}</h1>
               <p className="max-w-xl text-base leading-8 text-white/60">{product.longDescription}</p>
               <div className="inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white">
-                Jornada de compra separada para o site {activeBrand === "casa" ? "Casa" : "Moda"}
+                Moda / Couro / Acessorios
               </div>
             </div>
             <GlassCard tone="warm" className="space-y-5">

@@ -68,7 +68,7 @@ export default async function AdminAnalyticsPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {(overview?.brandSummaries ?? []).map((b) => (
             <div key={b.brand} className="rounded-[20px] border border-white/8 bg-white/[0.02] p-5 space-y-3">
-              <p className="text-[11px] uppercase tracking-[0.26em] text-white/38">{b.brand === "casa" ? "Casa" : "Moda"}</p>
+              <p className="text-[11px] uppercase tracking-[0.26em] text-white/38">{b.brand === "moda" ? "Moda / Couro / Acessorios" : b.brand}</p>
               <p className="text-[28px] font-light text-white">
                 R$ {b.revenueBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </p>

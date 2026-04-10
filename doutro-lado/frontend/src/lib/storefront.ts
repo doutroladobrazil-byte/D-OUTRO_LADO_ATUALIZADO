@@ -19,7 +19,7 @@ import type {
 } from "@/lib/types";
 
 function getFallbackBrandSummaries() {
-  return (["casa", "moda"] as const).map((brand) => {
+  return (["moda"] as const).map((brand) => {
     const brandOrders = adminOrders.filter((order) => order.brand === brand);
     return {
       brand,

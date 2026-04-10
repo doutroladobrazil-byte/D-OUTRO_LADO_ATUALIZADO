@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export async function generateMetadata({ params }: { params: Promise<{ brand: string }> }): Promise<Metadata> {
   const { brand } = await params;
-  return { title: `Carrinho — D'OUTRO LADO ${brand === "casa" ? "Casa" : "Moda"}` };
+  return { title: `Carrinho — D'OUTRO LADO` };
 }
 
 export default async function BrandCartPage({ params }: { params: Promise<{ brand: string }> }) {
@@ -16,13 +16,13 @@ export default async function BrandCartPage({ params }: { params: Promise<{ bran
   const meta = getBrandData(brand);
 
   return (
-    <main className={`min-h-screen px-6 py-10 ${brand === "moda" ? "bg-[rgb(12,12,12)]" : "bg-[#F8F6F2]"}`}>
+    <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
       <div className="mx-auto max-w-luxe space-y-10">
         <SectionHeading
           eyebrow={`Carrinho / ${meta.themeLabel}`}
           title="Sua seleção."
-          description="Itens exclusivos de um único universo. Frete calculado no próximo passo."
-          tone={brand === "moda" ? "dark" : "light"}
+          description="Itens selecionados. Frete calculado no proximo passo."
+          tone="dark"
         />
         <BrandCartView brand={brand} />
       </div>

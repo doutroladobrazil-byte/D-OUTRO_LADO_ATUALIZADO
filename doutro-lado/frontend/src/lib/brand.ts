@@ -1,43 +1,40 @@
 import type { Brand } from "@/lib/types";
 
 export function getBrandData(brand: Brand) {
-  if (brand === "casa") {
-    return {
-      title: "Casa, ceramica e decoracao com quiet luxury natural.",
-      subtitle:
-        "Uma experiencia calma, material e sensorial inspirada em ceramica autoral, linho e objetos para interiores internacionais.",
-      themeLabel: "Casa / Editorial / Curadoria",
-      accentClass: "from-white/40 via-[#D9DDE3]/20 to-transparent"
-    };
-  }
-
+  // D'OUTRO LADO opera exclusivamente no universo moda.
+  // O argumento brand e mantido na assinatura por compatibilidade interna.
   return {
     title: "Couro, moda e acessorios com presenca editorial internacional.",
     subtitle:
-      "Uma linguagem mais densa, precisa e exclusiva para colecoes premium, presentes corporativos e wardrobes export-ready.",
+      "Uma linguagem densa, precisa e exclusiva para colecoes premium, presentes corporativos e wardrobes export-ready.",
     themeLabel: "Moda / Editorial / Leather",
     accentClass: "from-white/32 via-[#D9DDE3]/16 to-transparent"
   };
 }
 
+/**
+ * Valida se o valor e uma brand conhecida.
+ * Inclui "casa" por compatibilidade com dados historicos, mas
+ * rotas publicas com brand=casa sao redirecionadas para moda.
+ */
 export function isBrand(value: string): value is Brand {
   return value === "casa" || value === "moda";
 }
 
-export function getSiblingBrand(brand: Brand): Brand {
-  return brand === "casa" ? "moda" : "casa";
+/** @deprecated O site opera moda-only. Nao ha sibling brand. Mantido por compatibilidade. */
+export function getSiblingBrand(_brand: Brand): Brand {
+  return "moda";
 }
 
-export function getBrandCheckoutPath(brand: Brand) {
-  return `/brands/${brand}/checkout`;
+export function getBrandCheckoutPath(_brand: Brand) {
+  return `/brands/moda/checkout`;
 }
 
-export function getBrandCartPath(brand: Brand) {
-  return `/brands/${brand}/cart`;
+export function getBrandCartPath(_brand: Brand) {
+  return `/brands/moda/cart`;
 }
 
 export function getBrandFromPath(pathname: string): Brand | null {
-  if (pathname.includes("/brands/casa") || pathname.includes("/categories/casa")) return "casa";
-  if (pathname.includes("/brands/moda") || pathname.includes("/categories/moda")) return "moda";
+  if (pathname.includes("/brands/") || pathname.includes("/categories/")) return "moda";
   return null;
 }

@@ -21,7 +21,7 @@ const giftKitItemSchema = z.object({
 });
 
 const orderSchema = z.object({
-  brand: z.enum(["casa", "moda"]),
+  brand: z.enum(["casa", "moda"]), // "casa" mantido por compatibilidade com dados historicos
   region: z.enum(["North America", "Europe", "Middle East"]),
   currency: z.string().default("USD"),
   items: z.array(productItemSchema).default([]),
@@ -42,7 +42,7 @@ function ensureSingleBrandOrder(expectedBrand: Brand, itemBrands: Brand[]) {
   const uniqueBrands = [...new Set(itemBrands)];
   if (uniqueBrands.length !== 1 || uniqueBrands[0] !== expectedBrand) {
     throw new Error(
-      "Order items must belong to a single site brand. Casa and Moda cannot be mixed."
+      "Order items must belong to a single brand."
     );
   }
 }

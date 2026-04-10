@@ -7,7 +7,7 @@ import { Suspense } from "react";
 
 export async function generateMetadata({ params }: { params: Promise<{ brand: string }> }): Promise<Metadata> {
   const { brand } = await params;
-  return { title: `Checkout — D'OUTRO LADO ${brand === "casa" ? "Casa" : "Moda"}` };
+  return { title: `Checkout — D'OUTRO LADO` };
 }
 
 export default async function BrandCheckoutPage({ params }: { params: Promise<{ brand: string }> }) {
@@ -17,13 +17,13 @@ export default async function BrandCheckoutPage({ params }: { params: Promise<{ 
   const meta = getBrandData(brand);
 
   return (
-    <main className={`min-h-screen px-6 py-10 ${brand === "moda" ? "bg-[rgb(12,12,12)]" : "bg-[#F8F6F2]"}`}>
+    <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
       <div className="mx-auto max-w-luxe space-y-10">
         <SectionHeading
           eyebrow={`Checkout / ${meta.themeLabel}`}
           title="Finalizar pedido."
           description="Selecione a região de entrega. O frete é calculado por faixa de peso e incluído na sessão de pagamento Stripe."
-          tone={brand === "moda" ? "dark" : "light"}
+          tone="dark"
         />
         {/* Suspense required because BrandCheckoutView reads useSearchParams */}
         <Suspense fallback={<div className="h-40 animate-pulse rounded-[24px] bg-white/5" />}>
