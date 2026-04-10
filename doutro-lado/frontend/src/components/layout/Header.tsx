@@ -10,7 +10,7 @@ function BrandBar() {
     <div className="border-b border-white/8 bg-black/50 backdrop-blur-2xl">
       <div className="mx-auto flex min-h-[88px] max-w-luxe items-center justify-center px-6 text-center lg:min-h-[104px] lg:px-8">
         <Link href="/" className="block">
-          <p className="text-[10px] uppercase tracking-[0.38em] text-white/32 lg:text-[11px]">International premium house</p>
+          <p className="text-[10px] uppercase tracking-[0.38em] text-white/32 lg:text-[11px]">Brazil premium house</p>
           <h1 className="mt-2 font-display text-[30px] tracking-[0.24em] text-white lg:text-[38px]">D&apos;OUTRO LADO</h1>
         </Link>
       </div>
