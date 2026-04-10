@@ -68,6 +68,14 @@ const schema = z.object({
   TWILIO_AUTH_TOKEN: optionalString,
   /** WhatsApp-enabled Twilio sender (e.g. whatsapp:+14155238886) */
   TWILIO_WHATSAPP_FROM: optionalString,
+
+  // ==========================================================================
+  // Admin bootstrap — bootstrap-admins script
+  // Comma-separated list of e-mails that should be promoted to role='admin'.
+  // Only consumed by `npm run bootstrap:admins` — never read at request time.
+  // Example: ADMIN_EMAILS=admin@doutrolado.com,ops@doutrolado.com
+  // ==========================================================================
+  ADMIN_EMAILS: optionalString,
 });
 
 export const env = schema.parse(process.env);

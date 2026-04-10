@@ -104,6 +104,9 @@ npm run start   # starts both processes (Linux/Mac only due to inline env var sy
 | `NEXT_PUBLIC_SITE_URL` | `https://your-app.onrender.com` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Required if frontend accesses Supabase directly |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Required if frontend accesses Supabase directly |
+| `SUPABASE_URL` | Required for media uploads and admin SDK fallback |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required for media uploads and admin SDK fallback |
+| `ADMIN_EMAILS` | Comma-separated admin e-mails — used only by `bootstrap:admins` script |
 
 > `PORT` and `INTERNAL_API_PORT` are managed automatically — do not set them.
 
@@ -156,6 +159,83 @@ The backend resolves roles from bearer tokens. Use these in development:
 curl http://localhost:4000/api/admin/overview \
   -H "Authorization: Bearer dev-admin-token"
 ```
+
+---
+
+## Creating admin users (production)
+
+Admin access is gated by `profile.role === 'admin'` in `public.profiles`. There is no UI to self-promote — promotion requires an explicit CLI operation.
+
+### How it works
+
+1. A user signs up via Supabase Auth — a profile is created automatically with `role = 'customer'`.
+2. You add their e-mail to `ADMIN_EMAILS` and run the bootstrap script.
+3. The script sets `role = 'admin'` and `is_active = true` for the matching profile.
+4. On next login, `/api/auth/session` returns `role: "admin"` and `/admin` becomes accessible.
+
+The operation is **idempotent** — safe to run more than once and will not downgrade existing admins or destroy data.
+
+### Step-by-step
+
+```bash
+# 1. Create the user in Supabase Auth
+#    → Supabase Dashboard → Authentication → Users → Invite user
+#    (or let them sign up themselves)
+
+# 2. Set ADMIN_EMAILS in your environment
+#    Multiple addresses are comma-separated:
+#    ADMIN_EMAILS=admin@doutrolado.com,ops@doutrolado.com
+
+# 3. Run the bootstrap script
+npm run bootstrap:admins   # from doutro-lado/backend/
+
+# 4. User logs in and navigates to /admin
+```
+
+### Local development
+
+Add to `backend/.env`:
+
+```
+ADMIN_EMAILS=your@email.com
+```
+
+Then:
+
+```bash
+cd doutro-lado/backend
+npm run bootstrap:admins
+```
+
+### Production (Render)
+
+1. Add `ADMIN_EMAILS` to the Render environment variables dashboard (comma-separated).
+2. Open a Render Shell for the web service and run:
+
+```bash
+cd backend
+npm run bootstrap:admins
+```
+
+Or use a one-off job / Render Cron Job pointing to `npm run bootstrap:admins` in the `doutro-lado/backend` directory.
+
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `ADMIN_EMAILS` | Comma-separated list of e-mails to promote to `admin` |
+| `DATABASE_URL` | Required — used to update `public.profiles` |
+| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | Optional — used as fallback if `auth.users` is not directly accessible |
+
+### Script output reference
+
+| Symbol | Meaning |
+|---|---|
+| `✓ promoted` | Profile existed, role updated to admin |
+| `✓ created & promoted` | Profile did not exist, created with role admin |
+| `· already admin` | No change needed |
+| `✗ auth user not found` | E-mail not found in Supabase Auth — create the user first |
+| `! skipped invalid email` | Malformed address in ADMIN_EMAILS — check for typos |
 
 ---
 
