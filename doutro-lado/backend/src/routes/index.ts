@@ -1,9 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { getSession, patchProfile } from "../domains/auth/auth.controller.js";
 import {
+  createAdminProductHandler,
+  deleteAdminProductHandler,
   getAdminOrders,
   getAdminOverview,
   getAdminOrderDetailHandler,
+  getAdminProductByIdHandler,
   getStockOverviewHandler,
   listAdminCustomersHandler,
   listAdminProductsHandler,
@@ -136,7 +139,10 @@ router.patch("/admin/orders/:id", requireAuth, requireRole("admin"), patchAdminO
 
 // Admin — products (catalog management)
 router.get("/admin/products", requireAuth, requireRole("admin"), listAdminProductsHandler);
+router.post("/admin/products", requireAuth, requireRole("admin"), createAdminProductHandler);
+router.get("/admin/products/:id", requireAuth, requireRole("admin"), getAdminProductByIdHandler);
 router.patch("/admin/products/:id", requireAuth, requireRole("admin"), patchAdminProductHandler);
+router.delete("/admin/products/:id", requireAuth, requireRole("admin"), deleteAdminProductHandler);
 
 // Admin — customers
 router.get("/admin/customers", requireAuth, requireRole("admin"), listAdminCustomersHandler);

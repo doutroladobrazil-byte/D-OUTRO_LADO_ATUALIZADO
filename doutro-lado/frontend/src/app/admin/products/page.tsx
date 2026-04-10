@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAdminProducts } from "@/lib/admin-api";
 import type { AdminProduct } from "@/lib/admin-api";
@@ -36,12 +37,6 @@ export default async function AdminProductsPage() {
       render: (r: AdminProduct) => <span>R$ {r.retailPriceBRL.toFixed(2)}</span>,
     },
     {
-      key: "wholesalePriceBRL",
-      label: "P. Atacado",
-      align: "right" as const,
-      render: (r: AdminProduct) => <span>R$ {r.wholesalePriceBRL.toFixed(2)}</span>,
-    },
-    {
       key: "stock",
       label: "Estoque",
       align: "right" as const,
@@ -57,6 +52,18 @@ export default async function AdminProductsPage() {
       label: "Destaque",
       render: (r: AdminProduct) => r.isFeatured ? <StatusBadge status="active" /> : null,
     },
+    {
+      key: "id",
+      label: "",
+      render: (r: AdminProduct) => (
+        <Link
+          href={`/admin/products/${r.id}`}
+          className="rounded-[8px] border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] text-white/50 transition hover:border-[#C6A96B]/40 hover:text-[#C6A96B]"
+        >
+          Editar
+        </Link>
+      ),
+    },
   ];
 
   return (
@@ -64,7 +71,7 @@ export default async function AdminProductsPage() {
       <AdminPageHeader
         eyebrow="Gestão de catálogo"
         title="Produtos."
-        description="Todos os SKUs cadastrados nas duas marcas. Use PATCH /admin/products/:id para atualizar preços, estoque e status."
+        description="Todos os SKUs cadastrados. Crie novos produtos, edite campos e gerencie imagens."
       />
 
       <div className="grid gap-4 sm:grid-cols-4">
@@ -74,12 +81,23 @@ export default async function AdminProductsPage() {
         <MetricCard label="Inativos" value={inactive} />
       </div>
 
-      <AdminSection title="Catálogo completo" eyebrow={`${products.length} SKUs`}>
+      <AdminSection
+        title="Catálogo completo"
+        eyebrow={`${products.length} SKUs`}
+        action={
+          <Link
+            href="/admin/products/new"
+            className="rounded-[12px] bg-[#C6A96B] px-5 py-2 text-sm font-medium text-black transition hover:bg-[#d4b87a]"
+          >
+            + Novo produto
+          </Link>
+        }
+      >
         <AdminTable
           columns={columns}
           rows={products as AdminProduct[]}
           rowKey={(r) => r.id}
-          emptyMessage="Nenhum produto encontrado."
+          emptyMessage="Nenhum produto cadastrado. Clique em '+ Novo produto' para começar."
         />
       </AdminSection>
     </div>

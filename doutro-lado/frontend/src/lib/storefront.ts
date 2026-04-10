@@ -53,19 +53,14 @@ export async function getProducts(options?: Brand | GetProductsOptions) {
   if (opts.search) params.set("search", opts.search);
   if (opts.sort) params.set("sort", opts.sort);
 
-  return (await fetchApiData<Product[]>(`/products?${params.toString()}`)) ?? products.filter((product) => {
-    if (product.brand !== effectiveBrand) return false;
-    if (opts.category && product.category.toLowerCase() !== opts.category.toLowerCase()) return false;
-    if (opts.search) {
-      const s = opts.search.toLowerCase();
-      if (!product.name.toLowerCase().includes(s) && !product.shortDescription.toLowerCase().includes(s)) return false;
-    }
-    return true;
-  });
+  // Public catalog reads from the real backend only.
+  // Returns an empty array when the API is unreachable rather than showing
+  // placeholder data that could confuse real visitors.
+  return (await fetchApiData<Product[]>(`/products?${params.toString()}`)) ?? [];
 }
 
 export async function getProductBySlug(slug: string) {
-  return (await fetchApiData<Product>(`/products/${slug}`)) ?? products.find((product) => product.slug === slug) ?? null;
+  return (await fetchApiData<Product>(`/products/${slug}`)) ?? null;
 }
 
 export async function getFreightRates(weightRange?: WeightRange) {

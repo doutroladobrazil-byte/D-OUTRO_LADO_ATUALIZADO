@@ -8,21 +8,80 @@ import type { WeightRange } from "../../types/domain.js";
 // Input schemas
 // =============================================================================
 
+export const createProductSchema = z.object({
+  brand: z.enum(["casa", "moda"]).default("moda"),
+  name: z.string().min(1).max(255),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
+  sku: z.string().min(1).max(100),
+  shortDescription: z.string().max(500).default(""),
+  longDescription: z.string().default(""),
+  seoTitle: z.string().max(255).nullable().optional(),
+  seoDescription: z.string().max(500).nullable().optional(),
+  material: z.string().max(255).default(""),
+  dimensions: z.string().max(255).default(""),
+  origin: z.string().max(255).nullable().optional(),
+  careInstructions: z.string().nullable().optional(),
+  weightRange: z.enum(WEIGHT_RANGES as [WeightRange, ...WeightRange[]]),
+  weightGrams: z.coerce.number().int().min(1).nullable().optional(),
+  retailPriceBRL: z.coerce.number().positive(),
+  wholesalePriceBRL: z.coerce.number().positive().nullable().optional(),
+  wholesaleMinQty: z.coerce.number().int().min(1).default(1),
+  stock: z.coerce.number().int().min(0).default(0),
+  badge: z.string().max(64).nullable().optional(),
+  isFeatured: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+  collection: z.string().max(128).nullable().optional(),
+  tags: z.array(z.string()).default([]),
+  position: z.coerce.number().int().min(0).default(0),
+  categoryId: z.string().uuid().nullable().optional(),
+  subcategoryId: z.string().uuid().nullable().optional(),
+});
+
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+
 export const patchProductSchema = z.object({
+  // Identity — slug/sku changes require unique-conflict handling
   name: z.string().min(1).max(255).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug deve conter apenas letras minúsculas, números e hífens")
+    .optional(),
+  sku: z.string().min(1).max(100).optional(),
+  // Copy
   shortDescription: z.string().max(500).optional(),
   longDescription: z.string().optional(),
-  retailPriceBRL: z.coerce.number().positive().optional(),
-  wholesalePriceBRL: z.coerce.number().positive().optional(),
-  wholesaleMinQty: z.coerce.number().int().min(1).optional(),
-  stock: z.coerce.number().int().min(0).optional(),
+  seoTitle: z.string().max(255).nullable().optional(),
+  seoDescription: z.string().max(500).nullable().optional(),
+  // Physical
+  material: z.string().max(255).optional(),
+  dimensions: z.string().max(255).optional(),
+  origin: z.string().max(255).nullable().optional(),
+  careInstructions: z.string().nullable().optional(),
+  // Weight & freight
   weightRange: z.enum(WEIGHT_RANGES as [WeightRange, ...WeightRange[]]).optional(),
-  weightGrams: z.coerce.number().int().min(1).optional(),
+  weightGrams: z.coerce.number().int().min(1).nullable().optional(),
+  // Pricing
+  retailPriceBRL: z.coerce.number().positive().optional(),
+  wholesalePriceBRL: z.coerce.number().positive().nullable().optional(),
+  wholesaleMinQty: z.coerce.number().int().min(1).optional(),
+  // Stock
+  stock: z.coerce.number().int().min(0).optional(),
+  // Merchandising
   badge: z.string().max(64).nullable().optional(),
   isFeatured: z.boolean().optional(),
   isActive: z.boolean().optional(),
   collection: z.string().max(128).nullable().optional(),
   tags: z.array(z.string()).optional(),
+  position: z.coerce.number().int().min(0).optional(),
+  // Taxonomy
+  categoryId: z.string().uuid().nullable().optional(),
+  subcategoryId: z.string().uuid().nullable().optional(),
 });
 
 export type PatchProductInput = z.infer<typeof patchProductSchema>;
@@ -71,7 +130,7 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
     sku: row.sku as string,
     category: (row.category_name as string) ?? "",
     retailPriceBRL: Number(row.retail_price_brl),
-    wholesalePriceBRL: Number(row.wholesale_price_brl),
+    wholesalePriceBRL: row.wholesale_price_brl != null ? Number(row.wholesale_price_brl) : 0,
     wholesaleMinQty: row.wholesale_min_qty as number,
     stock: row.stock as number,
     weightRange: row.weight_range as WeightRange,
@@ -84,31 +143,154 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
 }
 
 /**
- * Patch a product — price, stock, status, etc.
- * Returns the updated product row.
+ * Get a single product with full details for admin editing.
+ */
+export async function getAdminProductById(productId: string) {
+  const [row] = await db`
+    SELECT
+      p.id, p.brand, p.name, p.slug, p.sku,
+      p.short_description, p.long_description,
+      p.seo_title, p.seo_description,
+      p.material, p.dimensions, p.origin, p.care_instructions,
+      p.weight_range, p.weight_grams,
+      p.retail_price_brl, p.wholesale_price_brl, p.wholesale_min_qty,
+      p.stock, p.badge, p.is_featured, p.is_active,
+      p.collection, p.tags, p.position,
+      p.category_id, p.subcategory_id,
+      p.created_at, p.updated_at,
+      c.name AS category_name,
+      s.name AS subcategory_name
+    FROM products p
+    LEFT JOIN categories c ON c.id = p.category_id
+    LEFT JOIN subcategories s ON s.id = p.subcategory_id
+    WHERE p.id = ${productId}
+  `;
+  if (!row) throw new Error(`Produto não encontrado: ${productId}`);
+
+  return {
+    id: row.id as string,
+    brand: row.brand as Brand,
+    name: row.name as string,
+    slug: row.slug as string,
+    sku: row.sku as string,
+    shortDescription: (row.short_description as string) ?? "",
+    longDescription: (row.long_description as string) ?? "",
+    seoTitle: (row.seo_title as string | null) ?? null,
+    seoDescription: (row.seo_description as string | null) ?? null,
+    material: (row.material as string) ?? "",
+    dimensions: (row.dimensions as string) ?? "",
+    origin: (row.origin as string | null) ?? null,
+    careInstructions: (row.care_instructions as string | null) ?? null,
+    weightRange: row.weight_range as WeightRange,
+    weightGrams: (row.weight_grams as number | null) ?? null,
+    retailPriceBRL: Number(row.retail_price_brl),
+    wholesalePriceBRL: row.wholesale_price_brl != null ? Number(row.wholesale_price_brl) : null,
+    wholesaleMinQty: row.wholesale_min_qty as number,
+    stock: row.stock as number,
+    badge: (row.badge as string | null) ?? null,
+    isFeatured: row.is_featured as boolean,
+    isActive: row.is_active as boolean,
+    collection: (row.collection as string | null) ?? null,
+    tags: (row.tags as string[]) ?? [],
+    position: (row.position as number) ?? 0,
+    categoryId: (row.category_id as string | null) ?? null,
+    subcategoryId: (row.subcategory_id as string | null) ?? null,
+    category: (row.category_name as string | null) ?? "",
+    subcategory: (row.subcategory_name as string | null) ?? "",
+    createdAt: (row.created_at as Date).toISOString(),
+    updatedAt: (row.updated_at as Date).toISOString(),
+  };
+}
+
+/**
+ * Create a new product.
+ * Returns the newly created row with id, slug, and brand.
+ */
+export async function createAdminProduct(input: CreateProductInput) {
+  const parsed = createProductSchema.parse(input);
+
+  const [row] = await db`
+    INSERT INTO products (
+      brand, name, slug, sku,
+      short_description, long_description,
+      seo_title, seo_description,
+      material, dimensions, origin, care_instructions,
+      weight_range, weight_grams,
+      retail_price_brl, wholesale_price_brl, wholesale_min_qty,
+      stock, badge, is_featured, is_active,
+      collection, tags, position,
+      category_id, subcategory_id
+    ) VALUES (
+      ${parsed.brand}, ${parsed.name}, ${parsed.slug}, ${parsed.sku},
+      ${parsed.shortDescription}, ${parsed.longDescription},
+      ${parsed.seoTitle ?? null}, ${parsed.seoDescription ?? null},
+      ${parsed.material}, ${parsed.dimensions},
+      ${parsed.origin ?? null}, ${parsed.careInstructions ?? null},
+      ${parsed.weightRange}, ${parsed.weightGrams ?? null},
+      ${parsed.retailPriceBRL}, ${parsed.wholesalePriceBRL ?? null}, ${parsed.wholesaleMinQty},
+      ${parsed.stock}, ${parsed.badge ?? null}, ${parsed.isFeatured}, ${parsed.isActive},
+      ${parsed.collection ?? null}, ${parsed.tags}, ${parsed.position},
+      ${parsed.categoryId ?? null}, ${parsed.subcategoryId ?? null}
+    )
+    RETURNING id, brand, name, slug, sku, retail_price_brl, is_active, created_at
+  `;
+  return row as {
+    id: string;
+    brand: string;
+    name: string;
+    slug: string;
+    sku: string;
+    retail_price_brl: string;
+    is_active: boolean;
+    created_at: Date;
+  };
+}
+
+/**
+ * Patch a product — any subset of fields.
+ * Handles slug/sku uniqueness gracefully.
  */
 export async function patchAdminProduct(productId: string, input: PatchProductInput) {
   const parsed = patchProductSchema.parse(input);
 
-  // Build dynamic SET clause — only include fields that were provided
   const updates: Record<string, unknown> = {};
+
+  // Identity
   if (parsed.name !== undefined) updates.name = parsed.name;
+  if (parsed.slug !== undefined) updates.slug = parsed.slug;
+  if (parsed.sku !== undefined) updates.sku = parsed.sku;
+  // Copy
   if (parsed.shortDescription !== undefined) updates.short_description = parsed.shortDescription;
   if (parsed.longDescription !== undefined) updates.long_description = parsed.longDescription;
+  if (parsed.seoTitle !== undefined) updates.seo_title = parsed.seoTitle;
+  if (parsed.seoDescription !== undefined) updates.seo_description = parsed.seoDescription;
+  // Physical
+  if (parsed.material !== undefined) updates.material = parsed.material;
+  if (parsed.dimensions !== undefined) updates.dimensions = parsed.dimensions;
+  if (parsed.origin !== undefined) updates.origin = parsed.origin;
+  if (parsed.careInstructions !== undefined) updates.care_instructions = parsed.careInstructions;
+  // Weight
+  if (parsed.weightRange !== undefined) updates.weight_range = parsed.weightRange;
+  if (parsed.weightGrams !== undefined) updates.weight_grams = parsed.weightGrams;
+  // Pricing
   if (parsed.retailPriceBRL !== undefined) updates.retail_price_brl = parsed.retailPriceBRL;
   if (parsed.wholesalePriceBRL !== undefined) updates.wholesale_price_brl = parsed.wholesalePriceBRL;
   if (parsed.wholesaleMinQty !== undefined) updates.wholesale_min_qty = parsed.wholesaleMinQty;
+  // Stock
   if (parsed.stock !== undefined) updates.stock = parsed.stock;
-  if (parsed.weightRange !== undefined) updates.weight_range = parsed.weightRange;
-  if (parsed.weightGrams !== undefined) updates.weight_grams = parsed.weightGrams;
+  // Merchandising
   if (parsed.badge !== undefined) updates.badge = parsed.badge;
   if (parsed.isFeatured !== undefined) updates.is_featured = parsed.isFeatured;
   if (parsed.isActive !== undefined) updates.is_active = parsed.isActive;
   if (parsed.collection !== undefined) updates.collection = parsed.collection;
   if (parsed.tags !== undefined) updates.tags = parsed.tags;
+  if (parsed.position !== undefined) updates.position = parsed.position;
+  // Taxonomy
+  if (parsed.categoryId !== undefined) updates.category_id = parsed.categoryId;
+  if (parsed.subcategoryId !== undefined) updates.subcategory_id = parsed.subcategoryId;
 
   if (Object.keys(updates).length === 0) {
-    throw new Error("No fields provided to update");
+    throw new Error("Nenhum campo fornecido para atualização");
   }
 
   updates.updated_at = new Date();
@@ -119,17 +301,28 @@ export async function patchAdminProduct(productId: string, input: PatchProductIn
     RETURNING id, brand, name, slug, sku, stock, retail_price_brl, wholesale_price_brl,
               is_featured, is_active, badge, updated_at
   `;
-  if (!row) throw new Error(`Product not found: ${productId}`);
+  if (!row) throw new Error(`Produto não encontrado: ${productId}`);
   return row;
+}
+
+/**
+ * Soft-delete a product by setting is_active = false.
+ * Hard delete is intentionally not exposed — preserves historical order integrity.
+ */
+export async function deleteAdminProduct(productId: string) {
+  const [row] = await db`
+    UPDATE products SET is_active = false, updated_at = now()
+    WHERE id = ${productId}
+    RETURNING id, is_active
+  `;
+  if (!row) throw new Error(`Produto não encontrado: ${productId}`);
+  return row as { id: string; is_active: boolean };
 }
 
 // =============================================================================
 // Order admin operations
 // =============================================================================
 
-/**
- * Update order workflow status (order_status, payment_status, fiscal_status).
- */
 export async function patchAdminOrder(orderId: string, input: PatchOrderStatusInput) {
   const parsed = patchOrderStatusSchema.parse(input);
 
@@ -142,7 +335,6 @@ export async function patchAdminOrder(orderId: string, input: PatchOrderStatusIn
   if (Object.keys(updates).length === 0) throw new Error("No fields to update");
   updates.updated_at = new Date();
 
-  // Orders are looked up by public_id for admin operations
   const [row] = await db`
     UPDATE orders SET ${db(updates)}
     WHERE public_id = ${orderId}
@@ -152,9 +344,6 @@ export async function patchAdminOrder(orderId: string, input: PatchOrderStatusIn
   return row;
 }
 
-/**
- * Get full order detail for admin view.
- */
 export async function getAdminOrderDetail(publicId: string) {
   const [order] = await db`
     SELECT
@@ -214,9 +403,6 @@ export async function getAdminOrderDetail(publicId: string) {
 // Customer admin operations
 // =============================================================================
 
-/**
- * List all customer profiles for admin management.
- */
 export async function listAdminCustomers(options: { role?: string; search?: string } = {}) {
   const { role, search } = options;
   const rows = await db`
@@ -248,9 +434,7 @@ export async function listAdminCustomers(options: { role?: string; search?: stri
 
 export async function getStockOverview() {
   const rows = await db`
-    SELECT
-      brand, sku, name, stock,
-      is_active
+    SELECT brand, sku, name, stock, is_active
     FROM products
     ORDER BY stock ASC, brand, name
     LIMIT 200
