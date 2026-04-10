@@ -10,7 +10,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const q = typeof resolvedSearchParams.q === "string" ? resolvedSearchParams.q : undefined;
 
-  const products = await getProducts({ search: q });
+  const products = await getProducts({ brand: "moda", search: q });
 
   return (
     <main className="min-h-screen px-6 py-10">
@@ -23,7 +23,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         
         {products.length === 0 ? (
           <div className="py-20 text-center text-black/50">
-            Nenhum produto encontrado. Tente buscar por categorias como "Mesa Posta" ou "Couro".
+            Nenhum produto encontrado. Tente buscar por categorias como "Bolsas", "Cintos" ou "Couro".
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">

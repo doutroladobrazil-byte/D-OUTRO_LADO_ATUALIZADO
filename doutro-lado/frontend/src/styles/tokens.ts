@@ -1,5 +1,3 @@
-import type { Brand } from "@/lib/types";
-
 export const navLinks = [
   { href: "/brands/moda", label: "Colecoes" },
   { href: "/gift-builder", label: "Montar kit" },
@@ -20,21 +18,12 @@ export const adminLinks = [
   { href: "/admin/settings", label: "Configuracoes" }
 ] as const;
 
-export const brandThemes: Record<Brand, { surface: string; accent: string; subtle: string; label: string }> = {
-  casa: {
-    surface:
-      "border-white/10 bg-[linear-gradient(160deg,rgba(245,245,245,0.16),rgba(12,12,12,0.82))] text-[#F5F5F5]",
-    accent: "bg-[#ECECEC] text-[#17120d]",
-    subtle: "text-[#E8E8E8]",
-    label: "Casa / Ceramica / Decoracao"
-  },
-  moda: {
-    surface:
-      "border-white/16 bg-[linear-gradient(160deg,rgba(236,236,236,0.08),rgba(0,0,0,0.88))] text-[#F5F5F5]",
-    accent: "bg-gold text-black",
-    subtle: "text-[#DFDFDF]",
-    label: "Moda / Couro / Acessorios"
-  }
+/** Tema unico — D'OUTRO LADO opera moda-only. */
+export const modaTheme = {
+  surface: "border-white/16 bg-[linear-gradient(160deg,rgba(236,236,236,0.08),rgba(0,0,0,0.88))] text-[#F5F5F5]",
+  accent: "bg-gold text-black",
+  subtle: "text-[#DFDFDF]",
+  label: "Moda / Couro / Acessorios"
 };
 
 export const searchSuggestions = [

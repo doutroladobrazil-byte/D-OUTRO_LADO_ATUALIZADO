@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation";
-import { isBrand, getBrandData } from "@/lib/brand";
+import { isBrand } from "@/lib/brand";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { BrandCheckoutView } from "@/features/catalog/BrandCheckoutView";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-export async function generateMetadata({ params }: { params: Promise<{ brand: string }> }): Promise<Metadata> {
-  const { brand } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return { title: `Checkout — D'OUTRO LADO` };
 }
 
@@ -14,15 +13,13 @@ export default async function BrandCheckoutPage({ params }: { params: Promise<{ 
   const { brand } = await params;
   if (!isBrand(brand)) notFound();
 
-  const meta = getBrandData(brand);
-
   return (
     <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
       <div className="mx-auto max-w-luxe space-y-10">
         <SectionHeading
-          eyebrow={`Checkout / ${meta.themeLabel}`}
+          eyebrow="Checkout / Moda"
           title="Finalizar pedido."
-          description="Selecione a região de entrega. O frete é calculado por faixa de peso e incluído na sessão de pagamento Stripe."
+          description="Selecione a regiao de entrega. O frete e calculado por faixa de peso e incluido na sessao de pagamento Stripe."
           tone="dark"
         />
         {/* Suspense required because BrandCheckoutView reads useSearchParams */}

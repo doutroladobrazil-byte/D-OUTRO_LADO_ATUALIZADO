@@ -109,6 +109,10 @@ export type ListProductsOptions = {
 export async function listProducts(options: ListProductsOptions = {}): Promise<Product[]> {
   const { brand, search, category, sort } = options;
 
+  // D'OUTRO LADO opera moda-only. "moda" e o brand efetivo por padrao.
+  // Produtos de outras brands no banco nao sao expostos publicamente por omissao.
+  const effectiveBrand: Brand = brand ?? "moda";
+
   let orderClause = db`ORDER BY p.is_featured DESC, p.position, p.name`;
   if (sort === "price_asc") orderClause = db`ORDER BY p.retail_price_brl ASC`;
   else if (sort === "price_desc") orderClause = db`ORDER BY p.retail_price_brl DESC`;
@@ -120,7 +124,7 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
     WHERE p.is_active = true
-      ${brand ? db`AND p.brand = ${brand}` : db``}
+      AND p.brand = ${effectiveBrand}
       ${category ? db`AND c.name ILIKE ${category}` : db``}
       ${
         search
@@ -138,13 +142,13 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
  * Uses product_media + media_assets (Stage 2). Falls back gracefully if no media exists.
  */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  // 1. Fetch the product row
+  // 1. Fetch the product row — restrito a brand=moda para nao expor produtos casa publicamente
   const productRows = await db`
     SELECT ${db.unsafe(PRODUCT_SELECT)}
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
-    WHERE p.slug = ${slug} AND p.is_active = true
+    WHERE p.slug = ${slug} AND p.is_active = true AND p.brand = 'moda'
     LIMIT 1
   `;
 
@@ -188,7 +192,10 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   return product;
 }
 
-/** Batch product lookup for order building — no media needed. */
+/**
+ * Batch product lookup for order/kit/bag building — no media needed.
+ * Restrito a brand=moda: evita que slugs de produtos casa sejam incluidos em pedidos publicos.
+ */
 export async function getProductsBySlug(slugs: string[]): Promise<Product[]> {
   if (slugs.length === 0) return [];
   const rows = await db`
@@ -196,7 +203,7 @@ export async function getProductsBySlug(slugs: string[]): Promise<Product[]> {
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
-    WHERE p.slug = ANY(${slugs}) AND p.is_active = true
+    WHERE p.slug = ANY(${slugs}) AND p.is_active = true AND p.brand = 'moda'
   `;
   return rows.map(mapProduct);
 }
@@ -206,10 +213,11 @@ export async function getProductsBySlug(slugs: string[]): Promise<Product[]> {
 // =============================================================================
 
 export async function listCampaigns(): Promise<Campaign[]> {
+  // Restrito a brand=moda — impede retorno de campanhas casa ainda ativas no banco
   const rows = await db`
     SELECT id, brand, title, subtitle, highlight, cta_label, cta_url
     FROM banners
-    WHERE is_active = true
+    WHERE is_active = true AND brand = 'moda'
     ORDER BY position
   `;
   return rows.map((row) => ({

@@ -43,18 +43,18 @@ export type GetProductsOptions = {
 export async function getProducts(options?: Brand | GetProductsOptions) {
   // Support legacy behavior where first param is just Brand string
   const opts = typeof options === "string" ? { brand: options } : options || {};
-  
+
+  // D'OUTRO LADO opera moda-only. "moda" e o brand efetivo em qualquer chamada publica.
+  const effectiveBrand: Brand = opts.brand ?? "moda";
+
   const params = new URLSearchParams();
-  if (opts.brand) params.set("brand", opts.brand);
+  params.set("brand", effectiveBrand);
   if (opts.category) params.set("category", opts.category);
   if (opts.search) params.set("search", opts.search);
   if (opts.sort) params.set("sort", opts.sort);
 
-  const query = params.toString() ? `?${params.toString()}` : "";
-  
-  return (await fetchApiData<Product[]>(`/products${query}`)) ?? products.filter((product) => {
-    // Basic mock fallback filtering
-    if (opts.brand && product.brand !== opts.brand) return false;
+  return (await fetchApiData<Product[]>(`/products?${params.toString()}`)) ?? products.filter((product) => {
+    if (product.brand !== effectiveBrand) return false;
     if (opts.category && product.category.toLowerCase() !== opts.category.toLowerCase()) return false;
     if (opts.search) {
       const s = opts.search.toLowerCase();
@@ -166,8 +166,8 @@ export async function getMyGiftKits(token: string): Promise<GiftKit[]> {
  * Fetch the backend cart for the authenticated user and brand.
  * Returns null for guests or on network failure.
  */
-export async function getBackendCart(brand: Brand, token: string): Promise<Cart | null> {
-  return fetchApiData<Cart>(`/cart?brand=${brand}`, { token, revalidate: 0 });
+export async function getBackendCart(_brand: Brand, token: string): Promise<Cart | null> {
+  return fetchApiData<Cart>(`/cart?brand=moda`, { token, revalidate: 0 });
 }
 
 /**
@@ -176,7 +176,7 @@ export async function getBackendCart(brand: Brand, token: string): Promise<Cart 
  * Returns the updated cart or null on failure.
  */
 export async function syncCartItemToBackend(
-  brand: Brand,
+  _brand: Brand,
   productSlug: string,
   quantity: number,
   token: string
@@ -184,7 +184,7 @@ export async function syncCartItemToBackend(
   return fetchApiData<Cart>("/cart/items", {
     token,
     method: "PUT",
-    body: { brand, productSlug, quantity },
+    body: { brand: "moda", productSlug, quantity },
   });
 }
 
@@ -217,12 +217,12 @@ export async function simulateBag(
  * Returns the updated cart or null on failure.
  */
 export async function removeBackendCartItem(
-  brand: Brand,
+  _brand: Brand,
   productSlug: string,
   token: string
 ): Promise<Cart | null> {
   return fetchApiData<Cart>(
-    `/cart/items/${encodeURIComponent(productSlug)}?brand=${brand}`,
+    `/cart/items/${encodeURIComponent(productSlug)}?brand=moda`,
     { token, method: "DELETE" }
   );
 }
