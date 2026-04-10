@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
-import type { Brand, BuiltOrder, FreightQuote, Role } from "../../types/domain.js";
+import type { Brand, BuiltOrder, FreightQuote, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
 import { computeAllInTotals, loadPricingRule, makePricingVersion } from "../bag/bag.service.js";
 import { isSupportedCurrency } from "../../services/i18n.service.js";
@@ -10,8 +10,13 @@ import { isSupportedCurrency } from "../../services/i18n.service.js";
 // Validation
 // =============================================================================
 
-const itemSchema = z.object({
+const productItemSchema = z.object({
   productSlug: z.string().min(1),
+  quantity: z.coerce.number().int().min(1),
+});
+
+const giftKitItemSchema = z.object({
+  kitId: z.string().uuid(),
   quantity: z.coerce.number().int().min(1),
 });
 
@@ -19,8 +24,13 @@ const orderSchema = z.object({
   brand: z.enum(["casa", "moda"]),
   region: z.enum(["North America", "Europe", "Middle East"]),
   currency: z.string().default("USD"),
-  items: z.array(itemSchema).min(1),
-});
+  items: z.array(productItemSchema).default([]),
+  kitItems: z.array(giftKitItemSchema).optional().default([]),
+  offerCode: z.string().min(1).max(32).optional(),
+}).refine(
+  (data) => data.items.length > 0 || (data.kitItems && data.kitItems.length > 0),
+  { message: "Order must contain at least one product or kit item." }
+);
 
 export type BuildOrderResult = BuiltOrder & { orderId: string };
 
@@ -56,7 +66,7 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   const slugs = parsed.items.map((i) => i.productSlug);
   const products = await getProductsBySlug(slugs);
 
-  // ── Build normalized line items ─────────────────────────────────────────
+  // ── Build normalized product line items ────────────────────────────────
   const normalizedItems = parsed.items.map((item) => {
     const product = products.find((p) => p.slug === item.productSlug);
     if (!product) throw new Error(`Product not found: ${item.productSlug}`);
@@ -70,7 +80,8 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     const unitPriceBRL = useWholesale ? product.wholesalePriceBRL : product.retailPriceBRL;
 
     return {
-      productId: product.id,
+      productId: product.id as string,
+      giftKitId: null as string | null,
       brand: product.brand,
       slug: product.slug,
       sku: product.sku,
@@ -82,11 +93,55 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     };
   });
 
-  ensureSingleBrandOrder(parsed.brand, normalizedItems.map((i) => i.brand));
+  // ── Build gift kit line items ───────────────────────────────────────────
+  const kitLineItems: typeof normalizedItems = [];
+  for (const kitItem of parsed.kitItems) {
+    const rows = await db`
+      SELECT id, name, brand, total_amount_brl, total_weight_range
+      FROM gift_kits WHERE id = ${kitItem.kitId} LIMIT 1
+    `;
+    if (rows.length === 0) throw new Error(`Gift kit not found: ${kitItem.kitId}`);
+    const kit = rows[0];
+    const unitPriceBRL = Number(kit.total_amount_brl);
+    kitLineItems.push({
+      productId: null as unknown as string, // kit lines have no productId
+      giftKitId: kit.id as string,
+      brand: kit.brand as Brand,
+      slug: kit.id as string,
+      sku: `KIT-${(kit.id as string).slice(0, 8).toUpperCase()}`,
+      name: kit.name as string,
+      quantity: kitItem.quantity,
+      unitPriceBRL,
+      lineTotalBRL: Number((unitPriceBRL * kitItem.quantity).toFixed(2)),
+      weightRange: kit.total_weight_range as WeightRange,
+    });
+  }
+
+  const allItems = [...normalizedItems, ...kitLineItems];
+
+  ensureSingleBrandOrder(parsed.brand, allItems.map((i) => i.brand));
+
+  // ── Offer code validation ───────────────────────────────────────────────
+  let discountPercent = 0;
+  let offerRow: { id: string } | null = null;
+  if (parsed.offerCode) {
+    const offerRows = await db`
+      SELECT id, discount_percent FROM bag_recovery_offers
+      WHERE code = ${parsed.offerCode}
+        AND is_used = false
+        AND valid_until > now()
+      LIMIT 1
+    `.catch(() => []);
+    if ((offerRows as unknown[]).length > 0) {
+      const offer = (offerRows as Record<string, unknown>[])[0];
+      discountPercent = Number(offer.discount_percent);
+      offerRow = { id: offer.id as string };
+    }
+  }
 
   // ── Freight calculation ─────────────────────────────────────────────────
   const estimatedWeightRange = resolveOrderWeightRange(
-    normalizedItems.map((i) => ({ weightRange: i.weightRange, quantity: i.quantity }))
+    allItems.map((i) => ({ weightRange: i.weightRange, quantity: i.quantity }))
   );
 
   const freight: FreightQuote = await quoteFreight({
@@ -95,11 +150,12 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   });
 
   // ── All-in pricing ──────────────────────────────────────────────────────
-  const subtotalBRL = normalizedItems.reduce((sum, i) => sum + i.lineTotalBRL, 0);
+  const subtotalBRL = allItems.reduce((sum, i) => sum + i.lineTotalBRL, 0);
   const displayCurrency = isSupportedCurrency(parsed.currency) ? parsed.currency : "BRL";
   const rule = await loadPricingRule(parsed.region);
-  const allIn = computeAllInTotals(subtotalBRL, freight.amountBRL, rule, displayCurrency);
-  const totalBRL = allIn.finalTotalBRL;
+  const allIn = computeAllInTotals(subtotalBRL, freight.amountBRL, rule, displayCurrency, discountPercent);
+  const totalBRL = allIn.adjustedFinalTotalBRL;
+  const discountBRL = allIn.discountBRL;
   const pricingVersion = makePricingVersion(freight.amountBRL, rule);
 
   const publicId = `DL-${Date.now()}`;
@@ -110,11 +166,13 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     INSERT INTO orders (
       public_id, profile_id, brand, currency,
       subtotal_brl, freight_brl, total_brl,
-      shipping_region, estimated_weight_range, pricing_version
+      shipping_region, estimated_weight_range, pricing_version,
+      offer_code, discount_brl
     ) VALUES (
       ${publicId}, ${profileId ?? null}, ${parsed.brand}, ${parsed.currency},
       ${subtotalBRL}, ${freight.amountBRL}, ${totalBRL},
-      ${freight.region}, ${freight.weightRange}, ${pricingVersion}
+      ${freight.region}, ${freight.weightRange}, ${pricingVersion},
+      ${parsed.offerCode ?? null}, ${discountBRL}
     )
     RETURNING id
   `;
@@ -122,9 +180,10 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
 
   await db`
     INSERT INTO order_items ${db(
-      normalizedItems.map((item) => ({
+      allItems.map((item) => ({
         order_id: orderId,
-        product_id: item.productId,
+        product_id: item.productId ?? null,
+        gift_kit_id: item.giftKitId ?? null,
         brand: item.brand,
         product_name: item.name,
         sku: item.sku,
@@ -136,6 +195,15 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     )}
   `;
 
+  // Mark offer as used (idempotent — only if we validated one)
+  if (offerRow) {
+    await db`
+      UPDATE bag_recovery_offers
+      SET is_used = true, used_at = now()
+      WHERE id = ${offerRow.id} AND is_used = false
+    `;
+  }
+
   // ── Return the built order snapshot ────────────────────────────────────
   return {
     orderId,
@@ -144,7 +212,7 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     currency: parsed.currency,
     region: parsed.region,
     pricingTier,
-    items: normalizedItems,
+    items: allItems as BuiltOrder["items"],
     subtotalBRL,
     freight,
     freightBRL: freight.amountBRL,

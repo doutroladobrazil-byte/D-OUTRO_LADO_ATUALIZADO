@@ -27,10 +27,14 @@ export function BrandCheckoutView({ brand }: Props) {
   const status = searchParams.get("status");
   const { currency, setCurrency } = useLocale();
 
+  const offerCode = searchParams.get("offerCode") ?? undefined;
+
   const getCart = useCartStore((s) => s.getCart);
+  const getKitItems = useCartStore((s) => s.getKitItems);
   const clearCart = useCartStore((s) => s.clearCart);
   const setCart = useCartStore((s) => s.setCart);
   const cart = getCart(brand);
+  const kitItems = getKitItems(brand);
 
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<Region | "">("");
@@ -72,9 +76,9 @@ export function BrandCheckoutView({ brand }: Props) {
     if (status === "success") clearCart(brand);
   }, [status, brand, clearCart]);
 
-  // Re-simulate whenever region, currency, or cart items change.
+  // Re-simulate whenever region, currency, cart items, kit items, or offerCode change.
   useEffect(() => {
-    if (!selectedRegion || cart.items.length === 0) {
+    if (!selectedRegion || (cart.items.length === 0 && kitItems.length === 0)) {
       setSim(null);
       return;
     }
@@ -82,7 +86,6 @@ export function BrandCheckoutView({ brand }: Props) {
     let cancelled = false;
     setSimLoading(true);
 
-    // Resolve token for simulation (fire-and-forget, no blocking)
     async function runSim() {
       const supabase = createClient();
       const { data } = await supabase.auth.getSession();
@@ -92,11 +95,19 @@ export function BrandCheckoutView({ brand }: Props) {
         {
           region: selectedRegion as Region,
           currency,
-          items: cart.items.map((i) => ({
-            type: "product",
-            productSlug: i.productSlug,
-            quantity: i.quantity,
-          })),
+          items: [
+            ...cart.items.map((i) => ({
+              type: "product" as const,
+              productSlug: i.productSlug,
+              quantity: i.quantity,
+            })),
+            ...kitItems.map((k) => ({
+              type: "gift_kit" as const,
+              kitId: k.kitId,
+              quantity: k.quantity,
+            })),
+          ],
+          offerCode,
         },
         token
       );
@@ -108,7 +119,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
     runSim();
     return () => { cancelled = true; };
-  }, [selectedRegion, currency, cart.items]);
+  }, [selectedRegion, currency, cart.items, kitItems, offerCode]);
 
   // ── Success state ──────────────────────────────────────────────────────────
   if (status === "success") {
@@ -158,7 +169,7 @@ export function BrandCheckoutView({ brand }: Props) {
   }
 
   // ── Empty cart guard ─────────────────────────────────────────────────────────
-  if (cart.items.length === 0) {
+  if (cart.items.length === 0 && kitItems.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
         <p className="text-white/55">Nenhum item na bag.</p>
@@ -211,6 +222,8 @@ export function BrandCheckoutView({ brand }: Props) {
       region: selectedRegion,
       currency,
       items: cart.items.map((i) => ({ productSlug: i.productSlug, quantity: i.quantity })),
+      kitItems: kitItems.map((k) => ({ kitId: k.kitId, quantity: k.quantity })),
+      offerCode: offerCode ?? undefined,
     };
 
     const res = await fetch(`${apiBase}/stripe/checkout`, {
@@ -241,8 +254,10 @@ export function BrandCheckoutView({ brand }: Props) {
   }
 
   // Total to display: simulation result when available, fallback to local subtotal.
-  const displayTotalBRL = sim?.totals.finalTotalBRL ?? cart.subtotalBRL;
+  const kitSubtotalBRL = kitItems.reduce((s, k) => s + k.totalBRL * k.quantity, 0);
+  const displayTotalBRL = sim?.totals.adjustedFinalTotalBRL ?? (cart.subtotalBRL + kitSubtotalBRL);
   const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
+  const appliedOffer = sim?.appliedOffer ?? null;
   const checkoutBlocked = submitting || !selectedRegion || simLoading || (sim !== null && !sim.isValid);
 
   return (
@@ -300,6 +315,12 @@ export function BrandCheckoutView({ brand }: Props) {
             )}
           </div>
         </div>
+
+        {appliedOffer && (
+          <div className="rounded-[14px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            Desconto <strong>{appliedOffer.discountPercent}%</strong> aplicado (código <strong>{appliedOffer.code}</strong>)
+          </div>
+        )}
 
         {hasBlockingIssues && (
           <div className="rounded-[14px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">

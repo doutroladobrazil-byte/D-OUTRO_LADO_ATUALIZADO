@@ -44,6 +44,30 @@ const schema = z.object({
 
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
+
+  // ==========================================================================
+  // Bag recovery — Stage 11 Part 2
+  // ==========================================================================
+
+  /** Minutes after cart update before a bag is considered abandoned. Default: 30. */
+  BAG_ABANDONMENT_DELAY_MINUTES: z.coerce.number().int().min(1).default(30),
+  /** Discount percentage offered in recovery messages. Default: 10. */
+  BAG_ABANDONMENT_DISCOUNT_PERCENT: z.coerce.number().min(0).max(100).default(10),
+  /** Hours before a recovery offer code expires. Default: 48. */
+  BAG_RECOVERY_OFFER_VALID_HOURS: z.coerce.number().int().min(1).default(48),
+  /** Secret token used to authenticate calls to POST /api/internal/recovery/process. */
+  RECOVERY_JOB_SECRET: optionalString,
+
+  // Resend (email)
+  RESEND_API_KEY: optionalString,
+  /** From address for recovery emails. Default: noreply@doutrolado.com */
+  RECOVERY_EMAIL_FROM: z.string().default("noreply@doutrolado.com"),
+
+  // Twilio (WhatsApp)
+  TWILIO_ACCOUNT_SID: optionalString,
+  TWILIO_AUTH_TOKEN: optionalString,
+  /** WhatsApp-enabled Twilio sender (e.g. whatsapp:+14155238886) */
+  TWILIO_WHATSAPP_FROM: optionalString,
 });
 
 export const env = schema.parse(process.env);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Trash2, Minus, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { BagSimulationResult, Brand } from "@/lib/types";
@@ -25,12 +26,18 @@ type Props = { brand: Brand };
 const CART_DEFAULT_REGION = "North America" as const;
 
 export function BrandCartView({ brand }: Props) {
+  const searchParams = useSearchParams();
+  const offerCode = searchParams.get("offerCode") ?? undefined;
+
   const getCart = useCartStore((s) => s.getCart);
+  const getKitItems = useCartStore((s) => s.getKitItems);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
+  const removeKit = useCartStore((s) => s.removeKit);
   const setCart = useCartStore((s) => s.setCart);
 
   const cart = getCart(brand);
+  const kitItems = getKitItems(brand);
   const { currency } = useLocale();
 
   const isModa = brand === "moda";
@@ -57,9 +64,9 @@ export function BrandCartView({ brand }: Props) {
     init();
   }, [brand]);
 
-  // Simulate bag whenever cart items or display currency changes.
+  // Simulate bag whenever cart items, kit items, currency, or authToken changes.
   useEffect(() => {
-    if (cart.items.length === 0) {
+    if (cart.items.length === 0 && kitItems.length === 0) {
       setSim(null);
       return;
     }
@@ -71,11 +78,19 @@ export function BrandCartView({ brand }: Props) {
       {
         region: CART_DEFAULT_REGION,
         currency,
-        items: cart.items.map((i) => ({
-          type: "product",
-          productSlug: i.productSlug,
-          quantity: i.quantity,
-        })),
+        items: [
+          ...cart.items.map((i) => ({
+            type: "product" as const,
+            productSlug: i.productSlug,
+            quantity: i.quantity,
+          })),
+          ...kitItems.map((k) => ({
+            type: "gift_kit" as const,
+            kitId: k.kitId,
+            quantity: k.quantity,
+          })),
+        ],
+        offerCode,
       },
       authToken ?? undefined
     ).then((result) => {
@@ -86,7 +101,7 @@ export function BrandCartView({ brand }: Props) {
     });
 
     return () => { cancelled = true; };
-  }, [cart.items, currency, authToken]);
+  }, [cart.items, kitItems, currency, authToken, offerCode]);
 
   // Quantity change — update local immediately, then sync backend for auth users.
   async function handleUpdateQuantity(productSlug: string, newQty: number) {
@@ -107,7 +122,7 @@ export function BrandCartView({ brand }: Props) {
     if (serverCart) setCart(brand, serverCart);
   }
 
-  if (cart.items.length === 0) {
+  if (cart.items.length === 0 && kitItems.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 px-4 py-20 text-center">
         <p className={`text-[14px] ${subtleClass}`}>Sua bag está vazia.</p>
@@ -122,8 +137,10 @@ export function BrandCartView({ brand }: Props) {
   }
 
   // All-in total: use simulation result when available, fallback to local subtotal.
-  const finalTotalBRL = sim?.totals.finalTotalBRL ?? cart.subtotalBRL;
+  const kitSubtotalBRL = kitItems.reduce((s, k) => s + k.totalBRL * k.quantity, 0);
+  const finalTotalBRL = sim?.totals.adjustedFinalTotalBRL ?? (cart.subtotalBRL + kitSubtotalBRL);
   const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
+  const appliedOffer = sim?.appliedOffer ?? null;
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.42fr]">
@@ -183,10 +200,53 @@ export function BrandCartView({ brand }: Props) {
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {/* Kit items */}
+        <AnimatePresence>
+          {kitItems.map((kit) => (
+            <motion.div
+              key={kit.kitId}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="flex items-center justify-between gap-5 rounded-[22px] border border-[#C6A96B]/20 bg-[rgba(198,169,107,0.04)] p-5"
+            >
+              <div className="flex items-center gap-5">
+                <div className="h-20 w-16 shrink-0 rounded-[16px] bg-[linear-gradient(135deg,rgba(198,169,107,0.2),rgba(0,0,0,0.7))]" />
+                <div>
+                  <p className={`font-medium ${textClass}`}>{kit.kitName}</p>
+                  <p className={`mt-1 text-[12px] uppercase tracking-wider ${subtleClass}`}>Gift Kit</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-4">
+                <span className={`text-sm ${subtleClass}`}>×{kit.quantity}</span>
+                <PriceDisplay
+                  brl={kit.totalBRL * kit.quantity}
+                  className={`min-w-[80px] text-right text-sm font-medium ${textClass}`}
+                />
+                <button
+                  onClick={() => removeKit(brand, kit.kitId)}
+                  className="text-red-400/50 hover:text-red-400"
+                  aria-label={`Remover ${kit.kitName}`}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       {/* Summary */}
       <GlassCard className="h-fit space-y-5">
+        {/* Applied offer badge */}
+        {appliedOffer && (
+          <div className="rounded-[14px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            Desconto <strong>{appliedOffer.discountPercent}%</strong> aplicado (código <strong>{appliedOffer.code}</strong>)
+          </div>
+        )}
+
         {/* Blocking issues feedback */}
         {hasBlockingIssues && (
           <div className="rounded-[14px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
@@ -195,7 +255,7 @@ export function BrandCartView({ brand }: Props) {
         )}
 
         <div className="flex items-center justify-between text-sm text-white/55">
-          <span>{cart.items.reduce((s, i) => s + i.quantity, 0)} {cart.items.reduce((s, i) => s + i.quantity, 0) === 1 ? "item" : "itens"}</span>
+          <span>{cart.items.reduce((s, i) => s + i.quantity, 0) + kitItems.reduce((s, k) => s + k.quantity, 0)} {(cart.items.reduce((s, i) => s + i.quantity, 0) + kitItems.reduce((s, k) => s + k.quantity, 0)) === 1 ? "item" : "itens"}</span>
           {simLoading ? (
             <span className="text-white/30 text-xs">calculando…</span>
           ) : (
@@ -205,7 +265,7 @@ export function BrandCartView({ brand }: Props) {
 
         <div className="border-t border-white/10 pt-4">
           <Link
-            href={getBrandCheckoutPath(brand)}
+            href={getBrandCheckoutPath(brand) + (offerCode ? `?offerCode=${encodeURIComponent(offerCode)}` : "")}
             className="block rounded-full border border-[#C6A96B] bg-[#C6A96B] px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5"
           >
             Finalizar compra

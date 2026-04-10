@@ -1,14 +1,18 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
 import { STATIC_RATES } from "../../services/i18n.service.js";
 import { REGIONS } from "../../config/constants.js";
-import type { Region, SupportedCurrency } from "../../types/domain.js";
+import type { Region, SupportedCurrency, WeightRange } from "../../types/domain.js";
 import type {
+  AppliedOffer,
   BagPricingRule,
   BagSimulateRequest,
   BagSimulationResult,
+  BagSimulatedItem,
+  BagSimulatedKitItem,
   BagTotals,
 } from "./bag.types.js";
 
@@ -21,13 +25,21 @@ export const simulateRequestSchema = z.object({
   currency: z.enum(["BRL", "USD", "EUR", "AED"] as const).default("BRL"),
   items: z
     .array(
-      z.object({
-        type: z.literal("product"),
-        productSlug: z.string().min(1).max(200),
-        quantity: z.coerce.number().int().min(1).max(99),
-      })
+      z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("product"),
+          productSlug: z.string().min(1).max(200),
+          quantity: z.coerce.number().int().min(1).max(99),
+        }),
+        z.object({
+          type: z.literal("gift_kit"),
+          kitId: z.string().uuid(),
+          quantity: z.coerce.number().int().min(1).max(10),
+        }),
+      ])
     )
     .min(1),
+  offerCode: z.string().min(1).max(32).optional(),
 });
 
 // =============================================================================
@@ -62,18 +74,21 @@ export async function loadPricingRule(region: Region): Promise<BagPricingRule> {
 // =============================================================================
 
 /**
- * Compute the all-in totals from subtotal + freight + regional rule.
+ * Compute the all-in totals from subtotal + freight + regional rule + optional discount.
  *
  * Formula:
  *   base = subtotal + freight + tax + logistics
  *   margin = base * marginPercent / 100
  *   finalTotal = base + margin
+ *   discount = finalTotal * discountPercent / 100
+ *   adjustedFinalTotal = finalTotal - discount
  */
 export function computeAllInTotals(
   subtotalBRL: number,
   freightBRL: number,
   rule: BagPricingRule,
-  currency: SupportedCurrency = "BRL"
+  currency: SupportedCurrency = "BRL",
+  discountPercent = 0
 ): BagTotals {
   const embeddedFreightBRL = freightBRL;
   const embeddedTaxBRL = Number(rule.taxBRL.toFixed(2));
@@ -85,8 +100,11 @@ export function computeAllInTotals(
   const embeddedMarginBRL = Number((base * rule.marginPercent / 100).toFixed(2));
   const finalTotalBRL = Number((base + embeddedMarginBRL).toFixed(2));
 
+  const discountBRL = Number((finalTotalBRL * discountPercent / 100).toFixed(2));
+  const adjustedFinalTotalBRL = Number((finalTotalBRL - discountBRL).toFixed(2));
+
   const rate = STATIC_RATES[currency] ?? 1;
-  const finalTotalDisplay = Number((finalTotalBRL * rate).toFixed(2));
+  const finalTotalDisplay = Number((adjustedFinalTotalBRL * rate).toFixed(2));
 
   return {
     subtotalBRL,
@@ -95,6 +113,8 @@ export function computeAllInTotals(
     embeddedLogisticsBRL,
     embeddedMarginBRL,
     finalTotalBRL,
+    discountBRL,
+    adjustedFinalTotalBRL,
     displayCurrency: currency,
     finalTotalDisplay,
   };
@@ -109,6 +129,47 @@ export function makePricingVersion(freightBRL: number, rule: BagPricingRule): st
 }
 
 // =============================================================================
+// Bag version token — SHA-256 fingerprint of cart contents
+// =============================================================================
+
+/**
+ * Returns the first 16 hex chars of SHA-256 over sorted "type:id:qty" segments.
+ * Used to scope recovery offers to the cart that triggered the abandonment.
+ */
+export function computeBagVersionToken(
+  items: Array<{ type: string; id: string; quantity: number }>
+): string {
+  const sorted = [...items]
+    .sort((a, b) => `${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`))
+    .map((i) => `${i.type}:${i.id}:${i.quantity}`)
+    .join("|");
+  return createHash("sha256").update(sorted).digest("hex").slice(0, 16);
+}
+
+// =============================================================================
+// Offer code validation
+// =============================================================================
+
+async function resolveOffer(code: string): Promise<{ discountPercent: number } | null> {
+  try {
+    const rows = await db`
+      SELECT discount_percent
+      FROM bag_recovery_offers
+      WHERE code = ${code}
+        AND is_used = false
+        AND valid_until > now()
+      LIMIT 1
+    `;
+    if (rows.length > 0) {
+      return { discountPercent: Number(rows[0].discount_percent) };
+    }
+  } catch {
+    // Table may not yet exist — treat as no offer
+  }
+  return null;
+}
+
+// =============================================================================
 // simulateBag — main entry point
 // =============================================================================
 
@@ -119,6 +180,8 @@ const EMPTY_TOTALS: BagTotals = {
   embeddedLogisticsBRL: 0,
   embeddedMarginBRL: 0,
   finalTotalBRL: 0,
+  discountBRL: 0,
+  adjustedFinalTotalBRL: 0,
   displayCurrency: "BRL",
   finalTotalDisplay: 0,
 };
@@ -133,9 +196,11 @@ function blocked(
     region,
     currency,
     pricingVersion: "blocked",
+    bagVersionToken: "0000000000000000",
     items: [],
     totals: { ...EMPTY_TOTALS, displayCurrency: currency },
     blockingIssues: issues,
+    appliedOffer: null,
   };
 }
 
@@ -148,43 +213,81 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
     return blocked("North America", "BRL", ["Dados inválidos na requisição."]);
   }
 
-  const { region, currency, items } = parsed;
+  const { region, currency, items, offerCode } = parsed;
   const blockingIssues: string[] = [];
 
-  // ── Product lookup ──────────────────────────────────────────────────────
-  const slugs = [...new Set(items.map((i) => i.productSlug))];
-  const products = await getProductsBySlug(slugs);
+  // ── Product lookup (batch, deduplicated) ────────────────────────────────
+  const productSlugs = [
+    ...new Set(
+      items
+        .filter((i): i is Extract<typeof i, { type: "product" }> => i.type === "product")
+        .map((i) => i.productSlug)
+    ),
+  ];
+  const products = productSlugs.length > 0 ? await getProductsBySlug(productSlugs) : [];
 
   // ── Item validation & normalization ─────────────────────────────────────
   const simulatedItems: BagSimulationResult["items"] = [];
 
   for (const item of items) {
-    const product = products.find((p) => p.slug === item.productSlug);
+    if (item.type === "product") {
+      const product = products.find((p) => p.slug === item.productSlug);
+      if (!product) {
+        blockingIssues.push(`Produto não encontrado: ${item.productSlug}`);
+        continue;
+      }
 
-    if (!product) {
-      blockingIssues.push(`Produto não encontrado: ${item.productSlug}`);
-      continue;
+      const available = item.quantity <= product.stock;
+      if (!available) {
+        blockingIssues.push(
+          `Estoque insuficiente para "${product.name}". Disponível: ${product.stock}.`
+        );
+      }
+
+      simulatedItems.push({
+        type: "product",
+        productSlug: product.slug,
+        productName: product.name,
+        sku: product.sku,
+        quantity: item.quantity,
+        unitPriceBRL: product.retailPriceBRL,
+        lineTotalBRL: Number((product.retailPriceBRL * item.quantity).toFixed(2)),
+        weightRange: product.weightRange,
+        stock: product.stock,
+        available,
+      } satisfies BagSimulatedItem);
+
+    } else {
+      // gift_kit item
+      try {
+        const kitRows = await db`
+          SELECT id, name, brand, total_amount_brl, total_weight_range
+          FROM gift_kits
+          WHERE id = ${item.kitId}
+          LIMIT 1
+        `;
+        if (kitRows.length === 0) {
+          blockingIssues.push(`Kit não encontrado: ${item.kitId}`);
+          continue;
+        }
+        const kit = kitRows[0];
+        const lineTotalBRL = Number(
+          (Number(kit.total_amount_brl) * item.quantity).toFixed(2)
+        );
+        simulatedItems.push({
+          type: "gift_kit",
+          kitId: item.kitId,
+          kitName: kit.name as string,
+          brand: kit.brand as string,
+          quantity: item.quantity,
+          lineTotalBRL,
+          weightRange: kit.total_weight_range as WeightRange,
+          available: true,
+        } satisfies BagSimulatedKitItem);
+      } catch {
+        blockingIssues.push(`Erro ao carregar kit: ${item.kitId}`);
+      }
     }
-
-    const available = item.quantity <= product.stock;
-    if (!available) {
-      blockingIssues.push(
-        `Estoque insuficiente para "${product.name}". Disponível: ${product.stock}.`
-      );
-    }
-
-    simulatedItems.push({
-      type: "product",
-      productSlug: product.slug,
-      productName: product.name,
-      sku: product.sku,
-      quantity: item.quantity,
-      unitPriceBRL: product.retailPriceBRL,
-      lineTotalBRL: Number((product.retailPriceBRL * item.quantity).toFixed(2)),
-      weightRange: product.weightRange,
-      stock: product.stock,
-      available,
-    });
   }
 
   if (simulatedItems.length === 0) {
@@ -197,11 +300,21 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
       region,
       currency,
       pricingVersion: "blocked",
+      bagVersionToken: "0000000000000000",
       items: simulatedItems,
       totals: { ...EMPTY_TOTALS, displayCurrency: currency },
       blockingIssues,
+      appliedOffer: null,
     };
   }
+
+  // ── Bag version token ────────────────────────────────────────────────────
+  const tokenItems = simulatedItems.map((i) => ({
+    type: i.type,
+    id: i.type === "product" ? (i as BagSimulatedItem).productSlug : (i as BagSimulatedKitItem).kitId,
+    quantity: i.quantity,
+  }));
+  const bagVersionToken = computeBagVersionToken(tokenItems);
 
   // ── Freight calculation ─────────────────────────────────────────────────
   const estimatedWeightRange = resolveOrderWeightRange(
@@ -218,10 +331,24 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
       region,
       currency,
       pricingVersion: "blocked",
+      bagVersionToken,
       items: simulatedItems,
       totals: { ...EMPTY_TOTALS, displayCurrency: currency },
       blockingIssues: ["Região não disponível para envio no momento."],
+      appliedOffer: null,
     };
+  }
+
+  // ── Offer code resolution ────────────────────────────────────────────────
+  let appliedOffer: AppliedOffer | null = null;
+  let discountPercent = 0;
+
+  if (offerCode) {
+    const offer = await resolveOffer(offerCode);
+    if (offer) {
+      discountPercent = offer.discountPercent;
+    }
+    // Invalid codes are silently ignored — no blocking issue raised
   }
 
   // ── All-in pricing ──────────────────────────────────────────────────────
@@ -229,16 +356,26 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   const subtotalBRL = Number(
     simulatedItems.reduce((s, i) => s + i.lineTotalBRL, 0).toFixed(2)
   );
-  const totals = computeAllInTotals(subtotalBRL, freightBRL, rule, currency);
+  const totals = computeAllInTotals(subtotalBRL, freightBRL, rule, currency, discountPercent);
   const pricingVersion = makePricingVersion(freightBRL, rule);
+
+  if (discountPercent > 0 && totals.discountBRL > 0) {
+    appliedOffer = {
+      code: offerCode!,
+      discountPercent,
+      discountBRL: totals.discountBRL,
+    };
+  }
 
   return {
     isValid: true,
     region,
     currency,
     pricingVersion,
+    bagVersionToken,
     items: simulatedItems,
     totals,
     blockingIssues: [],
+    appliedOffer,
   };
 }

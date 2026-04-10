@@ -584,3 +584,44 @@ on conflict (region) do nothing;
 -- 2. New columns on orders for all-in pricing audit + idempotent stock deduction.
 alter table orders add column if not exists pricing_version   text;
 alter table orders add column if not exists stock_deducted_at timestamptz;
+
+-- =============================================================================
+-- Stage 11 Part 2 — Gift kits in bag, recovery system, offer codes
+-- =============================================================================
+
+-- 1. Phone number on profiles (used by WhatsApp recovery).
+alter table profiles add column if not exists phone text;
+
+-- 2. Offer code tracking on orders.
+alter table orders add column if not exists offer_code   text;
+alter table orders add column if not exists discount_brl numeric(12,2) not null default 0.00;
+
+-- 3. Gift kit reference on order_items (null for product-only lines).
+alter table order_items add column if not exists gift_kit_id uuid references gift_kits(id) on delete set null;
+
+-- 4. Recovery offer codes table.
+create table if not exists bag_recovery_offers (
+  id                  uuid        primary key default gen_random_uuid(),
+  code                text        not null unique,
+  profile_id          uuid        references profiles(id) on delete set null,
+  brand               text        not null,
+  cart_version_token  text        not null,
+  discount_percent    numeric(5,2) not null default 10.00,
+  valid_until         timestamptz not null,
+  is_used             boolean     not null default false,
+  used_at             timestamptz,
+  created_at          timestamptz not null default now()
+);
+
+-- 5. Abandonment event log.
+create table if not exists bag_abandonment_events (
+  id                  uuid        primary key default gen_random_uuid(),
+  profile_id          uuid        references profiles(id) on delete set null,
+  cart_version_token  text        not null,
+  offer_id            uuid        references bag_recovery_offers(id) on delete set null,
+  channel             text        not null,  -- 'email' | 'whatsapp'
+  status              text        not null default 'sent',
+  sent_at             timestamptz not null default now(),
+  error_message       text,
+  created_at          timestamptz not null default now()
+);

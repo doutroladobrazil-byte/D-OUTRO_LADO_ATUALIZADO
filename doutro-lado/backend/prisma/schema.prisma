@@ -21,6 +21,7 @@ model Profile {
   authUserId        String?  @unique @map("auth_user_id") @db.Uuid
   email             String   @unique
   fullName          String?  @map("full_name")
+  phone             String?
   role              String   @default("customer")
   isActive          Boolean  @default(true) @map("is_active")
   preferredLanguage String?  @default("en") @map("preferred_language")
@@ -372,6 +373,11 @@ model Order {
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  /// Applied recovery offer code — null if no discount was used.
+  offerCode            String?   @map("offer_code")
+  /// Discount amount in BRL applied via offer code. Zero if no offer.
+  discountBrl          Decimal   @default(0) @map("discount_brl") @db.Decimal(12, 2)
+
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])
   orderItems     OrderItem[]
@@ -411,6 +417,8 @@ model OrderItem {
   id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orderId      String  @map("order_id") @db.Uuid
   productId    String? @map("product_id") @db.Uuid
+  /// Null for product-only items. Set when the line comes from a gift kit.
+  giftKitId    String? @map("gift_kit_id") @db.Uuid
   brand        String
   productName  String  @map("product_name")
   sku          String?
@@ -526,4 +534,48 @@ model AdminLog {
   adminProfile Profile? @relation(fields: [adminProfileId], references: [id])
 
   @@map("admin_logs")
+}
+
+// =============================================================================
+// Bag recovery — Stage 11 Part 2
+// =============================================================================
+
+/// A time-limited discount offer code generated for an abandoned bag.
+/// One offer per profile+brand+cart-version. Consumed exactly once.
+model BagRecoveryOffer {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Unique human-readable code (e.g. RECOVAB3F7C). Sent in email/WhatsApp.
+  code             String    @unique
+  profileId        String?   @map("profile_id") @db.Uuid
+  brand            String
+  /// Cart fingerprint — ties this offer to the exact cart snapshot.
+  cartVersionToken String    @map("cart_version_token")
+  discountPercent  Decimal   @map("discount_percent") @db.Decimal(5, 2)
+  validUntil       DateTime  @map("valid_until") @db.Timestamptz(6)
+  isUsed           Boolean   @default(false) @map("is_used")
+  usedAt           DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  abandonmentEvents BagAbandonmentEvent[]
+
+  @@map("bag_recovery_offers")
+}
+
+/// Tracks each notification attempt for a bag recovery offer.
+model BagAbandonmentEvent {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId        String?  @map("profile_id") @db.Uuid
+  cartVersionToken String   @map("cart_version_token")
+  offerId          String?  @map("offer_id") @db.Uuid
+  /// Notification channel: "email" | "whatsapp"
+  channel          String
+  /// "sent" | "failed" | "skipped"
+  status           String   @default("sent")
+  sentAt           DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+  errorMessage     String?  @map("error_message")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  offer BagRecoveryOffer? @relation(fields: [offerId], references: [id], onDelete: SetNull)
+
+  @@map("bag_abandonment_events")
 }

@@ -5,17 +5,27 @@ import type { SupportedCurrency } from "../../services/i18n.service.js";
 // Bag Simulation — Request contract
 // =============================================================================
 
-export type BagItemInput = {
-  /** Only "product" is supported in v1. "gift_kit" reserved for future stage. */
+export type BagProductItemInput = {
   type: "product";
   productSlug: string;
   quantity: number;
 };
 
+export type BagGiftKitItemInput = {
+  type: "gift_kit";
+  /** UUID of a saved gift_kit row. */
+  kitId: string;
+  quantity: number;
+};
+
+export type BagItemInput = BagProductItemInput | BagGiftKitItemInput;
+
 export type BagSimulateRequest = {
   region: Region;
   currency: SupportedCurrency;
   items: BagItemInput[];
+  /** Optional recovery offer code — validated and applied as discount if valid. */
+  offerCode?: string;
 };
 
 // =============================================================================
@@ -36,6 +46,19 @@ export type BagSimulatedItem = {
   available: boolean;
 };
 
+export type BagSimulatedKitItem = {
+  type: "gift_kit";
+  kitId: string;
+  kitName: string;
+  brand: string;
+  quantity: number;
+  /** All-in kit total in BRL (subtotal + packaging surcharge) */
+  lineTotalBRL: number;
+  weightRange: WeightRange;
+  /** Composite weight range of all kit items. */
+  available: boolean;
+};
+
 export type BagTotals = {
   subtotalBRL: number;
   /** Freight is embedded in finalTotalBRL — exposed here for internal audit only. */
@@ -46,11 +69,21 @@ export type BagTotals = {
   embeddedLogisticsBRL: number;
   /** Margin component applied on top of (subtotal + freight + tax + logistics). */
   embeddedMarginBRL: number;
-  /** All-in total in BRL (canonical). Sum of all embedded components + subtotal. */
+  /** All-in total BEFORE discount in BRL (canonical). */
   finalTotalBRL: number;
+  /** Discount amount in BRL — zero if no offer applied. */
+  discountBRL: number;
+  /** Final total after discount in BRL. */
+  adjustedFinalTotalBRL: number;
   displayCurrency: SupportedCurrency;
-  /** All-in total converted to displayCurrency using static exchange rates. */
+  /** adjustedFinalTotalBRL converted to displayCurrency. */
   finalTotalDisplay: number;
+};
+
+export type AppliedOffer = {
+  code: string;
+  discountPercent: number;
+  discountBRL: number;
 };
 
 export type BagSimulationResult = {
@@ -64,10 +97,18 @@ export type BagSimulationResult = {
    * Stored in order metadata for audit.
    */
   pricingVersion: string;
-  items: BagSimulatedItem[];
+  /**
+   * SHA-256 fingerprint of sorted item slugs + quantities (first 16 hex chars).
+   * Used for recovery offer scoping — offer is only valid for the cart that
+   * generated the abandonment event.
+   */
+  bagVersionToken: string;
+  items: (BagSimulatedItem | BagSimulatedKitItem)[];
   totals: BagTotals;
   /** Non-empty when isValid is false. Human-readable, shown in frontend. */
   blockingIssues: string[];
+  /** Present when a valid offer code was applied to this simulation. */
+  appliedOffer: AppliedOffer | null;
 };
 
 // =============================================================================

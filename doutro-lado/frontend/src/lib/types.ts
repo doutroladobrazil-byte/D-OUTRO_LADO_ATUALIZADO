@@ -359,6 +359,17 @@ export type BagSimulatedItem = {
   available: boolean;
 };
 
+export type BagSimulatedKitItem = {
+  type: "gift_kit";
+  kitId: string;
+  kitName: string;
+  brand: string;
+  quantity: number;
+  lineTotalBRL: number;
+  weightRange: WeightRange;
+  available: boolean;
+};
+
 export type BagTotals = {
   subtotalBRL: number;
   embeddedFreightBRL: number;
@@ -366,8 +377,16 @@ export type BagTotals = {
   embeddedLogisticsBRL: number;
   embeddedMarginBRL: number;
   finalTotalBRL: number;
+  discountBRL: number;
+  adjustedFinalTotalBRL: number;
   displayCurrency: SupportedCurrency;
   finalTotalDisplay: number;
+};
+
+export type AppliedOffer = {
+  code: string;
+  discountPercent: number;
+  discountBRL: number;
 };
 
 export type BagSimulationResult = {
@@ -375,13 +394,28 @@ export type BagSimulationResult = {
   region: Region;
   currency: SupportedCurrency;
   pricingVersion: string;
-  items: BagSimulatedItem[];
+  bagVersionToken: string;
+  items: (BagSimulatedItem | BagSimulatedKitItem)[];
   totals: BagTotals;
   blockingIssues: string[];
+  appliedOffer: AppliedOffer | null;
+};
+
+export type GiftKitCartItem = {
+  kitId: string;
+  kitName: string;
+  brand: Brand;
+  quantity: number;
+  totalBRL: number;
+  weightRange: WeightRange;
 };
 
 export type BagSimulateRequest = {
   region: Region;
   currency: SupportedCurrency;
-  items: { type: "product"; productSlug: string; quantity: number }[];
+  items: (
+    | { type: "product"; productSlug: string; quantity: number }
+    | { type: "gift_kit"; kitId: string; quantity: number }
+  )[];
+  offerCode?: string;
 };

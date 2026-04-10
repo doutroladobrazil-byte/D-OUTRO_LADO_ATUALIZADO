@@ -194,11 +194,11 @@ export async function syncCartItemToBackend(
 
 /**
  * POST /api/bag/simulate — public endpoint, no auth required.
- * Returns an all-in BagSimulationResult with isValid + totals.
+ * Returns an all-in BagSimulationResult with isValid + totals + appliedOffer.
  * Frontend must check isValid before allowing checkout.
  *
- * Pass token when available (authenticated users) for future per-profile
- * pricing extensions. Safe to call with token = undefined for guests.
+ * Pass token when available (authenticated users).
+ * Pass offerCode when the user arrived via a recovery link (?offerCode=...).
  */
 export async function simulateBag(
   payload: BagSimulateRequest,

@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Brand, PackagingOption, PackagingType, Product } from "@/lib/types";
+import type { Brand, GiftKit, PackagingOption, PackagingType, Product } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { createGiftKit } from "@/lib/storefront";
+import { useCartStore } from "@/lib/cart-store";
 
 // =============================================================================
 // Sub-components
@@ -85,8 +86,10 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
   const [kitName, setKitName] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savedKit, setSavedKit] = useState<string | null>(null);
+  const [savedKit, setSavedKit] = useState<GiftKit | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const addKit = useCartStore((s) => s.addKit);
 
   // Filter products to selected brand
   const availableProducts = selectedBrand
@@ -169,7 +172,7 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
     setSaving(false);
 
     if (saved) {
-      setSavedKit(saved.id);
+      setSavedKit(saved);
     } else {
       setError("Erro ao salvar o kit. Verifique os itens e tente novamente.");
     }
@@ -180,6 +183,18 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
 
   // ── Success state ─────────────────────────────────────────────────────────
   if (savedKit) {
+    function handleAddToBag() {
+      addKit(savedKit!.brand, {
+        kitId: savedKit!.id,
+        kitName: savedKit!.name,
+        brand: savedKit!.brand,
+        quantity: 1,
+        totalBRL: savedKit!.totalBRL,
+        weightRange: savedKit!.estimatedWeightRange,
+      });
+      resetKit();
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
@@ -188,12 +203,16 @@ export function GiftBuilderStudio({ products, packagingOptions, token }: Props) 
       >
         <p className="text-[12px] uppercase tracking-[0.28em] text-[#C6A96B]/70">Kit salvo</p>
         <h2 className="mt-4 font-display text-[36px] leading-[1.05] tracking-[-0.5px] text-white">
-          {kitName}
+          {savedKit.name}
         </h2>
+        <p className="mt-2 text-sm text-white/55">
+          R$ {savedKit.totalBRL.toFixed(2)}
+        </p>
         <p className="mt-4 text-sm text-white/55">
-          Seu kit premium foi salvo. Você pode acessá-lo em Minha Conta.
+          Seu kit premium foi salvo. Adicione-o à bag para finalizar a compra.
         </p>
         <div className="mt-8 flex justify-center gap-4">
+          <Button onClick={handleAddToBag}>Adicionar à bag</Button>
           <Button variant="secondary" onClick={resetKit}>Monte outro kit</Button>
         </div>
       </motion.div>

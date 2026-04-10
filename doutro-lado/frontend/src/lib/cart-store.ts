@@ -13,18 +13,26 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Brand, Cart, CartItemLine } from "@/lib/types";
+import type { Brand, Cart, CartItemLine, GiftKitCartItem } from "@/lib/types";
 
 // =============================================================================
 // Zustand store
 // =============================================================================
 
+type BrandCartState = {
+  cart: Cart;
+  kitItems: GiftKitCartItem[];
+};
+
 type CartState = {
-  carts: Partial<Record<Brand, Cart>>;
+  carts: Partial<Record<Brand, BrandCartState>>;
   getCart: (brand: Brand) => Cart;
+  getKitItems: (brand: Brand) => GiftKitCartItem[];
   addItem: (brand: Brand, item: Omit<CartItemLine, "lineTotalBRL">) => void;
   updateQuantity: (brand: Brand, productSlug: string, qty: number) => void;
   removeItem: (brand: Brand, productSlug: string) => void;
+  addKit: (brand: Brand, kit: GiftKitCartItem) => void;
+  removeKit: (brand: Brand, kitId: string) => void;
   setCart: (brand: Brand, cart: Cart) => void;
   clearCart: (brand: Brand) => void;
   totalItems: (brand: Brand) => number;
@@ -41,6 +49,10 @@ function emptyCart(brand: Brand): Cart {
   };
 }
 
+function emptyBrandState(brand: Brand): BrandCartState {
+  return { cart: emptyCart(brand), kitItems: [] };
+}
+
 function recalculate(items: CartItemLine[]): number {
   return Number(items.reduce((s, i) => s + i.lineTotalBRL, 0).toFixed(2));
 }
@@ -50,11 +62,14 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       carts: {},
 
-      getCart: (brand) => get().carts[brand] ?? emptyCart(brand),
+      getCart: (brand) => get().carts[brand]?.cart ?? emptyCart(brand),
+
+      getKitItems: (brand) => get().carts[brand]?.kitItems ?? [],
 
       addItem: (brand, rawItem) => {
         set((state) => {
-          const cart = state.carts[brand] ?? emptyCart(brand);
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          const cart = bs.cart;
           const existing = cart.items.find((i) => i.productSlug === rawItem.productSlug);
           let items: CartItemLine[];
           if (existing) {
@@ -75,7 +90,7 @@ export const useCartStore = create<CartState>()(
           return {
             carts: {
               ...state.carts,
-              [brand]: { ...cart, items, subtotalBRL: recalculate(items) },
+              [brand]: { ...bs, cart: { ...cart, items, subtotalBRL: recalculate(items) } },
             },
           };
         });
@@ -83,7 +98,8 @@ export const useCartStore = create<CartState>()(
 
       updateQuantity: (brand, productSlug, qty) => {
         set((state) => {
-          const cart = state.carts[brand] ?? emptyCart(brand);
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          const cart = bs.cart;
           const items =
             qty <= 0
               ? cart.items.filter((i) => i.productSlug !== productSlug)
@@ -99,7 +115,7 @@ export const useCartStore = create<CartState>()(
           return {
             carts: {
               ...state.carts,
-              [brand]: { ...cart, items, subtotalBRL: recalculate(items) },
+              [brand]: { ...bs, cart: { ...cart, items, subtotalBRL: recalculate(items) } },
             },
           };
         });
@@ -107,33 +123,62 @@ export const useCartStore = create<CartState>()(
 
       removeItem: (brand, productSlug) => {
         set((state) => {
-          const cart = state.carts[brand] ?? emptyCart(brand);
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          const cart = bs.cart;
           const items = cart.items.filter((i) => i.productSlug !== productSlug);
           return {
             carts: {
               ...state.carts,
-              [brand]: { ...cart, items, subtotalBRL: recalculate(items) },
+              [brand]: { ...bs, cart: { ...cart, items, subtotalBRL: recalculate(items) } },
             },
           };
         });
       },
 
+      addKit: (brand, kit) => {
+        set((state) => {
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          const existing = bs.kitItems.find((k) => k.kitId === kit.kitId);
+          const kitItems = existing
+            ? bs.kitItems.map((k) =>
+                k.kitId === kit.kitId ? { ...k, quantity: k.quantity + kit.quantity } : k
+              )
+            : [...bs.kitItems, kit];
+          return { carts: { ...state.carts, [brand]: { ...bs, kitItems } } };
+        });
+      },
+
+      removeKit: (brand, kitId) => {
+        set((state) => {
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          const kitItems = bs.kitItems.filter((k) => k.kitId !== kitId);
+          return { carts: { ...state.carts, [brand]: { ...bs, kitItems } } };
+        });
+      },
+
       setCart: (brand, cart) => {
-        set((state) => ({ carts: { ...state.carts, [brand]: cart } }));
+        set((state) => {
+          const bs = state.carts[brand] ?? emptyBrandState(brand);
+          return { carts: { ...state.carts, [brand]: { ...bs, cart } } };
+        });
       },
 
       clearCart: (brand) => {
         set((state) => ({
-          carts: { ...state.carts, [brand]: emptyCart(brand) },
+          carts: { ...state.carts, [brand]: emptyBrandState(brand) },
         }));
       },
 
       totalItems: (brand) => {
-        return (get().carts[brand]?.items ?? []).reduce((s, i) => s + i.quantity, 0);
+        const bs = get().carts[brand];
+        const productQty = (bs?.cart.items ?? []).reduce((s, i) => s + i.quantity, 0);
+        const kitQty = (bs?.kitItems ?? []).reduce((s, k) => s + k.quantity, 0);
+        return productQty + kitQty;
       },
     }),
     {
       name: "doutro-lado-cart",
+      version: 2, // bumped when cart state shape changed to include kitItems
     }
   )
 );

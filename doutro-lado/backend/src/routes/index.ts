@@ -36,6 +36,7 @@ import {
   setPrimary,
 } from "../domains/media/media.controller.js";
 import { simulateBagHandler } from "../domains/bag/bag.controller.js";
+import { processRecoveryHandler } from "../domains/recovery/recovery.controller.js";
 import { createOrder } from "../domains/orders/orders.controller.js";
 import { getProduct, listProducts } from "../domains/products/products.controller.js";
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
@@ -66,6 +67,11 @@ router.get("/health", async (_req: Request, res: Response) => {
 // Bag simulation — public (guests + authenticated users both need it)
 // ---------------------------------------------------------------------------
 router.post("/bag/simulate", simulateBagHandler);
+
+// ---------------------------------------------------------------------------
+// Internal — bag recovery job (protected by RECOVERY_JOB_SECRET)
+// ---------------------------------------------------------------------------
+router.post("/internal/recovery/process", processRecoveryHandler);
 
 // ---------------------------------------------------------------------------
 // Public catalog
