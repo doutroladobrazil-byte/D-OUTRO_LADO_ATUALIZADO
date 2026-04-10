@@ -3,6 +3,8 @@ import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
 import type { Brand, BuiltOrder, FreightQuote, Role } from "../../types/domain.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
+import { computeAllInTotals, loadPricingRule, makePricingVersion } from "../bag/bag.service.js";
+import { isSupportedCurrency } from "../../services/i18n.service.js";
 
 // =============================================================================
 // Validation
@@ -92,9 +94,14 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     weightRange: estimatedWeightRange,
   });
 
-  // ── Totals ──────────────────────────────────────────────────────────────
+  // ── All-in pricing ──────────────────────────────────────────────────────
   const subtotalBRL = normalizedItems.reduce((sum, i) => sum + i.lineTotalBRL, 0);
-  const totalBRL = Number((subtotalBRL + freight.amountBRL).toFixed(2));
+  const displayCurrency = isSupportedCurrency(parsed.currency) ? parsed.currency : "BRL";
+  const rule = await loadPricingRule(parsed.region);
+  const allIn = computeAllInTotals(subtotalBRL, freight.amountBRL, rule, displayCurrency);
+  const totalBRL = allIn.finalTotalBRL;
+  const pricingVersion = makePricingVersion(freight.amountBRL, rule);
+
   const publicId = `DL-${Date.now()}`;
   const pricingTier = role === "wholesale" ? "wholesale" : "retail";
 
@@ -103,11 +110,11 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     INSERT INTO orders (
       public_id, profile_id, brand, currency,
       subtotal_brl, freight_brl, total_brl,
-      shipping_region, estimated_weight_range
+      shipping_region, estimated_weight_range, pricing_version
     ) VALUES (
       ${publicId}, ${profileId ?? null}, ${parsed.brand}, ${parsed.currency},
       ${subtotalBRL}, ${freight.amountBRL}, ${totalBRL},
-      ${freight.region}, ${freight.weightRange}
+      ${freight.region}, ${freight.weightRange}, ${pricingVersion}
     )
     RETURNING id
   `;
@@ -166,6 +173,38 @@ export async function attachStripeSession(orderId: string, stripeSessionId: stri
     INSERT INTO payment_records (order_id, provider, provider_payment_id, status, amount_brl)
     SELECT id, 'stripe', ${stripeSessionId}, 'pending', total_brl
     FROM orders WHERE id = ${orderId}
+  `;
+}
+
+/**
+ * Deduct stock for all items in an order.
+ * Called only once per order (idempotent via stock_deducted_at).
+ *
+ * The UPDATE on stock_deducted_at uses WHERE stock_deducted_at IS NULL so that
+ * concurrent webhook replays cannot claim the deduction twice. Only the first
+ * call that wins the atomic UPDATE actually proceeds to decrement product stock.
+ */
+export async function deductStockForOrder(orderId: string): Promise<void> {
+  // Atomically claim the right to deduct stock.
+  // If another concurrent call already claimed it, this returns no rows.
+  const [claimed] = await db`
+    UPDATE orders
+    SET stock_deducted_at = now()
+    WHERE id = ${orderId}
+      AND stock_deducted_at IS NULL
+    RETURNING id
+  `;
+  if (!claimed) return; // already deducted — idempotency guard
+
+  // Decrement product stock by the ordered quantity.
+  // GREATEST(0, ...) prevents negative stock in edge cases.
+  await db`
+    UPDATE products p
+    SET stock      = GREATEST(0, p.stock - oi.quantity),
+        updated_at = now()
+    FROM order_items oi
+    WHERE oi.order_id = ${orderId}
+      AND p.id        = oi.product_id
   `;
 }
 

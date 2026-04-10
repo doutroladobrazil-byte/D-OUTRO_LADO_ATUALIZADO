@@ -35,6 +35,7 @@ import {
   reorderMedia,
   setPrimary,
 } from "../domains/media/media.controller.js";
+import { simulateBagHandler } from "../domains/bag/bag.controller.js";
 import { createOrder } from "../domains/orders/orders.controller.js";
 import { getProduct, listProducts } from "../domains/products/products.controller.js";
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
@@ -60,6 +61,11 @@ router.get("/health", async (_req: Request, res: Response) => {
     return res.status(503).json({ ok: false, name: "doutro-lado-api", db: "unavailable" });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Bag simulation — public (guests + authenticated users both need it)
+// ---------------------------------------------------------------------------
+router.post("/bag/simulate", simulateBagHandler);
 
 // ---------------------------------------------------------------------------
 // Public catalog

@@ -17,6 +17,7 @@ export type MediaType = "image" | "video";
 // =============================================================================
 
 export type { SupportedCurrency, SupportedLanguage, SupportedLocale } from "@/lib/i18n";
+import type { SupportedCurrency } from "@/lib/i18n";
 
 // =============================================================================
 // Auth / Profile — mirror backend AuthProfile
@@ -339,4 +340,48 @@ export type ContentBlockRecord = {
   type: string;
   brand: Brand;
   active: boolean;
+};
+
+// =============================================================================
+// Bag simulation — Stage 11
+// =============================================================================
+
+export type BagSimulatedItem = {
+  type: "product";
+  productSlug: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  unitPriceBRL: number;
+  lineTotalBRL: number;
+  weightRange: WeightRange;
+  stock: number;
+  available: boolean;
+};
+
+export type BagTotals = {
+  subtotalBRL: number;
+  embeddedFreightBRL: number;
+  embeddedTaxBRL: number;
+  embeddedLogisticsBRL: number;
+  embeddedMarginBRL: number;
+  finalTotalBRL: number;
+  displayCurrency: SupportedCurrency;
+  finalTotalDisplay: number;
+};
+
+export type BagSimulationResult = {
+  isValid: boolean;
+  region: Region;
+  currency: SupportedCurrency;
+  pricingVersion: string;
+  items: BagSimulatedItem[];
+  totals: BagTotals;
+  blockingIssues: string[];
+};
+
+export type BagSimulateRequest = {
+  region: Region;
+  currency: SupportedCurrency;
+  items: { type: "product"; productSlug: string; quantity: number }[];
 };

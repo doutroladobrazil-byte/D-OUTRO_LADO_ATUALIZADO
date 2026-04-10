@@ -3,6 +3,8 @@ import { fetchApiData } from "@/lib/api";
 import type {
   AdminOrderRow,
   AdminOverview,
+  BagSimulateRequest,
+  BagSimulationResult,
   Brand,
   Campaign,
   Cart,
@@ -183,6 +185,30 @@ export async function syncCartItemToBackend(
     token,
     method: "PUT",
     body: { brand, productSlug, quantity },
+  });
+}
+
+// =============================================================================
+// Bag simulation — Stage 11
+// =============================================================================
+
+/**
+ * POST /api/bag/simulate — public endpoint, no auth required.
+ * Returns an all-in BagSimulationResult with isValid + totals.
+ * Frontend must check isValid before allowing checkout.
+ *
+ * Pass token when available (authenticated users) for future per-profile
+ * pricing extensions. Safe to call with token = undefined for guests.
+ */
+export async function simulateBag(
+  payload: BagSimulateRequest,
+  token?: string
+): Promise<BagSimulationResult | null> {
+  return fetchApiData<BagSimulationResult>("/bag/simulate", {
+    method: "POST",
+    body: payload,
+    token,
+    revalidate: 0,
   });
 }
 

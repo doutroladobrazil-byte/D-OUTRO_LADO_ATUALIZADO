@@ -362,11 +362,15 @@ model Order {
   /// Aggregated weight range of all order items — used for freight quoting.
   estimatedWeightRange String?  @map("estimated_weight_range")
   /// Stripe checkout session ID — set after session creation, used by webhook.
-  stripeSessionId      String?  @unique @map("stripe_session_id")
-  isExportOrder        Boolean  @default(true) @map("is_export_order")
+  stripeSessionId      String?   @unique @map("stripe_session_id")
+  /// Deterministic all-in pricing version string — encodes the rule used at checkout.
+  pricingVersion       String?   @map("pricing_version")
+  /// Timestamp of successful stock deduction. Null = not yet deducted. Used for idempotency.
+  stockDeductedAt      DateTime? @map("stock_deducted_at") @db.Timestamptz(6)
+  isExportOrder        Boolean   @default(true) @map("is_export_order")
   notes                String?
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])
@@ -375,6 +379,32 @@ model Order {
   fiscalRecords  FiscalRecord[]
 
   @@map("orders")
+}
+
+// =============================================================================
+// Bag all-in pricing rules — Stage 11
+// =============================================================================
+// Configures regional surcharges applied on top of freight during simulation.
+// v1: all values default to 0.00. Future stages may introduce non-zero rules
+// via admin panel or manual migration.
+//
+// Runtime: loaded by bag.service.loadPricingRule() on every simulation call.
+// If no active rule exists for a region, the service falls back to all-zeros.
+// =============================================================================
+
+model BagPricingRule {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  region          String   @unique
+  /// Flat tax component in BRL added to the order total. Default: 0.
+  taxBrl          Decimal  @default(0) @map("tax_brl") @db.Decimal(12, 2)
+  /// Flat logistics surcharge in BRL. Default: 0.
+  logisticsBrl    Decimal  @default(0) @map("logistics_brl") @db.Decimal(12, 2)
+  /// Percentage margin applied on top of (subtotal + freight + tax + logistics). Default: 0.
+  marginPercent   Decimal  @default(0) @map("margin_percent") @db.Decimal(5, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("bag_pricing_rules")
 }
 
 model OrderItem {

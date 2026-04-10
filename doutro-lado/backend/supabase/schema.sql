@@ -554,3 +554,33 @@ values
   ('platform.supportedRegions', '["North America","Europe","Middle East"]'),
   ('platform.brands',           '["casa","moda"]')
 on conflict (key) do update set value = excluded.value, updated_at = now();
+
+-- =============================================================================
+-- Stage 11 — Bag all-in pricing rules + order stock deduction
+-- Apply these on existing databases. Fresh schema already has everything below.
+-- =============================================================================
+
+-- 1. All-in pricing rules per region.
+--    v1 defaults: all surcharges are 0 (freight only).
+--    Future stages may update these via admin panel or manual migration.
+create table if not exists bag_pricing_rules (
+  id              uuid        primary key default gen_random_uuid(),
+  region          text        not null unique,
+  tax_brl         numeric(12,2) not null default 0.00,
+  logistics_brl   numeric(12,2) not null default 0.00,
+  margin_percent  numeric(5,2)  not null default 0.00,
+  is_active       boolean     not null default true,
+  updated_at      timestamptz not null default now()
+);
+
+-- Seed default rules (zeros) for all supported regions.
+insert into bag_pricing_rules (region, tax_brl, logistics_brl, margin_percent, is_active)
+values
+  ('North America', 0.00, 0.00, 0.00, true),
+  ('Europe',        0.00, 0.00, 0.00, true),
+  ('Middle East',   0.00, 0.00, 0.00, true)
+on conflict (region) do nothing;
+
+-- 2. New columns on orders for all-in pricing audit + idempotent stock deduction.
+alter table orders add column if not exists pricing_version   text;
+alter table orders add column if not exists stock_deducted_at timestamptz;

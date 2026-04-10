@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import type { Brand, Region } from "@/lib/types";
+import type { BagSimulationResult, Brand, Region } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
-import { getBackendCart, getShippingRegions } from "@/lib/storefront";
+import { getBackendCart, getShippingRegions, simulateBag } from "@/lib/storefront";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
@@ -36,6 +36,8 @@ export function BrandCheckoutView({ brand }: Props) {
   const [selectedRegion, setSelectedRegion] = useState<Region | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sim, setSim] = useState<BagSimulationResult | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
 
   useEffect(() => {
     getShippingRegions().then((r) => {
@@ -45,8 +47,6 @@ export function BrandCheckoutView({ brand }: Props) {
   }, []);
 
   // Hydrate cart from backend on mount when authenticated.
-  // Ensures the checkout summary is consistent with the server cart even when
-  // the user navigates here directly (without visiting the cart page first).
   useEffect(() => {
     async function hydrate() {
       const supabase = createClient();
@@ -59,7 +59,7 @@ export function BrandCheckoutView({ brand }: Props) {
     hydrate();
   }, [brand]);
 
-  // Auto-switch display currency when region changes
+  // Auto-switch display currency when region changes.
   useEffect(() => {
     if (selectedRegion) {
       const regionCurrency = REGION_DEFAULT_CURRENCY[selectedRegion];
@@ -67,12 +67,48 @@ export function BrandCheckoutView({ brand }: Props) {
     }
   }, [selectedRegion]);
 
-  // Clear local cart once backend confirms payment (webhook does the rest)
+  // Clear local cart once backend confirms payment.
   useEffect(() => {
-    if (status === "success") {
-      clearCart(brand);
-    }
+    if (status === "success") clearCart(brand);
   }, [status, brand, clearCart]);
+
+  // Re-simulate whenever region, currency, or cart items change.
+  useEffect(() => {
+    if (!selectedRegion || cart.items.length === 0) {
+      setSim(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSimLoading(true);
+
+    // Resolve token for simulation (fire-and-forget, no blocking)
+    async function runSim() {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? undefined;
+
+      const result = await simulateBag(
+        {
+          region: selectedRegion as Region,
+          currency,
+          items: cart.items.map((i) => ({
+            type: "product",
+            productSlug: i.productSlug,
+            quantity: i.quantity,
+          })),
+        },
+        token
+      );
+      if (!cancelled) {
+        setSim(result);
+        setSimLoading(false);
+      }
+    }
+
+    runSim();
+    return () => { cancelled = true; };
+  }, [selectedRegion, currency, cart.items]);
 
   // ── Success state ──────────────────────────────────────────────────────────
   if (status === "success") {
@@ -110,12 +146,12 @@ export function BrandCheckoutView({ brand }: Props) {
   if (status === "cancelled") {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-white/55">Pagamento cancelado. Seu carrinho foi preservado.</p>
+        <p className="text-white/55">Pagamento cancelado. Sua bag foi preservada.</p>
         <button
           onClick={() => router.push(`/brands/${brand}/cart`)}
           className="rounded-full border border-white/15 px-6 py-3 text-sm uppercase tracking-[0.18em] text-white/70 hover:text-white"
         >
-          Voltar ao carrinho
+          Voltar à bag
         </button>
       </div>
     );
@@ -125,7 +161,7 @@ export function BrandCheckoutView({ brand }: Props) {
   if (cart.items.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-white/55">Nenhum item no carrinho.</p>
+        <p className="text-white/55">Nenhum item na bag.</p>
         <button
           onClick={() => router.push(`/categories/${brand}`)}
           className="rounded-full border border-[#C6A96B]/60 px-6 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
@@ -139,12 +175,18 @@ export function BrandCheckoutView({ brand }: Props) {
   // ── Checkout form ───────────────────────────────────────────────────────────
   async function handleCheckout() {
     if (!selectedRegion) return;
+
+    // Block checkout if simulation shows invalid bag
+    if (sim !== null && !sim.isValid) {
+      setError(sim.blockingIssues[0] ?? "Bag inválida. Revise os itens antes de continuar.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
-    // Read Supabase session token for auth
     let token: string | null = null;
     try {
       const { createBrowserClient } = await import("@supabase/ssr");
@@ -155,7 +197,7 @@ export function BrandCheckoutView({ brand }: Props) {
       const { data } = await supabase.auth.getSession();
       token = data.session?.access_token ?? null;
     } catch {
-      // guest checkout not supported (auth required by backend)
+      // auth not available
     }
 
     if (!token) {
@@ -167,7 +209,7 @@ export function BrandCheckoutView({ brand }: Props) {
     const payload = {
       brand,
       region: selectedRegion,
-      currency,  // send the user's display currency preference to order metadata
+      currency,
       items: cart.items.map((i) => ({ productSlug: i.productSlug, quantity: i.quantity })),
     };
 
@@ -191,18 +233,17 @@ export function BrandCheckoutView({ brand }: Props) {
     const { data } = await res.json();
 
     if (data.mode === "stripe" && data.checkoutUrl) {
-      // Redirect to Stripe hosted checkout
       window.location.href = data.checkoutUrl;
     } else {
-      // Mock mode — simulate success
       clearCart(brand);
       router.push(`/brands/${brand}/checkout?status=success`);
     }
   }
 
-  const freightEstimate = selectedRegion
-    ? `Calculado para ${REGION_LABELS[selectedRegion as Region] ?? selectedRegion}`
-    : "Selecione a região";
+  // Total to display: simulation result when available, fallback to local subtotal.
+  const displayTotalBRL = sim?.totals.finalTotalBRL ?? cart.subtotalBRL;
+  const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
+  const checkoutBlocked = submitting || !selectedRegion || simLoading || (sim !== null && !sim.isValid);
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.45fr]">
@@ -229,8 +270,7 @@ export function BrandCheckoutView({ brand }: Props) {
             </div>
           </div>
           <div className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
-            O valor do frete é calculado deterministicamente por faixa de peso do pedido. Será exibido
-            no resumo do Stripe antes da confirmação do pagamento.
+            Entrega com rastreamento internacional. O total exibido já inclui o envio.
           </div>
         </GlassCard>
       </div>
@@ -251,15 +291,21 @@ export function BrandCheckoutView({ brand }: Props) {
         </div>
 
         <div className="border-t border-white/10 pt-4 space-y-3">
-          <div className="flex justify-between text-sm text-white/55">
-            <span>Subtotal</span>
-            <PriceDisplay brl={cart.subtotalBRL} />
-          </div>
-          <div className="flex justify-between text-sm text-white/55">
-            <span>Frete</span>
-            <span>{freightEstimate}</span>
+          <div className="flex justify-between text-sm">
+            <span className="text-white/55">Total</span>
+            {simLoading ? (
+              <span className="text-white/30 text-xs">calculando…</span>
+            ) : (
+              <PriceDisplay brl={displayTotalBRL} className="font-semibold text-white" />
+            )}
           </div>
         </div>
+
+        {hasBlockingIssues && (
+          <div className="rounded-[14px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+            {sim!.blockingIssues[0]}
+          </div>
+        )}
 
         {error && (
           <div className="rounded-[14px] border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -269,7 +315,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
         <Button
           onClick={handleCheckout}
-          disabled={submitting || !selectedRegion}
+          disabled={checkoutBlocked}
           className="w-full"
         >
           {submitting ? "Redirecionando..." : "Ir para pagamento"}

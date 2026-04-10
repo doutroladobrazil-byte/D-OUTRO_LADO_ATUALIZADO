@@ -3,7 +3,12 @@ import Stripe from "stripe";
 import { env } from "../../config/env.js";
 import { stripe } from "../../lib/stripe.js";
 import { fail, ok } from "../../utils/http.js";
-import { attachStripeSession, buildOrder, updatePaymentStatus } from "../orders/orders.service.js";
+import {
+  attachStripeSession,
+  buildOrder,
+  deductStockForOrder,
+  updatePaymentStatus,
+} from "../orders/orders.service.js";
 import { clearCart } from "../cart/cart.service.js";
 import { getCartByProfile } from "../cart/cart.service.js";
 
@@ -43,6 +48,30 @@ export async function createCheckoutSession(req: Request, res: Response) {
     }
 
     // ── Real Stripe checkout session ────────────────────────────────────────
+    //
+    // All-in pricing: the total already embeds freight + tax + logistics + margin.
+    // We do NOT create a separate freight/tax line item.
+    //
+    // The all-in total is distributed proportionally across product line items
+    // so that sum(unit_amount × quantity) = totalBRL exactly.
+    //
+    // Algorithm:
+    //   1. For each item i < N-1: lineAmountCents[i] = round(lineTotalBRL[i] / subtotalBRL * totalCents)
+    //   2. Last item absorbs the remainder to guarantee exact sum.
+    //   3. unit_amount = 1 (quantity folded into name) — avoids non-integer cents per unit.
+    const totalCents = Math.round(orderPreview.totalBRL * 100);
+    const items = orderPreview.items;
+
+    const lineAmountCents: number[] = [];
+    let allocatedCents = 0;
+    for (let i = 0; i < items.length - 1; i++) {
+      const cents = Math.round((items[i].lineTotalBRL / orderPreview.subtotalBRL) * totalCents);
+      lineAmountCents.push(cents);
+      allocatedCents += cents;
+    }
+    // Last item absorbs any rounding remainder
+    lineAmountCents.push(totalCents - allocatedCents);
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       success_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -54,29 +83,17 @@ export async function createCheckoutSession(req: Request, res: Response) {
         region: orderPreview.region,
         pricingTier: orderPreview.pricingTier,
       },
-      line_items: [
-        ...orderPreview.items.map((item) => ({
-          quantity: item.quantity,
-          price_data: {
-            currency: "brl",
-            unit_amount: Math.round(item.unitPriceBRL * 100),
-            product_data: {
-              name: item.name,
-              metadata: { sku: item.sku, slug: item.slug },
-            },
-          },
-        })),
-        {
-          quantity: 1,
-          price_data: {
-            currency: "brl",
-            unit_amount: Math.round(orderPreview.freightBRL * 100),
-            product_data: {
-              name: `Frete internacional — ${orderPreview.estimatedWeightRange}`,
-            },
+      line_items: items.map((item, i) => ({
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: lineAmountCents[i],
+          product_data: {
+            name: item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name,
+            metadata: { sku: item.sku, slug: item.slug },
           },
         },
-      ],
+      })),
     });
 
     // Persist payment record + attach session ID to order
@@ -137,6 +154,9 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const paymentIntentId =
           typeof session.payment_intent === "string" ? session.payment_intent : undefined;
         await updatePaymentStatus(session.id, "paid", paymentIntentId);
+        // Deduct stock once — idempotent via stock_deducted_at
+        const orderId = session.metadata?.orderId;
+        if (orderId) await deductStockForOrder(orderId);
         break;
       }
       case "checkout.session.expired": {
