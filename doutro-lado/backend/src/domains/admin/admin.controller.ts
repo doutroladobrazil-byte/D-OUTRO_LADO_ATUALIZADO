@@ -8,6 +8,7 @@ import {
   getAdminOrderDetail,
   getAdminProductById,
   getStockOverview,
+  listAdminCategories,
   listAdminCustomers,
   listAdminProducts,
   patchAdminOrder,
@@ -144,6 +145,16 @@ export async function listAdminCustomersHandler(req: Request, res: Response) {
 
   const customers = await listAdminCustomers(parsed.data);
   return ok(res, customers);
+}
+
+// =============================================================================
+// Categories
+// =============================================================================
+
+export async function listAdminCategoriesHandler(req: Request, res: Response) {
+  const brand = (req.query.brand as string) === "casa" ? "casa" : "moda";
+  const categories = await listAdminCategories(brand as "moda" | "casa");
+  return ok(res, categories);
 }
 
 // =============================================================================

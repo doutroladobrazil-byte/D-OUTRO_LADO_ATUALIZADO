@@ -8,6 +8,7 @@ import {
   getAdminOrderDetailHandler,
   getAdminProductByIdHandler,
   getStockOverviewHandler,
+  listAdminCategoriesHandler,
   listAdminCustomersHandler,
   listAdminProductsHandler,
   patchAdminOrderHandler,
@@ -143,6 +144,9 @@ router.post("/admin/products", requireAuth, requireRole("admin"), createAdminPro
 router.get("/admin/products/:id", requireAuth, requireRole("admin"), getAdminProductByIdHandler);
 router.patch("/admin/products/:id", requireAuth, requireRole("admin"), patchAdminProductHandler);
 router.delete("/admin/products/:id", requireAuth, requireRole("admin"), deleteAdminProductHandler);
+
+// Admin — categories (taxonomy selects in product form)
+router.get("/admin/categories", requireAuth, requireRole("admin"), listAdminCategoriesHandler);
 
 // Admin — customers
 router.get("/admin/customers", requireAuth, requireRole("admin"), listAdminCustomersHandler);

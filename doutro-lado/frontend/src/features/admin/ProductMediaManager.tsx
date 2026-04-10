@@ -17,6 +17,7 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
   const [media, setMedia] = useState<ProductMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -32,59 +33,69 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
     if (token) loadMedia();
   }, [token, loadMedia]);
 
-  // ── Upload flow ──────────────────────────────────────────────────────────────
+  // ── Upload single file ───────────────────────────────────────────────────────
+
+  async function uploadFile(file: File, isFirst: boolean): Promise<boolean> {
+    if (!token) return false;
+
+    const urlResult = await adminApi.getUploadUrl(
+      token,
+      productId,
+      productBrand,
+      "image",
+      file.name
+    );
+    if (!urlResult.ok) throw new Error(urlResult.message);
+
+    const { signedUrl, storagePath, bucket, publicUrl } = urlResult.data;
+
+    const uploadRes = await fetch(signedUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!uploadRes.ok) {
+      throw new Error(`Upload falhou: ${uploadRes.status} ${uploadRes.statusText}`);
+    }
+
+    const registerResult = await adminApi.registerMedia(token, {
+      productId,
+      brand: productBrand,
+      mediaType: "image",
+      bucket,
+      storagePath,
+      publicUrl,
+      mimeType: file.type || undefined,
+      fileSizeBytes: file.size,
+      isPrimary: isFirst,
+    });
+    if (!registerResult.ok) throw new Error(registerResult.message);
+
+    return true;
+  }
+
+  // ── Handle multi-file selection ──────────────────────────────────────────────
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0 || !token) return;
 
     setUploading(true);
     setUploadError(null);
+    setUploadProgress(`0 / ${files.length}`);
 
     try {
-      // 1. Get signed upload URL from backend
-      const urlResult = await adminApi.getUploadUrl(
-        token,
-        productId,
-        productBrand,
-        "image",
-        file.name
-      );
-      if (!urlResult.ok) throw new Error(urlResult.message);
-
-      const { signedUrl, storagePath, bucket, publicUrl } = urlResult.data;
-
-      // 2. Upload file directly to Supabase Storage via signed URL
-      const uploadRes = await fetch(signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        throw new Error(`Upload falhou: ${uploadRes.status} ${uploadRes.statusText}`);
+      const currentIsEmpty = media.length === 0;
+      for (let i = 0; i < files.length; i++) {
+        setUploadProgress(`${i + 1} / ${files.length} — ${files[i].name}`);
+        await uploadFile(files[i], currentIsEmpty && i === 0);
       }
-
-      // 3. Register asset in DB
-      const registerResult = await adminApi.registerMedia(token, {
-        productId,
-        brand: productBrand,
-        mediaType: "image",
-        bucket,
-        storagePath,
-        publicUrl,
-        mimeType: file.type || undefined,
-        fileSizeBytes: file.size,
-        isPrimary: media.length === 0,  // first image becomes primary automatically
-      });
-      if (!registerResult.ok) throw new Error(registerResult.message);
-
-      // Reload media list
       await loadMedia();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Falha no upload");
     } finally {
       setUploading(false);
-      // Reset input so the same file can be re-selected
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -112,6 +123,24 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
     setMedia((prev) => prev.filter((m) => m.id !== pmId));
   }
 
+  // ── Reorder ──────────────────────────────────────────────────────────────────
+
+  async function moveItem(index: number, direction: "up" | "down") {
+    if (!token) return;
+    const next = [...media];
+    const swap = direction === "up" ? index - 1 : index + 1;
+    if (swap < 0 || swap >= next.length) return;
+    [next[index], next[swap]] = [next[swap], next[index]];
+    setMedia(next);
+    setActionError(null);
+    const result = await adminApi.reorderMedia(token, productId, next.map((m) => m.id));
+    if (!result.ok) {
+      setActionError(result.message);
+      // revert on failure
+      await loadMedia();
+    }
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -136,12 +165,13 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
           disabled={uploading || !token}
           className="rounded-[12px] border border-[#C6A96B]/40 bg-[#C6A96B]/8 px-5 py-2 text-sm text-[#C6A96B] transition hover:bg-[#C6A96B]/15 disabled:opacity-40"
         >
-          {uploading ? "Enviando..." : "+ Adicionar imagem"}
+          {uploading ? "Enviando..." : "+ Adicionar imagens"}
         </button>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={handleFileChange}
         />
@@ -159,15 +189,17 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
         </p>
       )}
 
-      {/* Upload progress indicator */}
-      {uploading && (
+      {/* Upload progress */}
+      {uploading && uploadProgress && (
         <div className="flex items-center gap-3 rounded-[12px] border border-[#C6A96B]/20 bg-[#C6A96B]/5 px-4 py-3">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C6A96B] border-t-transparent" />
-          <span className="text-sm text-[#C6A96B]/80">Enviando imagem para Supabase Storage...</span>
+          <span className="text-sm text-[#C6A96B]/80">
+            Enviando {uploadProgress}...
+          </span>
         </div>
       )}
 
-      {/* Media grid */}
+      {/* Media list */}
       {media.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
           <p className="text-sm text-white/30">Nenhuma imagem cadastrada</p>
@@ -181,49 +213,73 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {media.map((item) => (
+        <div className="space-y-2">
+          {media.map((item, index) => (
             <div
               key={item.id}
-              className={`group relative overflow-hidden rounded-[16px] border transition ${
+              className={`flex items-center gap-4 rounded-[14px] border p-3 transition ${
                 item.isPrimary
-                  ? "border-[#C6A96B]/50 ring-1 ring-[#C6A96B]/30"
-                  : "border-white/8 hover:border-white/20"
-              } bg-white/[0.03]`}
+                  ? "border-[#C6A96B]/40 bg-[#C6A96B]/5"
+                  : "border-white/8 bg-white/[0.02] hover:border-white/15"
+              }`}
             >
-              {/* Image */}
+              {/* Thumbnail */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.asset.publicUrl}
                 alt={item.asset.altText ?? "Imagem do produto"}
-                className="aspect-square w-full object-cover"
+                className="h-16 w-16 flex-shrink-0 rounded-[10px] object-cover"
                 loading="lazy"
               />
 
-              {/* Primary badge */}
-              {item.isPrimary && (
-                <div className="absolute left-2 top-2 rounded-full bg-[#C6A96B] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black">
-                  Principal
-                </div>
-              )}
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm text-white/70">{item.asset.storagePath?.split("/").pop() ?? "imagem"}</p>
+                {item.isPrimary && (
+                  <span className="mt-0.5 inline-block rounded-full bg-[#C6A96B]/20 px-2 py-0.5 text-[10px] text-[#C6A96B]">
+                    Principal
+                  </span>
+                )}
+              </div>
 
-              {/* Actions overlay */}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/70 px-2 py-2 opacity-0 transition group-hover:opacity-100">
+              {/* Actions */}
+              <div className="flex flex-shrink-0 items-center gap-2">
+                {/* Reorder */}
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => moveItem(index, "up")}
+                    disabled={index === 0}
+                    className="rounded-[6px] px-1.5 py-0.5 text-[11px] text-white/40 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
+                    title="Mover para cima"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveItem(index, "down")}
+                    disabled={index === media.length - 1}
+                    className="rounded-[6px] px-1.5 py-0.5 text-[11px] text-white/40 transition hover:bg-white/10 hover:text-white disabled:opacity-20"
+                    title="Mover para baixo"
+                  >
+                    ↓
+                  </button>
+                </div>
+
                 {!item.isPrimary && (
                   <button
                     type="button"
                     onClick={() => handleSetPrimary(item.id)}
-                    className="flex-1 rounded-[8px] bg-[#C6A96B]/20 px-2 py-1 text-[10px] text-[#C6A96B] hover:bg-[#C6A96B]/35 transition"
-                    title="Definir como imagem principal"
+                    className="rounded-[8px] border border-[#C6A96B]/30 px-3 py-1.5 text-[11px] text-[#C6A96B] transition hover:bg-[#C6A96B]/15"
                   >
                     Principal
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={() => handleDelete(item.id, item.asset.id)}
-                  className="rounded-[8px] bg-red-400/15 px-2 py-1 text-[10px] text-red-400 hover:bg-red-400/30 transition"
-                  title="Remover imagem"
+                  className="rounded-[8px] border border-red-400/20 px-3 py-1.5 text-[11px] text-red-400 transition hover:bg-red-400/10"
                 >
                   Remover
                 </button>
@@ -235,8 +291,8 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
 
       {media.length > 0 && (
         <p className="text-[11px] text-white/25">
-          {media.length} {media.length === 1 ? "imagem" : "imagens"} cadastrada{media.length !== 1 ? "s" : ""}.
-          Passe o mouse sobre uma imagem para ver as ações.
+          {media.length} {media.length === 1 ? "imagem" : "imagens"}.
+          Arraste ↑↓ para reordenar. A imagem principal é exibida na vitrine.
         </p>
       )}
     </div>

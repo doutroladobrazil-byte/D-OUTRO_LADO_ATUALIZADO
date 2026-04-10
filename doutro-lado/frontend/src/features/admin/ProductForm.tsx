@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { useAdminToken } from "@/hooks/useAdminToken";
-import type { AdminProductDetail } from "@/lib/admin-api";
+import type { AdminProductDetail, AdminCategory } from "@/lib/admin-api";
 
 // =============================================================================
 // Helpers
@@ -76,10 +76,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // =============================================================================
 
 type FormData = {
-  brand: string;
   name: string;
   slug: string;
   sku: string;
+  categoryId: string;
+  subcategoryId: string;
   shortDescription: string;
   longDescription: string;
   seoTitle: string;
@@ -105,10 +106,11 @@ type FormData = {
 function initForm(product?: AdminProductDetail): FormData {
   if (!product) {
     return {
-      brand: "moda",
       name: "",
       slug: "",
       sku: "",
+      categoryId: "",
+      subcategoryId: "",
       shortDescription: "",
       longDescription: "",
       seoTitle: "",
@@ -132,10 +134,11 @@ function initForm(product?: AdminProductDetail): FormData {
     };
   }
   return {
-    brand: product.brand,
     name: product.name,
     slug: product.slug,
     sku: product.sku,
+    categoryId: product.categoryId ?? "",
+    subcategoryId: product.subcategoryId ?? "",
     shortDescription: product.shortDescription,
     longDescription: product.longDescription,
     seoTitle: product.seoTitle ?? "",
@@ -166,10 +169,12 @@ function buildPayload(form: FormData): Record<string, unknown> {
     .filter((t) => t.length > 0);
 
   return {
-    brand: form.brand,
+    brand: "moda",
     name: form.name.trim(),
     slug: form.slug.trim(),
     sku: form.sku.trim().toUpperCase(),
+    categoryId: form.categoryId || null,
+    subcategoryId: form.subcategoryId || null,
     shortDescription: form.shortDescription.trim(),
     longDescription: form.longDescription.trim(),
     seoTitle: form.seoTitle.trim() || null,
@@ -214,6 +219,26 @@ export function ProductForm({ mode, product }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Taxonomy
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  const subcategories = selectedCategory?.subcategories ?? [];
+
+  // Load categories
+  useEffect(() => {
+    if (!token) return;
+    adminApi.listCategories(token, "moda").then((result) => {
+      if (result.ok) setCategories(result.data);
+    });
+  }, [token]);
+
+  // Reset subcategory when category changes
+  function handleCategoryChange(newCatId: string) {
+    setForm((prev) => ({ ...prev, categoryId: newCatId, subcategoryId: "" }));
+    setSuccess(false);
+    setError(null);
+  }
 
   // Auto-generate slug from name in create mode
   useEffect(() => {
@@ -278,10 +303,9 @@ export function ProductForm({ mode, product }: Props) {
         </div>
         <div>
           <Label>Brand</Label>
-          <Select value={form.brand} onChange={(e) => set("brand", e.target.value)}>
-            <option value="moda">Moda</option>
-            <option value="casa">Casa</option>
-          </Select>
+          <div className="flex h-[42px] items-center rounded-[12px] border border-white/10 bg-white/[0.03] px-4 text-sm text-[#C6A96B]">
+            Moda
+          </div>
         </div>
         <div>
           <Label>Slug (URL) *</Label>
@@ -305,6 +329,39 @@ export function ProductForm({ mode, product }: Props) {
             placeholder="MODA-001"
             required
           />
+        </div>
+      </div>
+
+      {/* ── Taxonomia ──────────────────────────────────────────────── */}
+      <SectionTitle>Categoria</SectionTitle>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label>Categoria</Label>
+          <Select
+            value={form.categoryId}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+          >
+            <option value="">— Selecionar —</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label>Subcategoria</Label>
+          <Select
+            value={form.subcategoryId}
+            onChange={(e) => set("subcategoryId", e.target.value)}
+            disabled={subcategories.length === 0}
+          >
+            <option value="">— Selecionar —</option>
+            {subcategories.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </Select>
+          {subcategories.length === 0 && form.categoryId && (
+            <p className="mt-1 text-[11px] text-white/30">Nenhuma subcategoria cadastrada para esta categoria.</p>
+          )}
         </div>
       </div>
 

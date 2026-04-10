@@ -109,6 +109,14 @@ export type AdminCustomer = {
   createdAt: string;
 };
 
+export type AdminCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  brand: Brand;
+  subcategories: { id: string; name: string; slug: string }[];
+};
+
 export type StockOverview = {
   totalSKUs: number;
   critical: number;
@@ -165,6 +173,10 @@ export async function fetchAdminCustomers(token: string, options: { role?: strin
 
 export async function fetchAdminStock(token: string) {
   return fetchApiData<StockOverview>("/admin/stock", { token, revalidate: 30 });
+}
+
+export async function fetchAdminCategories(token: string, brand: Brand = "moda") {
+  return fetchApiData<AdminCategory[]>(`/admin/categories?brand=${brand}`, { token, revalidate: 300 });
 }
 
 // =============================================================================
@@ -276,5 +288,20 @@ export const adminApi = {
       "GET",
       token
     );
+  },
+
+  /** Reorder media for a product. orderedIds = product_media.id[] in desired order. */
+  reorderMedia(token: string, productId: string, orderedIds: string[]) {
+    return callApi<{ ok: boolean }>(
+      `/admin/products/${productId}/media/reorder`,
+      "PATCH",
+      token,
+      { orderedIds }
+    );
+  },
+
+  /** List categories for a brand (client-side). */
+  listCategories(token: string, brand = "moda") {
+    return callApi<AdminCategory[]>(`/admin/categories?brand=${brand}`, "GET", token);
   },
 };

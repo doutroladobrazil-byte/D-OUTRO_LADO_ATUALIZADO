@@ -429,6 +429,47 @@ export async function listAdminCustomers(options: { role?: string; search?: stri
 }
 
 // =============================================================================
+// Taxonomy — categories + subcategories
+// =============================================================================
+
+/**
+ * List categories (with nested subcategories) for a given brand.
+ * Used by the admin product form taxonomy selects.
+ */
+export async function listAdminCategories(brand: Brand) {
+  const cats = await db`
+    SELECT id, name, slug, brand
+    FROM categories
+    WHERE brand = ${brand}
+    ORDER BY name
+  `;
+
+  if (cats.length === 0) return [];
+
+  const catIds = cats.map((c) => c.id as string);
+  const subs = await db`
+    SELECT id, name, slug, category_id
+    FROM subcategories
+    WHERE category_id = ANY(${catIds}::uuid[])
+    ORDER BY name
+  `;
+
+  return cats.map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    slug: c.slug as string,
+    brand: c.brand as Brand,
+    subcategories: subs
+      .filter((s) => s.category_id === c.id)
+      .map((s) => ({
+        id: s.id as string,
+        name: s.name as string,
+        slug: s.slug as string,
+      })),
+  }));
+}
+
+// =============================================================================
 // Stock overview
 // =============================================================================
 
