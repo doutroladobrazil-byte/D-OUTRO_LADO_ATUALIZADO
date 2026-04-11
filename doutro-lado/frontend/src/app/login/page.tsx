@@ -5,7 +5,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ redirect?: string; error?: string }>;
 }) {
-  const { redirect = "/account", error } = await searchParams;
+  const { redirect = "/admin", error } = await searchParams;
 
   return (
     <LoginForm

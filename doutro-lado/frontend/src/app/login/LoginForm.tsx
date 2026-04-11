@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { createClient } from "@/lib/supabase/client";
@@ -12,7 +11,6 @@ type Props = {
 };
 
 export function LoginForm({ defaultRedirect, initialError }: Props) {
-  const router = useRouter();
   const supabase = createClient();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -32,8 +30,8 @@ export function LoginForm({ defaultRedirect, initialError }: Props) {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push(defaultRedirect);
-        router.refresh();
+        // Full page reload ensures cookies are sent with the next request (Supabase SSR)
+        window.location.href = defaultRedirect;
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
