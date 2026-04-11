@@ -1,6 +1,7 @@
 import { jwtVerify } from "jose";
 import type { Request } from "express";
 import { env } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 import { getOrCreateProfile } from "./profile.service.js";
 import type { Role } from "../types/domain.js";
 
@@ -60,6 +61,7 @@ interface SupabaseJwtPayload {
  *     the profile is fetched from the database.
  *
  * Returns null for any invalid or missing credential.
+ * Logs specific failure reasons to aid debugging without exposing them to clients.
  */
 export async function resolveRequestUser(req: Request): Promise<RequestUser | null> {
   const token = parseBearerToken(req.header("authorization"));
@@ -80,7 +82,10 @@ export async function resolveRequestUser(req: Request): Promise<RequestUser | nu
   }
 
   // ── Production path: Supabase JWT ──────────────────────────────────────
-  if (!env.SUPABASE_JWT_SECRET) return null;
+  if (!env.SUPABASE_JWT_SECRET) {
+    logger.error("[auth] SUPABASE_JWT_SECRET is not set — cannot verify JWT");
+    return null;
+  }
 
   try {
     const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
@@ -88,10 +93,17 @@ export async function resolveRequestUser(req: Request): Promise<RequestUser | nu
       audience: "authenticated",
     });
 
-    if (!payload.sub) return null;
+    if (!payload.sub) {
+      logger.warn("[auth] JWT verified but missing sub claim");
+      return null;
+    }
 
     const profile = await getOrCreateProfile(payload.sub, payload.email ?? "");
-    if (!profile.isActive) return null;
+
+    if (!profile.isActive) {
+      logger.warn("[auth] User account is inactive", { sub: payload.sub });
+      return null;
+    }
 
     return {
       id: payload.sub,
@@ -100,8 +112,11 @@ export async function resolveRequestUser(req: Request): Promise<RequestUser | nu
       role: profile.role,
       isActive: profile.isActive,
     };
-  } catch {
-    // Invalid token, expired, wrong secret, etc.
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Log the specific JWT failure without exposing it to the client.
+    // Common causes: expired token, wrong secret, malformed token.
+    logger.warn("[auth] JWT verification failed", { reason: message });
     return null;
   }
 }

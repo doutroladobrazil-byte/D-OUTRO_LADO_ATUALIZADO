@@ -2,8 +2,6 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Minimal no-op client returned when env vars are not configured.
-// Lets static pages build and render without Supabase credentials while
-// keeping the rest of the codebase's auth contract intact.
 const UNCONFIGURED: SupabaseClient = {
   auth: {
     getSession: async () => ({ data: { session: null }, error: null }),
@@ -25,13 +23,21 @@ const UNCONFIGURED: SupabaseClient = {
 } as unknown as SupabaseClient;
 
 /**
- * Returns a Supabase client for use in browser (client) components.
- * Returns a no-op client when env vars are not configured, allowing static
- * pages to render without crashing the build.
+ * Module-level singleton — one browser client for the entire session.
+ *
+ * Creating multiple `createBrowserClient` instances in the same tab causes
+ * duplicated `onAuthStateChange` listeners and can break token refresh
+ * synchronisation. This singleton ensures all callers share the same instance
+ * and its internal token/cookie state.
  */
+let _client: SupabaseClient | null = null;
+
 export function createClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return UNCONFIGURED;
-  return createBrowserClient(url, key);
+  if (!_client) {
+    _client = createBrowserClient(url, key);
+  }
+  return _client;
 }
