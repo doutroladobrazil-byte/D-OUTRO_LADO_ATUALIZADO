@@ -119,6 +119,7 @@ model Product {
   orderItems           OrderItem[]
   giftKitItems         GiftKitItem[]
   recommendationEvents RecommendationEvent[]
+  translations         ProductTranslation[]
 
   @@map("products")
 }
@@ -302,7 +303,40 @@ model Language {
   label    String
   isActive Boolean @default(true) @map("is_active")
 
+  productTranslations ProductTranslation[]
+
   @@map("languages")
+}
+
+model ExchangeRate {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fromCurrency String   @default("BRL") @map("from_currency")
+  toCurrency   String   @map("to_currency")
+  rate         Decimal  @db.Decimal(18, 8)
+  source       String   @default("static")
+  fetchedAt    DateTime @default(now()) @map("fetched_at") @db.Timestamptz(6)
+
+  @@unique([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+model ProductTranslation {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId        String   @map("product_id") @db.Uuid
+  language         String
+  name             String
+  shortDescription String?  @map("short_description")
+  longDescription  String?  @map("long_description")
+  seoTitle         String?  @map("seo_title")
+  seoDescription   String?  @map("seo_description")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lang     Language @relation(fields: [language], references: [code])
+
+  @@unique([productId, language])
+  @@map("product_translations")
 }
 
 // =============================================================================
@@ -310,19 +344,19 @@ model Language {
 // =============================================================================
 
 model GiftKit {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId            String?  @map("profile_id") @db.Uuid
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId             String?  @map("profile_id") @db.Uuid
   /// Brand isolation — kit items must all belong to this brand (casa | moda)
-  brand                String?
-  name                 String
-  message              String?
-  packagingType        String?  @map("packaging_type")
-  subtotalBrl          Decimal? @map("subtotal_brl") @db.Decimal(12, 2)
-  packagingSurchargeBrl Decimal? @map("packaging_surcharge_brl") @db.Decimal(12, 2)
-  totalAmountBrl       Decimal? @default(0) @map("total_amount_brl") @db.Decimal(12, 2)
-  totalWeightRange     String?  @map("total_weight_range")
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  brand                 String   @default("moda")
+  name                  String
+  message               String?
+  packagingType         String   @default("standard") @map("packaging_type")
+  subtotalBrl           Decimal  @default(0) @map("subtotal_brl") @db.Decimal(12, 2)
+  packagingSurchargeBrl Decimal  @default(0) @map("packaging_surcharge_brl") @db.Decimal(12, 2)
+  totalAmountBrl        Decimal  @default(0) @map("total_amount_brl") @db.Decimal(12, 2)
+  totalWeightRange      String?  @map("total_weight_range")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   profile      Profile?      @relation(fields: [profileId], references: [id], onDelete: SetNull)
   giftKitItems GiftKitItem[]
