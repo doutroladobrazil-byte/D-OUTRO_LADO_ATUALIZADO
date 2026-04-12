@@ -1,53 +1,92 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchApiData } from "@/lib/api";
-import type { AuthProfile } from "@/lib/types";
 import { AdminSidebar } from "@/features/admin/AdminSidebar";
 
 /**
  * Admin layout — server component.
  *
- * Failure modes handled explicitly:
- *  1. No Supabase session → redirect to /login
- *  2. Backend unreachable / JWT error → show service-unavailable screen (NOT redirect to /)
- *  3. Profile found but role != admin → redirect to / (user is authenticated, just not admin)
- *  4. Everything OK → render admin UI
+ * Auth strategy:
+ *  1. `supabase.auth.getUser()` validates the Supabase JWT (via API call).
+ *     This is the only reliable SSR auth method — getSession() is not used
+ *     because it cannot safely reconstruct the session from cookies in
+ *     Next.js server components.
  *
- * This distinction is critical: previously ALL failures (including backend cold
- * starts and JWT mismatches) silently redirected to /, making the admin appear
- * to not exist rather than exposing the real cause.
+ *  2. Profile + role are fetched directly from Supabase REST API using the
+ *     service role key (server-only env var). This bypasses the backend
+ *     /auth/session endpoint entirely, eliminating the JWT re-verification
+ *     chain that was failing silently.
+ *
+ * Failure modes handled explicitly:
+ *  - No session       → redirect /login
+ *  - Profile not found / service unavailable → recoverable error screen
+ *  - Role != admin    → redirect /
+ *  - Role == admin    → render admin UI
  */
+
+type ProfileRow = {
+  id: string;
+  email: string;
+  role: string;
+  full_name: string | null;
+  is_active: boolean;
+};
+
+async function fetchProfileByAuthUserId(authUserId: string): Promise<ProfileRow | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+  if (!supabaseUrl || !serviceKey) {
+    console.error("[admin/layout] SUPABASE_SERVICE_ROLE_KEY or SUPABASE_URL not set");
+    return null;
+  }
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=id,email,role,full_name,is_active&limit=1`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (!res.ok) {
+      console.error("[admin/layout] Supabase REST profiles query failed", {
+        status: res.status,
+        statusText: res.statusText,
+      });
+      return null;
+    }
+
+    const rows: ProfileRow[] = await res.json();
+    return rows[0] ?? null;
+  } catch (err) {
+    console.error("[admin/layout] Supabase REST profiles query threw", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
 
-  // getUser() validates the JWT against Supabase — do not use getSession() here
-  // as it only reads cookies without server-side validation.
+  // getUser() is the only reliable SSR auth check — validates JWT via Supabase API.
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (!user || userError) {
     redirect("/login?redirect=/admin");
   }
 
-  // After getUser() validates/refreshes the token, getSession() returns the
-  // (possibly refreshed) access_token from the cookie store.
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? "";
+  const profile = await fetchProfileByAuthUserId(user.id);
 
-  const profile = await fetchApiData<AuthProfile>("/auth/session", {
-    token,
-    revalidate: 0,
-  });
-
-  // ── Failure mode 2: backend unreachable or JWT verification failed ──────────
-  // profile === null means fetchApiData got a non-2xx response or threw.
-  // The user IS authenticated with Supabase, so we do NOT redirect to /.
-  // Show a recoverable error screen instead.
+  // Backend/Supabase unreachable or profile not yet created.
   if (!profile) {
-    console.error("[admin/layout] /auth/session returned null", {
-      email: user.email,
+    console.error("[admin/layout] Profile not found or service unavailable", {
       uid: user.id,
-      hasToken: !!token,
-      tokenLength: token.length,
+      email: user.email,
     });
 
     return (
@@ -57,13 +96,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             Painel Admin — D&apos;OUTRO LADO
           </p>
           <p className="text-white/70 text-sm leading-relaxed">
-            Serviço temporariamente indisponível.
+            Perfil não encontrado ou serviço indisponível.
             <br />
-            O servidor está inicializando ou houve falha na verificação do token.
+            Aguarde um momento e tente novamente.
           </p>
-          <p className="text-white/30 text-xs">
-            Autenticado como: {user.email}
-          </p>
+          <p className="text-white/30 text-xs">Autenticado como: {user.email}</p>
           <a
             href="/admin"
             className="inline-block rounded-full border border-[#C6A96B]/40 px-6 py-2.5 text-xs uppercase tracking-[0.18em] text-[#C6A96B] transition hover:border-[#C6A96B]"
@@ -75,16 +112,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  // ── Failure mode 3: authenticated but not admin ─────────────────────────────
+  // User is authenticated but not admin.
   if (profile.role !== "admin") {
     redirect("/");
   }
 
-  // ── Success: render admin UI ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,rgba(198,169,107,0.09),transparent_36%),linear-gradient(180deg,#080808,#040404)] text-white">
       <div className="mx-auto flex max-w-[1600px] gap-0">
-        <AdminSidebar email={profile.email} name={profile.fullName ?? "Admin"} />
+        <AdminSidebar
+          email={profile.email}
+          name={profile.full_name ?? "Admin"}
+        />
         <main className="min-h-screen flex-1 overflow-auto px-8 py-8 lg:px-10 lg:py-10">
           {children}
         </main>
