@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Pedidos — D'OUTRO LADO Admin" };
 export default async function AdminOrdersPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const orders = (await fetchAdminOrders(session?.access_token ?? "")) ?? [];
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const orders = (await fetchAdminOrders(token)) ?? [];
 
   const processing = orders.filter((o) => o.orderStatus === "processing").length;
   const paid = orders.filter((o) => o.paymentStatus === "paid").length;

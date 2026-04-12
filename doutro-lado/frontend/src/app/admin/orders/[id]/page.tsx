@@ -26,7 +26,8 @@ export default async function AdminOrderDetailPage({
   const { id } = await params;
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const order = await fetchAdminOrderDetail(session?.access_token ?? "", id);
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const order = await fetchAdminOrderDetail(token, id);
 
   if (!order) notFound();
 

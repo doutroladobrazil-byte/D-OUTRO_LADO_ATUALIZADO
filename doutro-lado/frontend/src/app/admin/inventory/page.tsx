@@ -20,7 +20,8 @@ type StockItem = StockOverview["items"][number];
 export default async function AdminInventoryPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const overview = await fetchAdminStock(session?.access_token ?? "");
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const overview = await fetchAdminStock(token);
 
   // Sort: critical first, then by stock asc
   const items = (overview?.items ?? []).slice().sort((a, b) => a.stock - b.stock);

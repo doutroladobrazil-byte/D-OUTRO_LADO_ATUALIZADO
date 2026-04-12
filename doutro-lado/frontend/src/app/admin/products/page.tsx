@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Produtos — D'OUTRO LADO Admin" };
 export default async function AdminProductsPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const products = (await fetchAdminProducts(session?.access_token ?? "")) ?? [];
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const products = (await fetchAdminProducts(token)) ?? [];
 
   const active = products.filter((p) => p.isActive).length;
   const featured = products.filter((p) => p.isFeatured).length;

@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Analytics — D'OUTRO LADO Admin" };
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? "";
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
   const [overview, orders] = await Promise.all([
     fetchAdminOverview(token),

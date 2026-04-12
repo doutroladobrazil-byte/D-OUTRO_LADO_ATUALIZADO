@@ -14,9 +14,10 @@ export const metadata: Metadata = { title: "Logística — D'OUTRO LADO Admin" }
 export default async function AdminShippingPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const rates = (await fetchApiData<FreightRate[]>("/freight/rates", {
-    token: session?.access_token,
+    token,
     revalidate: 60,
   })) ?? [];
 

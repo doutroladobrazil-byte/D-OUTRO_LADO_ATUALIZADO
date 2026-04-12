@@ -89,9 +89,28 @@ export async function resolveRequestUser(req: Request): Promise<RequestUser | nu
 
   try {
     const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
-    const { payload } = await jwtVerify<SupabaseJwtPayload>(token, secret, {
-      audience: "authenticated",
-    });
+    // Verify without audience restriction so we can inspect the role claim first.
+    const { payload } = await jwtVerify<SupabaseJwtPayload>(token, secret);
+
+    // ── Service-role path: Next.js server components → backend (SSR admin pages) ──
+    // The service_role JWT is signed with the same secret but has role=service_role
+    // instead of aud=authenticated. It is only ever sent from server-side code
+    // (SUPABASE_SERVICE_ROLE_KEY is a server-only env var, never exposed to the browser).
+    if ((payload as Record<string, unknown>)["role"] === "service_role") {
+      return {
+        id: "server",
+        profileId: "server",
+        email: "server@internal",
+        role: "admin" as Role,
+        isActive: true,
+      };
+    }
+
+    // ── Regular user path ─────────────────────────────────────────────────────
+    if (payload.aud !== "authenticated") {
+      logger.warn("[auth] JWT has unexpected audience", { aud: payload.aud });
+      return null;
+    }
 
     if (!payload.sub) {
       logger.warn("[auth] JWT verified but missing sub claim");

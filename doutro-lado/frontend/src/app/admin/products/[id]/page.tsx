@@ -17,7 +17,7 @@ export default async function EditProductPage({ params }: Props) {
 
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? "";
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
   const product = await fetchAdminProductById(token, id);
   if (!product) notFound();

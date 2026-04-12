@@ -15,9 +15,10 @@ export const metadata: Metadata = { title: "Fiscal — D'OUTRO LADO Admin" };
 export default async function AdminFiscalPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const records = (await fetchApiData<FiscalStatusRecord[]>("/fiscal/status", {
-    token: session?.access_token,
+    token,
     revalidate: 30,
   })) ?? [];
 
