@@ -31,7 +31,7 @@ export function UniverseSlider() {
             transition={{ duration: 0.38, ease: "easeOut" }}
           >
             <Link href={activeSlide.href} className="group block">
-              <div className="relative min-h-[580px]">
+              <div className="relative min-h-[320px] md:min-h-[580px]">
                 <Image
                   src={activeSlide.imageSrc}
                   alt={activeSlide.imageAlt}
@@ -43,7 +43,7 @@ export function UniverseSlider() {
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.38)_44%,rgba(0,0,0,0.22)_100%)]" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.18)_26%,rgba(0,0,0,0.58)_100%)]" />
 
-                <div className="relative flex min-h-[580px] flex-col justify-between p-8 md:p-12">
+                <div className="relative flex min-h-[320px] flex-col justify-between p-6 md:min-h-[580px] md:p-12">
                   <div className="flex items-start justify-between gap-4">
                     <div className="rounded-full border border-white/12 bg-black/20 px-4 py-2 text-[13px] uppercase tracking-[0.26em] text-white/72 backdrop-blur-xl">
                       {activeSlide.eyebrow}
@@ -55,7 +55,7 @@ export function UniverseSlider() {
 
                   <div className="grid gap-8 xl:grid-cols-[0.95fr_0.45fr] xl:items-end">
                     <div className="max-w-3xl space-y-5">
-                      <h3 className="font-display text-[46px] leading-[1.02] tracking-[-0.5px] text-white md:text-[66px]">
+                      <h3 className="font-display text-[30px] leading-[1.02] tracking-[-0.5px] text-white md:text-[46px] lg:text-[66px]">
                         {activeSlide.title}
                       </h3>
                       <p className="max-w-2xl text-base leading-8 text-white/72 md:text-[17px]">

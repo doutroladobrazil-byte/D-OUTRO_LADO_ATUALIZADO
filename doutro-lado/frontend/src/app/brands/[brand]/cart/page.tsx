@@ -13,7 +13,7 @@ export default async function BrandCartPage({ params }: { params: Promise<{ bran
   if (!isBrand(brand)) notFound();
 
   return (
-    <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
+    <main className="min-h-screen px-4 py-8 bg-[rgb(12,12,12)] md:px-6 md:py-10">
       <div className="mx-auto max-w-luxe space-y-10">
         <SectionHeading
           eyebrow="Carrinho / Moda"

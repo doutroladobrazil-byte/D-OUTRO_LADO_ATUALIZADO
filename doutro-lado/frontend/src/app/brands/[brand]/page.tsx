@@ -24,7 +24,7 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
   return (
     <main>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="px-6 pb-8 pt-10">
+      <section className="px-4 pb-8 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-luxe">
           <GlassCard className="relative overflow-hidden p-8 md:p-14">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.12),transparent_38%),linear-gradient(160deg,rgba(255,255,255,0.04),rgba(0,0,0,0.92))]" />
@@ -33,12 +33,12 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
                 <p className="text-[11px] uppercase tracking-[0.42em] text-white/35">
                   Moda / Couro / Acessorios
                 </p>
-                <h1 className="max-w-3xl font-display text-[52px] leading-[1.02] tracking-[-1px] text-white md:text-[72px]">
+                <h1 className="max-w-3xl font-display text-[36px] leading-[1.02] tracking-[-1px] text-white sm:text-[48px] md:text-[72px]">
                   Couro legitimo
                   <br />
                   com presenca.
                 </h1>
-                <p className="max-w-xl text-[17px] leading-[1.88] text-white/55">
+                <p className="max-w-xl text-base leading-[1.88] text-white/55 md:text-[17px]">
                   Bolsas, cintos, sapatos e acessorios em couro premium brasileiro. Um wardrobe de presenca para o mercado internacional com curadoria e materialidade exclusiva.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
@@ -66,7 +66,7 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
       </section>
 
       {/* ── Editorial ─────────────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="grid gap-6">
@@ -111,7 +111,7 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
       </section>
 
       {/* ── Products ──────────────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
@@ -135,13 +135,13 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
       </section>
 
       {/* ── Gift builder CTA ──────────────────────────────────────────────── */}
-      <section className="px-6 pb-16">
+      <section className="px-4 pb-12 md:px-6 md:pb-16">
         <div className="mx-auto max-w-luxe">
           <GlassCard tone="warm" className="overflow-hidden p-8 md:p-10">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="space-y-3">
                 <p className="text-[11px] uppercase tracking-[0.38em] text-black/32">Composicao de presente</p>
-                <h3 className="font-display text-[34px] leading-[1.08] tracking-[-0.5px] text-[#17120d]">
+                <h3 className="font-display text-[24px] leading-[1.08] tracking-[-0.5px] text-[#17120d] md:text-[34px]">
                   Monte um presente editorial com nossas pecas.
                 </h3>
                 <p className="max-w-lg text-sm leading-7 text-black/55">

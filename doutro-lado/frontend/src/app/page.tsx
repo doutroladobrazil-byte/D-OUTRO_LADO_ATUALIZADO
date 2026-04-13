@@ -15,7 +15,7 @@ export default async function HomePage() {
   return (
     <main>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="px-6 pb-8 pt-10">
+      <section className="px-4 pb-8 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-luxe">
           <GlassCard className="relative overflow-hidden p-8 md:p-14">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.09),transparent_40%),linear-gradient(160deg,rgba(255,255,255,0.05),rgba(0,0,0,0.9))]" />
@@ -24,12 +24,12 @@ export default async function HomePage() {
                 <p className="text-[11px] uppercase tracking-[0.42em] text-white/35">
                   Moda premium — origem brasileira
                 </p>
-                <h1 className="max-w-3xl font-display text-[52px] leading-[1.02] tracking-[-1px] text-white md:text-[74px]">
+                <h1 className="max-w-3xl font-display text-[36px] leading-[1.02] tracking-[-1px] text-white sm:text-[48px] md:text-[74px]">
                   Couro, moda
                   <br />
                   e presenca.
                 </h1>
-                <p className="max-w-xl text-[17px] leading-[1.88] text-white/55">
+                <p className="max-w-xl text-base leading-[1.88] text-white/55 md:text-[17px]">
                   Acessorios, bolsas, sapatos e vestuario com curadoria editorial e materialidade de referencia. Para o mercado internacional, com identidade brasileira.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
@@ -55,7 +55,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Editorial slider ──────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe space-y-10">
           <SectionHeading
             eyebrow="Colecoes"
@@ -67,14 +67,14 @@ export default async function HomePage() {
       </section>
 
       {/* ── Gift composition ──────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <GiftCompositionFeature />
         </div>
       </section>
 
       {/* ── Featured products ─────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
@@ -103,7 +103,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Campaigns ─────────────────────────────────────────────────────── */}
-      <section className="px-6 py-16">
+      <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe space-y-10">
           <SectionHeading
             eyebrow="Editorial"

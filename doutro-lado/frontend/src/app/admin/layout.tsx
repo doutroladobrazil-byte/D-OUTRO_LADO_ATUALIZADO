@@ -124,7 +124,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           email={profile.email}
           name={profile.full_name ?? "Admin"}
         />
-        <main className="min-h-screen flex-1 overflow-auto px-8 py-8 lg:px-10 lg:py-10">
+        <main className="min-h-screen flex-1 overflow-auto px-4 pb-8 pt-20 md:px-8 md:py-8 lg:px-10 lg:py-10">
           {children}
         </main>
       </div>

@@ -27,7 +27,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
   const previewRates = freightRates.filter((rate) => rate.weightRange === product.weightRange).slice(0, 3);
 
   return (
-    <main className="px-6 py-10">
+    <main className="px-4 py-8 md:px-6 md:py-10">
       <div className="mx-auto max-w-luxe space-y-16">
         <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
           {/* ── Gallery — Stage 2 (replaces static GlassCard placeholders) ── */}
@@ -37,7 +37,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
           <div className="space-y-6">
             <div className="space-y-4">
               <p className="text-[13px] uppercase tracking-[0.28em] text-white/45">{product.category} / {product.subcategory}</p>
-              <h1 className="font-display text-[48px] leading-[1.05] tracking-[-0.5px] text-white">{product.name}</h1>
+              <h1 className="font-display text-[32px] leading-[1.05] tracking-[-0.5px] text-white md:text-[48px]">{product.name}</h1>
               <p className="max-w-xl text-base leading-8 text-white/60">{product.longDescription}</p>
               <div className="inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white">
                 Moda / Couro / Acessorios

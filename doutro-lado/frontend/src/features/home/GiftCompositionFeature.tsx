@@ -6,7 +6,7 @@ export function GiftCompositionFeature() {
   return (
     <GlassCard tone="warm" className="overflow-hidden p-0">
       <div className="grid gap-0 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="relative min-h-[420px] bg-[radial-gradient(circle_at_top_left,rgba(245,245,245,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(217,221,227,0.22),transparent_24%),linear-gradient(140deg,rgba(255,255,255,0.08),rgba(0,0,0,0.78))]">
+        <div className="relative min-h-[260px] md:min-h-[420px] bg-[radial-gradient(circle_at_top_left,rgba(245,245,245,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(217,221,227,0.22),transparent_24%),linear-gradient(140deg,rgba(255,255,255,0.08),rgba(0,0,0,0.78))]">
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent_32%)]" />
           <div className="absolute left-[12%] top-[16%] h-24 w-24 rounded-[26px] border border-white/12 bg-white/[0.08] shadow-luxe backdrop-blur-xl" />
           <div className="absolute left-[34%] top-[28%] h-36 w-28 rounded-[30px] border border-white/12 bg-[linear-gradient(180deg,rgba(245,245,245,0.2),rgba(255,255,255,0.06))] shadow-halo backdrop-blur-xl" />
@@ -17,7 +17,7 @@ export function GiftCompositionFeature() {
 
         <div className="flex flex-col justify-center p-8 md:p-12">
           <p className="text-[13px] uppercase tracking-[0.28em] text-black/42">Composicao de presente</p>
-          <h3 className="mt-5 font-display text-[40px] leading-[1.04] tracking-[-0.5px] text-[#17120d] md:text-[52px]">
+          <h3 className="mt-5 font-display text-[28px] leading-[1.04] tracking-[-0.5px] text-[#17120d] md:text-[40px] lg:text-[52px]">
             Uma composicao elegante, sensorial e personalizada.
           </h3>
           <p className="mt-6 max-w-xl text-base leading-8 text-black/62">

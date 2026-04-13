@@ -2,11 +2,11 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-black px-6 py-16 text-white/60">
-      <div className="mx-auto grid max-w-luxe gap-12 lg:grid-cols-[1.2fr_0.8fr_0.8fr] lg:px-2">
+    <footer className="border-t border-white/10 bg-black px-4 py-10 text-white/60 md:px-6 md:py-16">
+      <div className="mx-auto grid max-w-luxe gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr] lg:gap-12 lg:px-2">
         <div className="space-y-4">
           <p className="text-[13px] uppercase tracking-[0.28em] text-white/35">Moda premium — origem brasileira</p>
-          <h2 className="max-w-md font-display text-[36px] leading-[1.05] tracking-[-0.5px] text-white">
+          <h2 className="max-w-md font-display text-[26px] leading-[1.05] tracking-[-0.5px] text-white md:text-[36px]">
             Couro, moda e acessorios com operacao internacional refinada.
           </h2>
         </div>

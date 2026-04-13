@@ -154,31 +154,31 @@ export function BrandCartView({ brand }: Props) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="flex items-center justify-between gap-5 rounded-[22px] border border-white/10 bg-white/[0.03] p-5"
+              className="flex flex-col gap-3 rounded-[22px] border border-white/10 bg-white/[0.03] p-4 md:flex-row md:items-center md:justify-between md:gap-5 md:p-5"
             >
-              <div className="flex items-center gap-5">
-                <div className="h-20 w-16 shrink-0 rounded-[16px] bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(0,0,0,0.7))]" />
-                <div>
-                  <p className={`font-medium ${textClass}`}>{item.productName}</p>
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-12 shrink-0 rounded-[14px] bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(0,0,0,0.7))] md:h-20 md:w-16 md:rounded-[16px]" />
+                <div className="min-w-0">
+                  <p className={`truncate font-medium ${textClass}`}>{item.productName}</p>
                   <p className={`mt-1 text-[12px] uppercase tracking-wider ${subtleClass}`}>{item.sku}</p>
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-4">
+              <div className="flex items-center justify-between gap-4 md:shrink-0 md:justify-end">
                 {/* Qty controls */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleUpdateQuantity(item.productSlug, item.quantity - 1)}
-                    className={`flex size-7 items-center justify-center rounded-full border border-white/15 ${subtleClass} hover:text-white`}
+                    className={`flex size-9 items-center justify-center rounded-full border border-white/15 md:size-7 ${subtleClass} hover:text-white`}
                   >
                     <Minus size={12} />
                   </button>
-                  <span className={`w-4 text-center text-sm ${textClass}`}>{item.quantity}</span>
+                  <span className={`w-5 text-center text-sm ${textClass}`}>{item.quantity}</span>
                   <button
                     onClick={() =>
                       handleUpdateQuantity(item.productSlug, Math.min(item.quantity + 1, item.stock))
                     }
-                    className={`flex size-7 items-center justify-center rounded-full border border-white/15 ${subtleClass} hover:text-white`}
+                    className={`flex size-9 items-center justify-center rounded-full border border-white/15 md:size-7 ${subtleClass} hover:text-white`}
                   >
                     <Plus size={12} />
                   </button>
@@ -186,12 +186,12 @@ export function BrandCartView({ brand }: Props) {
 
                 <PriceDisplay
                   brl={item.lineTotalBRL}
-                  className={`min-w-[80px] text-right text-sm font-medium ${textClass}`}
+                  className={`min-w-[72px] text-right text-sm font-medium ${textClass}`}
                 />
 
                 <button
                   onClick={() => handleRemoveItem(item.productSlug)}
-                  className="text-red-400/50 hover:text-red-400"
+                  className="flex size-9 items-center justify-center text-red-400/50 hover:text-red-400 md:size-auto"
                   aria-label={`Remover ${item.productName}`}
                 >
                   <Trash2 size={16} />
@@ -210,24 +210,24 @@ export function BrandCartView({ brand }: Props) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="flex items-center justify-between gap-5 rounded-[22px] border border-[#C6A96B]/20 bg-[rgba(198,169,107,0.04)] p-5"
+              className="flex flex-col gap-3 rounded-[22px] border border-[#C6A96B]/20 bg-[rgba(198,169,107,0.04)] p-4 md:flex-row md:items-center md:justify-between md:gap-5 md:p-5"
             >
-              <div className="flex items-center gap-5">
-                <div className="h-20 w-16 shrink-0 rounded-[16px] bg-[linear-gradient(135deg,rgba(198,169,107,0.2),rgba(0,0,0,0.7))]" />
-                <div>
-                  <p className={`font-medium ${textClass}`}>{kit.kitName}</p>
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-12 shrink-0 rounded-[14px] bg-[linear-gradient(135deg,rgba(198,169,107,0.2),rgba(0,0,0,0.7))] md:h-20 md:w-16 md:rounded-[16px]" />
+                <div className="min-w-0">
+                  <p className={`truncate font-medium ${textClass}`}>{kit.kitName}</p>
                   <p className={`mt-1 text-[12px] uppercase tracking-wider ${subtleClass}`}>Gift Kit</p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-4">
+              <div className="flex items-center justify-between gap-4 md:shrink-0 md:justify-end">
                 <span className={`text-sm ${subtleClass}`}>×{kit.quantity}</span>
                 <PriceDisplay
                   brl={kit.totalBRL * kit.quantity}
-                  className={`min-w-[80px] text-right text-sm font-medium ${textClass}`}
+                  className={`min-w-[72px] text-right text-sm font-medium ${textClass}`}
                 />
                 <button
                   onClick={() => removeKit(brand, kit.kitId)}
-                  className="text-red-400/50 hover:text-red-400"
+                  className="flex size-9 items-center justify-center text-red-400/50 hover:text-red-400 md:size-auto"
                   aria-label={`Remover ${kit.kitName}`}
                 >
                   <Trash2 size={16} />

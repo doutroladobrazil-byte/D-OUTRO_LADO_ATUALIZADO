@@ -31,10 +31,10 @@ export function ProductGallery({ media = [], name }: Props) {
   // ── No-media fallback ────────────────────────────────────────────────────
   if (!active) {
     return (
-      <div className="grid gap-6 md:grid-cols-[1fr_0.34fr]">
+      <div className="flex flex-col gap-4 md:grid md:gap-6 md:grid-cols-[1fr_0.34fr]">
         <div
           aria-label={`Imagem de ${name}`}
-          className="relative min-h-[720px] overflow-hidden rounded-[24px] border border-white/10
+          className="relative min-h-[300px] overflow-hidden rounded-[24px] border border-white/10 md:min-h-[560px] lg:min-h-[720px]
             bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.16),transparent_30%),
             linear-gradient(135deg,rgba(255,255,255,0.1),rgba(0,0,0,0.75))]"
         >
@@ -47,11 +47,11 @@ export function ProductGallery({ media = [], name }: Props) {
             <span className="text-xs uppercase tracking-[0.22em]">Sem imagem</span>
           </div>
         </div>
-        <div className="grid gap-6">
+        <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:gap-4 md:overflow-x-hidden md:pb-0">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="min-h-[220px] rounded-[24px] border border-white/8 bg-white/[0.03]"
+              className="h-20 w-20 shrink-0 rounded-[16px] border border-white/8 bg-white/[0.03] md:h-auto md:w-auto md:min-h-[160px]"
             />
           ))}
         </div>
@@ -60,9 +60,9 @@ export function ProductGallery({ media = [], name }: Props) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr_0.34fr]">
+    <div className="flex flex-col gap-4 md:grid md:gap-6 md:grid-cols-[1fr_0.34fr]">
       {/* ── Main view ──────────────────────────────────────────────────── */}
-      <div className="relative min-h-[720px] overflow-hidden rounded-[24px] border border-white/10 bg-black/60">
+      <div className="relative min-h-[300px] overflow-hidden rounded-[24px] border border-white/10 bg-black/60 md:min-h-[560px] lg:min-h-[720px]">
         {active.asset.mediaType === "video" ? (
           <video
             key={active.asset.publicUrl}
@@ -102,7 +102,7 @@ export function ProductGallery({ media = [], name }: Props) {
       </div>
 
       {/* ── Thumbnail strip ────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 overflow-y-auto" style={{ maxHeight: "720px" }}>
+      <div className="flex gap-3 overflow-x-auto pb-1 md:flex-col md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:pb-0" style={{ maxHeight: "var(--gallery-thumbs-max, none)" }}>
         {ordered.map((item, idx) => {
           const isActive = idx === activeIdx;
           return (
@@ -110,7 +110,7 @@ export function ProductGallery({ media = [], name }: Props) {
               key={item.id}
               onClick={() => setActiveIdx(idx)}
               aria-label={item.asset.altText ?? `Mídia ${idx + 1}`}
-              className={`relative min-h-[220px] w-full flex-shrink-0 overflow-hidden rounded-[20px] border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 ${
+              className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-[16px] border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 md:h-auto md:min-h-[160px] md:w-full md:rounded-[20px] lg:min-h-[220px] ${
                 isActive
                   ? "border-gold/60 shadow-[0_0_0_2px_rgba(198,169,107,0.25)]"
                   : "border-white/8 hover:border-white/20"

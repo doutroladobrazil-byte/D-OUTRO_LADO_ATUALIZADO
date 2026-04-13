@@ -29,7 +29,7 @@ export function SearchOverlay() {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.99 }}
           transition={{ duration: 0.28, ease: "easeOut" }}
-          className="fixed inset-0 z-[80] bg-black/95 px-6 py-10 backdrop-blur-2xl"
+          className="fixed inset-0 z-[80] bg-black/95 px-4 py-6 backdrop-blur-2xl md:px-6 md:py-10"
         >
           <div className="mx-auto flex h-full max-w-5xl flex-col gap-8">
             <div className="flex items-center justify-between">
@@ -48,7 +48,7 @@ export function SearchOverlay() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar produtos, materiais, colecoes e presentes"
-                className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] py-6 pl-16 pr-6 text-2xl text-white outline-none transition placeholder:text-white/25 focus:border-gold/60"
+                className="w-full rounded-[28px] border border-white/10 bg-white/[0.06] py-4 pl-14 pr-4 text-lg text-white outline-none transition placeholder:text-white/25 focus:border-gold/60 md:py-6 md:pl-16 md:pr-6 md:text-2xl"
               />
             </div>
             <div className="flex flex-wrap gap-3">
@@ -73,7 +73,7 @@ export function SearchOverlay() {
                 >
                   <div className="mb-4 aspect-[1.2/1] rounded-[20px] bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.18),transparent_36%),linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02))]" />
                   <p className="text-[13px] uppercase tracking-[0.24em] text-white/45">{product.category}</p>
-                  <h3 className="mt-3 font-display text-[28px] tracking-[-0.5px] text-white">{product.name}</h3>
+                  <h3 className="mt-3 font-display text-[20px] tracking-[-0.5px] text-white md:text-[28px]">{product.name}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/58">{product.shortDescription}</p>
                 </motion.div>
               ))}
