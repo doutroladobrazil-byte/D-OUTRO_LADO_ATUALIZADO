@@ -1,10 +1,21 @@
 import { z } from "zod";
 import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
-import type { Brand, BuiltOrder, FreightQuote, Role, WeightRange } from "../../types/domain.js";
+import type { Brand, BuiltOrder, CountryCode, FreightQuote, Region, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
-import { computeAllInTotals, loadPricingRule, makePricingVersion } from "../bag/bag.service.js";
-import { isSupportedCurrency } from "../../services/i18n.service.js";
+import {
+  computeAllInTotals,
+  countryRuleToBagPricingRule,
+  loadPricingRule,
+  makePricingVersion,
+} from "../bag/bag.service.js";
+import { isSupportedCurrency, STATIC_RATES } from "../../services/i18n.service.js";
+import {
+  getCountryByCode,
+  loadCountryCommerceRule,
+  quoteFreightByCountry,
+} from "../countries/countries.service.js";
+import { COUNTRY_CODES } from "../../config/constants.js";
 
 // =============================================================================
 // Validation
@@ -20,17 +31,35 @@ const giftKitItemSchema = z.object({
   quantity: z.coerce.number().int().min(1),
 });
 
-const orderSchema = z.object({
-  brand: z.enum(["casa", "moda"]), // "casa" mantido por compatibilidade com dados historicos
-  region: z.enum(["North America", "Europe", "Middle East"]),
-  currency: z.string().default("USD"),
-  items: z.array(productItemSchema).default([]),
-  kitItems: z.array(giftKitItemSchema).optional().default([]),
-  offerCode: z.string().min(1).max(32).optional(),
-}).refine(
-  (data) => data.items.length > 0 || (data.kitItems && data.kitItems.length > 0),
-  { message: "Order must contain at least one product or kit item." }
-);
+const orderSchema = z
+  .object({
+    brand: z.enum(["casa", "moda"]), // "casa" mantido por compatibilidade com dados historicos
+    /**
+     * Stage 12 — country-first path.
+     * When provided, overrides `region` for freight + pricing.
+     */
+    countryCode: z
+      .string()
+      .length(2)
+      .transform((v) => v.toUpperCase())
+      .refine((v) => (COUNTRY_CODES as readonly string[]).includes(v), {
+        message: "Unsupported country code.",
+      })
+      .optional(),
+    /** Legacy region — required when countryCode is absent. */
+    region: z.enum(["North America", "Europe", "Middle East"]).optional(),
+    currency: z.string().default("USD"),
+    items: z.array(productItemSchema).default([]),
+    kitItems: z.array(giftKitItemSchema).optional().default([]),
+    offerCode: z.string().min(1).max(32).optional(),
+  })
+  .refine(
+    (data) => data.items.length > 0 || (data.kitItems && data.kitItems.length > 0),
+    { message: "Order must contain at least one product or kit item." }
+  )
+  .refine((data) => data.countryCode || data.region, {
+    message: "Either countryCode or region must be provided.",
+  });
 
 export type BuildOrderResult = BuiltOrder & { orderId: string };
 
@@ -144,22 +173,66 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     allItems.map((i) => ({ weightRange: i.weightRange, quantity: i.quantity }))
   );
 
-  const freight: FreightQuote = await quoteFreight({
-    region: parsed.region,
-    weightRange: estimatedWeightRange,
-  });
+  const countryCode = (parsed.countryCode as CountryCode | undefined) ?? null;
+  const legacyRegion = parsed.region ?? "North America";
+
+  let freightAmountBRL: number;
+  let shippingRegionForOrder: string;
+
+  if (countryCode) {
+    const countryFreight = await quoteFreightByCountry(countryCode, estimatedWeightRange);
+    freightAmountBRL = countryFreight.amountBRL;
+    shippingRegionForOrder = countryCode; // store country code in shipping_region for country-path orders
+  } else {
+    const freight: FreightQuote = await quoteFreight({
+      region: legacyRegion,
+      weightRange: estimatedWeightRange,
+    });
+    freightAmountBRL = freight.amountBRL;
+    shippingRegionForOrder = freight.region;
+  }
 
   // ── All-in pricing ──────────────────────────────────────────────────────
   const subtotalBRL = allItems.reduce((sum, i) => sum + i.lineTotalBRL, 0);
   const displayCurrency = isSupportedCurrency(parsed.currency) ? parsed.currency : "BRL";
-  const rule = await loadPricingRule(parsed.region);
-  const allIn = computeAllInTotals(subtotalBRL, freight.amountBRL, rule, displayCurrency, discountPercent);
+
+  let rule;
+  if (countryCode) {
+    const countryRule = await loadCountryCommerceRule(countryCode);
+    rule = countryRule
+      ? countryRuleToBagPricingRule(countryRule, subtotalBRL)
+      : await loadPricingRule(legacyRegion);
+  } else {
+    rule = await loadPricingRule(legacyRegion);
+  }
+
+  const allIn = computeAllInTotals(subtotalBRL, freightAmountBRL, rule, displayCurrency, discountPercent);
   const totalBRL = allIn.adjustedFinalTotalBRL;
   const discountBRL = allIn.discountBRL;
-  const pricingVersion = makePricingVersion(freight.amountBRL, rule);
+  const pricingVersion = makePricingVersion(freightAmountBRL, rule);
 
   const publicId = `DL-${Date.now()}`;
   const pricingTier = role === "wholesale" ? "wholesale" : "retail";
+
+  // ── Country snapshot (Stage 12) ─────────────────────────────────────────
+  let destinationCountryCode: string | null = null;
+  let destinationCountryName: string | null = null;
+  let destinationCurrency: string | null = null;
+  let exchangeRateUsed: number | null = null;
+  let deliveryEtaMinDays: number | null = null;
+  let deliveryEtaMaxDays: number | null = null;
+
+  if (countryCode) {
+    const countryDetail = await getCountryByCode(countryCode);
+    if (countryDetail) {
+      destinationCountryCode = countryDetail.code;
+      destinationCountryName = countryDetail.name;
+      destinationCurrency = countryDetail.defaultCurrency;
+      exchangeRateUsed = STATIC_RATES[countryDetail.defaultCurrency] ?? null;
+      deliveryEtaMinDays = countryDetail.commerceRule?.estimatedDeliveryMinDays ?? null;
+      deliveryEtaMaxDays = countryDetail.commerceRule?.estimatedDeliveryMaxDays ?? null;
+    }
+  }
 
   // ── Persist ─────────────────────────────────────────────────────────────
   const [order] = await db`
@@ -167,12 +240,16 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
       public_id, profile_id, brand, currency,
       subtotal_brl, freight_brl, total_brl,
       shipping_region, estimated_weight_range, pricing_version,
-      offer_code, discount_brl
+      offer_code, discount_brl,
+      destination_country_code, destination_country_name, destination_currency,
+      exchange_rate_used, delivery_eta_min_days, delivery_eta_max_days
     ) VALUES (
       ${publicId}, ${profileId ?? null}, ${parsed.brand}, ${parsed.currency},
-      ${subtotalBRL}, ${freight.amountBRL}, ${totalBRL},
-      ${freight.region}, ${freight.weightRange}, ${pricingVersion},
-      ${parsed.offerCode ?? null}, ${discountBRL}
+      ${subtotalBRL}, ${freightAmountBRL}, ${totalBRL},
+      ${shippingRegionForOrder}, ${estimatedWeightRange}, ${pricingVersion},
+      ${parsed.offerCode ?? null}, ${discountBRL},
+      ${destinationCountryCode}, ${destinationCountryName}, ${destinationCurrency},
+      ${exchangeRateUsed}, ${deliveryEtaMinDays}, ${deliveryEtaMaxDays}
     )
     RETURNING id
   `;
@@ -210,12 +287,12 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     publicId,
     brand: parsed.brand,
     currency: parsed.currency,
-    region: parsed.region,
+    region: legacyRegion,
     pricingTier,
     items: allItems as BuiltOrder["items"],
     subtotalBRL,
-    freight,
-    freightBRL: freight.amountBRL,
+    freight: { region: legacyRegion, weightRange: estimatedWeightRange, amountBRL: freightAmountBRL },
+    freightBRL: freightAmountBRL,
     totalBRL,
     estimatedWeightRange,
     paymentStatus: "pending",

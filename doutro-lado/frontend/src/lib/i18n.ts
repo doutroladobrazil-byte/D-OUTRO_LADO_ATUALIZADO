@@ -17,24 +17,32 @@
 // =============================================================================
 
 /** ISO 4217 currency codes supported by the platform. */
-export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED";
+export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED" | "CHF" | "SGD";
 
 /** IETF BCP 47 locale tags supported for display formatting. */
-export type SupportedLocale = "pt-BR" | "en-US" | "en-GB" | "ar-AE";
+export type SupportedLocale = "pt-BR" | "en-US" | "en-GB" | "ar-AE" | "de-CH" | "zh-SG";
 
 /** Two-letter ISO 639-1 language codes. */
-export type SupportedLanguage = "pt" | "en" | "ar";
+export type SupportedLanguage = "pt" | "en" | "ar" | "de";
+
+/** ISO 3166-1 alpha-2 codes for the 6 MVP destination countries (Stage 12). */
+export type CountryCode = "US" | "CH" | "IE" | "DE" | "IS" | "SG";
 
 // =============================================================================
 // Constants
 // =============================================================================
 
 export const SUPPORTED_CURRENCIES: readonly SupportedCurrency[] = [
-  "BRL", "USD", "EUR", "AED",
+  "BRL", "USD", "EUR", "AED", "CHF", "SGD",
 ] as const;
 
 export const SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
-  "pt", "en", "ar",
+  "pt", "en", "ar", "de",
+] as const;
+
+/** The 6 MVP destination countries. */
+export const COUNTRY_CODES: readonly CountryCode[] = [
+  "US", "CH", "IE", "DE", "IS", "SG",
 ] as const;
 
 /** Map: currency → associated display locale. */
@@ -43,6 +51,8 @@ export const CURRENCY_LOCALE_MAP: Record<SupportedCurrency, SupportedLocale> = {
   USD: "en-US",
   EUR: "en-GB",
   AED: "ar-AE",
+  CHF: "de-CH",
+  SGD: "zh-SG",
 };
 
 /** Map: currency → symbol (for compact usage). */
@@ -51,6 +61,21 @@ export const CURRENCY_SYMBOL: Record<SupportedCurrency, string> = {
   USD: "$",
   EUR: "€",
   AED: "AED",
+  CHF: "Fr.",
+  SGD: "S$",
+};
+
+/**
+ * Default display currency per MVP country (Stage 12).
+ * IS uses EUR strategically (not ISK) for simplicity.
+ */
+export const COUNTRY_DEFAULT_CURRENCY: Record<CountryCode, SupportedCurrency> = {
+  US: "USD",
+  CH: "CHF",
+  IE: "EUR",
+  DE: "EUR",
+  IS: "EUR",
+  SG: "SGD",
 };
 
 /** Map: language code → display label. */
@@ -70,6 +95,9 @@ export const STATIC_EXCHANGE_RATES: Record<SupportedCurrency, number> = {
   USD: 0.18,   // ~1 BRL = 0.18 USD (placeholder)
   EUR: 0.17,   // ~1 BRL = 0.17 EUR (placeholder)
   AED: 0.67,   // ~1 BRL = 0.67 AED (placeholder)
+  // Stage 12 — country-first MVP
+  CHF: 0.16,   // ~1 BRL = 0.16 CHF (placeholder)
+  SGD: 0.24,   // ~1 BRL = 0.24 SGD (placeholder)
 };
 
 /**
@@ -195,7 +223,7 @@ export function resolvePreferredLanguage(raw: string | null | undefined): Suppor
 
 /**
  * Map region name → default display currency for guests without a profile.
- * Used to pre-select the most relevant currency in the checkout region selector.
+ * Legacy (Stage 3–11): used when country is not yet selected.
  */
 export const REGION_DEFAULT_CURRENCY: Record<string, SupportedCurrency> = {
   "North America": "USD",

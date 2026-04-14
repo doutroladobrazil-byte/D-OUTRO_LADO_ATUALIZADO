@@ -14,6 +14,7 @@ import {
   BarChart2,
   Settings,
   Layers,
+  Globe,
   Menu,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/admin/customers", label: "Usuários", icon: Users },
   { href: "/admin/inventory", label: "Estoque", icon: Boxes },
   { href: "/admin/shipping", label: "Logística", icon: Truck },
+  { href: "/admin/countries", label: "Países", icon: Globe },
   { href: "/admin/fiscal", label: "Fiscal", icon: FileText },
   { href: "/admin/content", label: "Conteúdo", icon: Layers },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },

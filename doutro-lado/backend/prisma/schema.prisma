@@ -412,6 +412,23 @@ model Order {
   /// Discount amount in BRL applied via offer code. Zero if no offer.
   discountBrl          Decimal   @default(0) @map("discount_brl") @db.Decimal(12, 2)
 
+  // -------------------------------------------------------------------------
+  // Stage 12 — Country-first snapshot columns (all nullable; not set for
+  // orders created before Stage 12 or via legacy region-only flow).
+  // -------------------------------------------------------------------------
+  /// ISO 3166-1 alpha-2 code of the destination country selected at checkout.
+  destinationCountryCode String?  @map("destination_country_code") @db.VarChar(2)
+  /// Country name snapshot (denormalised for human-readable audit trail).
+  destinationCountryName String?  @map("destination_country_name") @db.VarChar(100)
+  /// Display currency used for this order (may differ from BRL canonical).
+  destinationCurrency    String?  @map("destination_currency") @db.VarChar(3)
+  /// BRL → destinationCurrency exchange rate at checkout (for audit).
+  exchangeRateUsed       Decimal? @map("exchange_rate_used") @db.Decimal(10, 6)
+  /// Minimum estimated delivery in business days from country_commerce_rules.
+  deliveryEtaMinDays     Int?     @map("delivery_eta_min_days")
+  /// Maximum estimated delivery in business days from country_commerce_rules.
+  deliveryEtaMaxDays     Int?     @map("delivery_eta_max_days")
+
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])
   orderItems     OrderItem[]
@@ -568,6 +585,77 @@ model AdminLog {
   adminProfile Profile? @relation(fields: [adminProfileId], references: [id])
 
   @@map("admin_logs")
+}
+
+// =============================================================================
+// Stage 12 — Country-first International
+// =============================================================================
+
+/// Master list of countries the platform can sell to.
+/// is_active toggles the country globally; checkout_enabled/catalog_enabled
+/// allow finer-grained control (browse-only vs full checkout).
+model SupportedCountry {
+  code             String   @id @db.VarChar(2)
+  name             String   @db.VarChar(100)
+  regionGroup      String   @map("region_group") @db.VarChar(50)
+  defaultCurrency  String   @map("default_currency") @db.VarChar(3)
+  defaultLanguage  String   @default("en") @map("default_language") @db.VarChar(5)
+  isActive         Boolean  @default(true) @map("is_active")
+  checkoutEnabled  Boolean  @default(true) @map("checkout_enabled")
+  catalogEnabled   Boolean  @default(true) @map("catalog_enabled")
+  displayPosition  Int      @default(0) @map("display_position")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  commerceRules  CountryCommerceRule[]
+  shippingRules  CountryShippingRule[]
+
+  @@map("supported_countries")
+}
+
+/// Per-country pricing rules — replaces BagPricingRule when a countryCode is
+/// supplied. One active rule per country at a time.
+model CountryCommerceRule {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  countryCode              String   @map("country_code") @db.VarChar(2)
+  pricingCurrency          String   @map("pricing_currency") @db.VarChar(3)
+  /// Tax percentage applied to subtotal (e.g. 7.7 for Swiss VAT).
+  taxPercent               Decimal  @default(0) @map("tax_percent") @db.Decimal(6, 3)
+  /// Flat BRL logistics surcharge per order.
+  logisticsBrl             Decimal  @default(0) @map("logistics_brl") @db.Decimal(12, 2)
+  /// Percentage margin on top of (subtotal + freight + tax + logistics).
+  marginPercent            Decimal  @default(0) @map("margin_percent") @db.Decimal(5, 2)
+  minimumOrderBrl          Decimal  @default(0) @map("minimum_order_brl") @db.Decimal(12, 2)
+  allowGuestCheckout       Boolean  @default(true) @map("allow_guest_checkout")
+  allowDiscountCodes       Boolean  @default(true) @map("allow_discount_codes")
+  estimatedDeliveryMinDays Int      @default(5) @map("estimated_delivery_min_days")
+  estimatedDeliveryMaxDays Int      @default(10) @map("estimated_delivery_max_days")
+  isActive                 Boolean  @default(true) @map("is_active")
+  notes                    String?
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country SupportedCountry @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@map("country_commerce_rules")
+}
+
+/// Per-country, per-weight-range freight table.
+/// Parallel to shipping_rates (keyed by shipping_region_id); takes precedence
+/// when countryCode is supplied to the bag simulator.
+model CountryShippingRule {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  countryCode   String   @map("country_code") @db.VarChar(2)
+  weightRange   String   @map("weight_range") @db.VarChar(20)
+  baseAmountBrl Decimal  @map("base_amount_brl") @db.Decimal(12, 2)
+  carrierLabel  String   @default("DHL Express") @map("carrier_label") @db.VarChar(100)
+  slaMinDays    Int      @default(5) @map("sla_min_days")
+  slaMaxDays    Int      @default(10) @map("sla_max_days")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  country SupportedCountry @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@unique([countryCode, weightRange])
+  @@map("country_shipping_rules")
 }
 
 // =============================================================================

@@ -4,8 +4,12 @@ import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
 import { STATIC_RATES } from "../../services/i18n.service.js";
-import { REGIONS } from "../../config/constants.js";
-import type { Region, SupportedCurrency, WeightRange } from "../../types/domain.js";
+import { COUNTRY_CODES, REGIONS } from "../../config/constants.js";
+import type { CountryCode, Region, SupportedCurrency, WeightRange } from "../../types/domain.js";
+import {
+  loadCountryCommerceRule,
+  quoteFreightByCountry,
+} from "../countries/countries.service.js";
 import type {
   AppliedOffer,
   BagPricingRule,
@@ -14,33 +18,79 @@ import type {
   BagSimulatedItem,
   BagSimulatedKitItem,
   BagTotals,
+  CountryPricingRule,
 } from "./bag.types.js";
 
 // =============================================================================
 // Request validation schema
 // =============================================================================
 
-export const simulateRequestSchema = z.object({
-  region: z.enum(REGIONS as [Region, ...Region[]]),
-  currency: z.enum(["BRL", "USD", "EUR", "AED"] as const).default("BRL"),
-  items: z
-    .array(
-      z.discriminatedUnion("type", [
-        z.object({
-          type: z.literal("product"),
-          productSlug: z.string().min(1).max(200),
-          quantity: z.coerce.number().int().min(1).max(99),
-        }),
-        z.object({
-          type: z.literal("gift_kit"),
-          kitId: z.string().uuid(),
-          quantity: z.coerce.number().int().min(1).max(10),
-        }),
-      ])
-    )
-    .min(1),
-  offerCode: z.string().min(1).max(32).optional(),
-});
+export const simulateRequestSchema = z
+  .object({
+    /**
+     * Stage 12 — country-first path.
+     * When provided, overrides `region` for freight + pricing lookups.
+     * Must be an ISO 3166-1 alpha-2 code for one of the 6 MVP countries.
+     */
+    countryCode: z
+      .string()
+      .length(2)
+      .transform((v) => v.toUpperCase())
+      .refine((v) => (COUNTRY_CODES as readonly string[]).includes(v), {
+        message: "Unsupported country code.",
+      })
+      .optional(),
+    /**
+     * Legacy region-based path (Stage 3–11).
+     * Required when countryCode is absent; optional when countryCode is provided.
+     */
+    region: z.enum(REGIONS as [Region, ...Region[]]).optional(),
+    currency: z.enum(["BRL", "USD", "EUR", "AED", "CHF", "SGD"] as const).default("BRL"),
+    items: z
+      .array(
+        z.discriminatedUnion("type", [
+          z.object({
+            type: z.literal("product"),
+            productSlug: z.string().min(1).max(200),
+            quantity: z.coerce.number().int().min(1).max(99),
+          }),
+          z.object({
+            type: z.literal("gift_kit"),
+            kitId: z.string().uuid(),
+            quantity: z.coerce.number().int().min(1).max(10),
+          }),
+        ])
+      )
+      .min(1),
+    offerCode: z.string().min(1).max(32).optional(),
+  })
+  .refine((d) => d.countryCode || d.region, {
+    message: "Either countryCode or region must be provided.",
+  });
+
+// =============================================================================
+// Country-first adapter — Stage 12
+// =============================================================================
+
+/**
+ * Convert a CountryPricingRule (percent-based tax) to a BagPricingRule
+ * (flat BRL tax) so that computeAllInTotals can be reused unchanged.
+ *
+ * tax flat = subtotalBRL * taxPercent / 100
+ * All other fields map 1-to-1.
+ */
+export function countryRuleToBagPricingRule(
+  rule: CountryPricingRule,
+  subtotalBRL: number
+): BagPricingRule {
+  return {
+    region: "Europe" as Region,          // dummy — not used in amount computation
+    taxBRL: Number((subtotalBRL * rule.taxPercent / 100).toFixed(2)),
+    logisticsBRL: rule.logisticsBRL,
+    marginPercent: rule.marginPercent,
+    isActive: rule.isActive,
+  };
+}
 
 // =============================================================================
 // Pricing rule — loaded from bag_pricing_rules (defaults to zeros if missing)
@@ -189,10 +239,12 @@ const EMPTY_TOTALS: BagTotals = {
 function blocked(
   region: Region,
   currency: SupportedCurrency,
-  issues: string[]
+  issues: string[],
+  countryCode: string | null = null
 ): BagSimulationResult {
   return {
     isValid: false,
+    countryCode,
     region,
     currency,
     pricingVersion: "blocked",
@@ -213,7 +265,10 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
     return blocked("North America", "BRL", ["Dados inválidos na requisição."]);
   }
 
-  const { region, currency, items, offerCode } = parsed;
+  const { currency, items, offerCode } = parsed;
+  // countryCode takes priority; region is the fallback for legacy callers.
+  const countryCode = (parsed.countryCode as CountryCode | undefined) ?? null;
+  const region: Region = parsed.region ?? "North America"; // used for display / legacy path
   const blockingIssues: string[] = [];
 
   // ── Product lookup (batch, deduplicated) ────────────────────────────────
@@ -297,6 +352,7 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   if (blockingIssues.length > 0) {
     return {
       isValid: false,
+      countryCode,
       region,
       currency,
       pricingVersion: "blocked",
@@ -322,21 +378,45 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   );
 
   let freightBRL = 0;
-  try {
-    const freight = await quoteFreight({ region, weightRange: estimatedWeightRange });
-    freightBRL = freight.amountBRL;
-  } catch {
-    return {
-      isValid: false,
-      region,
-      currency,
-      pricingVersion: "blocked",
-      bagVersionToken,
-      items: simulatedItems,
-      totals: { ...EMPTY_TOTALS, displayCurrency: currency },
-      blockingIssues: ["Região não disponível para envio no momento."],
-      appliedOffer: null,
-    };
+
+  if (countryCode) {
+    // ── Country-first path (Stage 12) ──────────────────────────────────────
+    try {
+      const countryFreight = await quoteFreightByCountry(countryCode, estimatedWeightRange);
+      freightBRL = countryFreight.amountBRL;
+    } catch {
+      return {
+        isValid: false,
+        countryCode,
+        region,
+        currency,
+        pricingVersion: "blocked",
+        bagVersionToken,
+        items: simulatedItems,
+        totals: { ...EMPTY_TOTALS, displayCurrency: currency },
+        blockingIssues: ["País não disponível para envio no momento."],
+        appliedOffer: null,
+      };
+    }
+  } else {
+    // ── Legacy region-based path (Stage 3–11) ──────────────────────────────
+    try {
+      const freight = await quoteFreight({ region, weightRange: estimatedWeightRange });
+      freightBRL = freight.amountBRL;
+    } catch {
+      return {
+        isValid: false,
+        countryCode: null,
+        region,
+        currency,
+        pricingVersion: "blocked",
+        bagVersionToken,
+        items: simulatedItems,
+        totals: { ...EMPTY_TOTALS, displayCurrency: currency },
+        blockingIssues: ["Região não disponível para envio no momento."],
+        appliedOffer: null,
+      };
+    }
   }
 
   // ── Offer code resolution ────────────────────────────────────────────────
@@ -352,10 +432,21 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   }
 
   // ── All-in pricing ──────────────────────────────────────────────────────
-  const rule = await loadPricingRule(region);
   const subtotalBRL = Number(
     simulatedItems.reduce((s, i) => s + i.lineTotalBRL, 0).toFixed(2)
   );
+
+  let rule: BagPricingRule;
+  if (countryCode) {
+    // Country-first: load country commerce rule and adapt to BagPricingRule
+    const countryRule = await loadCountryCommerceRule(countryCode);
+    rule = countryRule
+      ? countryRuleToBagPricingRule(countryRule, subtotalBRL)
+      : { region, taxBRL: 0, logisticsBRL: 0, marginPercent: 0, isActive: true };
+  } else {
+    rule = await loadPricingRule(region);
+  }
+
   const totals = computeAllInTotals(subtotalBRL, freightBRL, rule, currency, discountPercent);
   const pricingVersion = makePricingVersion(freightBRL, rule);
 
@@ -369,6 +460,7 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
 
   return {
     isValid: true,
+    countryCode,
     region,
     currency,
     pricingVersion,

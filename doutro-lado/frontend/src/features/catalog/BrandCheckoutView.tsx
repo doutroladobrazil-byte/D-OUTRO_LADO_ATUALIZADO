@@ -3,22 +3,26 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import type { BagSimulationResult, Brand, Region } from "@/lib/types";
+import type { BagSimulationResult, Brand, CountryCode, SupportedCountry } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
-import { getBackendCart, getShippingRegions, simulateBag } from "@/lib/storefront";
+import { getActiveCountries, getBackendCart, simulateBag } from "@/lib/storefront";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { useLocale } from "@/contexts/LocaleContext";
-import { REGION_DEFAULT_CURRENCY } from "@/lib/i18n";
+import { COUNTRY_DEFAULT_CURRENCY } from "@/lib/i18n";
 
 type Props = { brand: Brand };
 
-const REGION_LABELS: Record<Region, string> = {
-  "North America": "América do Norte",
-  "Europe": "Europa",
-  "Middle East": "Oriente Médio",
+/** Country flag emojis for the 6 MVP destinations. */
+const COUNTRY_FLAGS: Record<CountryCode, string> = {
+  US: "🇺🇸",
+  CH: "🇨🇭",
+  IE: "🇮🇪",
+  DE: "🇩🇪",
+  IS: "🇮🇸",
+  SG: "🇸🇬",
 };
 
 export function BrandCheckoutView({ brand }: Props) {
@@ -36,17 +40,20 @@ export function BrandCheckoutView({ brand }: Props) {
   const cart = getCart(brand);
   const kitItems = getKitItems(brand);
 
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<Region | "">("");
+  const [countries, setCountries] = useState<SupportedCountry[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sim, setSim] = useState<BagSimulationResult | null>(null);
   const [simLoading, setSimLoading] = useState(false);
 
   useEffect(() => {
-    getShippingRegions().then((r) => {
-      setRegions(r);
-      if (r.length > 0 && !selectedRegion) setSelectedRegion(r[0]);
+    getActiveCountries().then((list) => {
+      const active = list.filter((c) => c.checkoutEnabled);
+      setCountries(active);
+      if (active.length > 0 && !selectedCountry) {
+        setSelectedCountry(active[0].code);
+      }
     });
   }, []);
 
@@ -63,22 +70,22 @@ export function BrandCheckoutView({ brand }: Props) {
     hydrate();
   }, [brand]);
 
-  // Auto-switch display currency when region changes.
+  // Auto-switch display currency when country changes.
   useEffect(() => {
-    if (selectedRegion) {
-      const regionCurrency = REGION_DEFAULT_CURRENCY[selectedRegion];
-      if (regionCurrency) setCurrency(regionCurrency);
+    if (selectedCountry) {
+      const countryCurrency = COUNTRY_DEFAULT_CURRENCY[selectedCountry as CountryCode];
+      if (countryCurrency) setCurrency(countryCurrency);
     }
-  }, [selectedRegion]);
+  }, [selectedCountry]);
 
   // Clear local cart once backend confirms payment.
   useEffect(() => {
     if (status === "success") clearCart(brand);
   }, [status, brand, clearCart]);
 
-  // Re-simulate whenever region, currency, cart items, kit items, or offerCode change.
+  // Re-simulate whenever country, currency, cart items, kit items, or offerCode change.
   useEffect(() => {
-    if (!selectedRegion || (cart.items.length === 0 && kitItems.length === 0)) {
+    if (!selectedCountry || (cart.items.length === 0 && kitItems.length === 0)) {
       setSim(null);
       return;
     }
@@ -93,7 +100,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
       const result = await simulateBag(
         {
-          region: selectedRegion as Region,
+          countryCode: selectedCountry as CountryCode,
           currency,
           items: [
             ...cart.items.map((i) => ({
@@ -119,7 +126,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
     runSim();
     return () => { cancelled = true; };
-  }, [selectedRegion, currency, cart.items, kitItems, offerCode]);
+  }, [selectedCountry, currency, cart.items, kitItems, offerCode]);
 
   // ── Success state ──────────────────────────────────────────────────────────
   if (status === "success") {
@@ -185,7 +192,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
   // ── Checkout form ───────────────────────────────────────────────────────────
   async function handleCheckout() {
-    if (!selectedRegion) return;
+    if (!selectedCountry) return;
 
     // Block checkout if simulation shows invalid bag
     if (sim !== null && !sim.isValid) {
@@ -219,7 +226,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
     const payload = {
       brand,
-      region: selectedRegion,
+      countryCode: selectedCountry,
       currency,
       items: cart.items.map((i) => ({ productSlug: i.productSlug, quantity: i.quantity })),
       kitItems: kitItems.map((k) => ({ kitId: k.kitId, quantity: k.quantity })),
@@ -258,34 +265,41 @@ export function BrandCheckoutView({ brand }: Props) {
   const displayTotalBRL = sim?.totals.adjustedFinalTotalBRL ?? (cart.subtotalBRL + kitSubtotalBRL);
   const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
   const appliedOffer = sim?.appliedOffer ?? null;
-  const checkoutBlocked = submitting || !selectedRegion || simLoading || (sim !== null && !sim.isValid);
+  const checkoutBlocked = submitting || !selectedCountry || simLoading || (sim !== null && !sim.isValid);
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.45fr]">
-      {/* Left — region selection */}
+      {/* Left — country selection */}
       <div className="space-y-6">
         <GlassCard className="space-y-6">
           <h2 className="font-display text-[28px] tracking-[-0.4px] text-white">Entrega internacional</h2>
           <div className="space-y-3">
-            <label className="text-[12px] uppercase tracking-[0.24em] text-white/50">Região de destino</label>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {regions.map((region) => (
-                <button
-                  key={region}
-                  onClick={() => setSelectedRegion(region)}
-                  className={`rounded-[16px] border px-4 py-4 text-left text-sm transition-all ${
-                    selectedRegion === region
-                      ? "border-[#C6A96B]/60 bg-[rgba(198,169,107,0.08)] text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/55 hover:border-white/20"
-                  }`}
-                >
-                  {REGION_LABELS[region] ?? region}
-                </button>
-              ))}
-            </div>
+            <label className="text-[12px] uppercase tracking-[0.24em] text-white/50">País de destino</label>
+            {countries.length === 0 ? (
+              <p className="text-sm text-white/30">Carregando países disponíveis…</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {countries.map((country) => (
+                  <button
+                    key={country.code}
+                    onClick={() => setSelectedCountry(country.code)}
+                    className={`flex items-center gap-3 rounded-[16px] border px-4 py-4 text-left text-sm transition-all ${
+                      selectedCountry === country.code
+                        ? "border-[#C6A96B]/60 bg-[rgba(198,169,107,0.08)] text-white"
+                        : "border-white/10 bg-white/[0.03] text-white/55 hover:border-white/20"
+                    }`}
+                  >
+                    <span className="text-xl leading-none" aria-hidden>
+                      {COUNTRY_FLAGS[country.code] ?? "🌐"}
+                    </span>
+                    <span className="truncate">{country.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
-            Entrega com rastreamento internacional. O total exibido já inclui o envio.
+            Entrega com rastreamento internacional. O total exibido já inclui frete, impostos e encargos.
           </div>
         </GlassCard>
       </div>

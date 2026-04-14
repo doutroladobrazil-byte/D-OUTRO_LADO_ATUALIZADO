@@ -1,4 +1,4 @@
-import type { Brand, Region, WeightRange } from "../types/domain.js";
+import type { Brand, CountryCode, Region, SupportedCurrency, WeightRange } from "../types/domain.js";
 
 /**
  * BRANDS — lista de marcas ativas para operacao publica.
@@ -30,4 +30,26 @@ export const weightRangeUpperBoundsKg: Record<WeightRange, number> = {
   "5-10kg": 10,
   "10-15kg": 15,
   "15-20kg": 20
+};
+
+// =============================================================================
+// Stage 12 — Country-first MVP constants
+// =============================================================================
+
+/** The 6 MVP destination countries (ISO 3166-1 alpha-2). */
+export const COUNTRY_CODES: readonly CountryCode[] = [
+  "US", "CH", "IE", "DE", "IS", "SG"
+] as const;
+
+/**
+ * Default display currency per MVP country.
+ * IS uses EUR strategically (not ISK) to avoid additional complexity.
+ */
+export const COUNTRY_DEFAULT_CURRENCY: Record<CountryCode, SupportedCurrency> = {
+  US: "USD",
+  CH: "CHF",
+  IE: "EUR",
+  DE: "EUR",
+  IS: "EUR",
+  SG: "SGD",
 };

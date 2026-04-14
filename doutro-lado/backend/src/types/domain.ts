@@ -20,12 +20,18 @@ export type MediaType = "image" | "video";
  * ISO 4217 currency codes supported by the platform.
  * BRL is the canonical base. Others are display currencies.
  */
-export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED";
+export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED" | "CHF" | "SGD";
 
 /**
  * ISO 639-1 language codes supported for platform content.
  */
-export type SupportedLanguage = "pt" | "en" | "ar";
+export type SupportedLanguage = "pt" | "en" | "ar" | "de";
+
+/**
+ * ISO 3166-1 alpha-2 codes for the 6 MVP destination countries (Stage 12).
+ * Used as the primary routing and pricing dimension in the country-first model.
+ */
+export type CountryCode = "US" | "CH" | "IE" | "DE" | "IS" | "SG";
 
 // =============================================================================
 // Auth / Profile

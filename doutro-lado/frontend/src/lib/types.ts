@@ -16,8 +16,8 @@ export type MediaType = "image" | "video";
 // i18n — re-exported for convenience (source of truth: @/lib/i18n)
 // =============================================================================
 
-export type { SupportedCurrency, SupportedLanguage, SupportedLocale } from "@/lib/i18n";
-import type { SupportedCurrency } from "@/lib/i18n";
+export type { CountryCode, SupportedCurrency, SupportedLanguage, SupportedLocale } from "@/lib/i18n";
+import type { CountryCode, SupportedCurrency } from "@/lib/i18n";
 
 // =============================================================================
 // Auth / Profile — mirror backend AuthProfile
@@ -391,6 +391,8 @@ export type AppliedOffer = {
 
 export type BagSimulationResult = {
   isValid: boolean;
+  /** Set when simulation used the country-first path (Stage 12). Null for legacy region calls. */
+  countryCode: string | null;
   region: Region;
   currency: SupportedCurrency;
   pricingVersion: string;
@@ -411,11 +413,50 @@ export type GiftKitCartItem = {
 };
 
 export type BagSimulateRequest = {
-  region: Region;
-  currency: SupportedCurrency;
+  /**
+   * Stage 12 — country-first path (preferred).
+   * When provided, overrides `region` for freight and pricing lookups.
+   * Must be a valid ISO 3166-1 alpha-2 code from the 6 MVP countries.
+   */
+  countryCode?: CountryCode;
+  /**
+   * Legacy region selector (Stage 3–11). Required when countryCode is absent.
+   */
+  region?: Region;
+  currency?: SupportedCurrency;
   items: (
     | { type: "product"; productSlug: string; quantity: number }
     | { type: "gift_kit"; kitId: string; quantity: number }
   )[];
   offerCode?: string;
+};
+
+// =============================================================================
+// Stage 12 — Country types
+// =============================================================================
+
+/** Shape returned by GET /api/countries. */
+export type SupportedCountry = {
+  code: CountryCode;
+  name: string;
+  regionGroup: string;
+  defaultCurrency: SupportedCurrency;
+  defaultLanguage: string;
+  isActive: boolean;
+  checkoutEnabled: boolean;
+  catalogEnabled: boolean;
+  displayPosition: number;
+};
+
+/** Shape returned by GET /api/countries/:code — includes commerce rule. */
+export type CountryDetail = SupportedCountry & {
+  commerceRule: {
+    pricingCurrency: SupportedCurrency;
+    taxPercent: number;
+    logisticsBRL: number;
+    marginPercent: number;
+    minimumOrderBrl: number;
+    estimatedDeliveryMinDays: number;
+    estimatedDeliveryMaxDays: number;
+  } | null;
 };

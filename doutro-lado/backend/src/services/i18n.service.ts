@@ -17,8 +17,8 @@ import { db } from "../lib/db.js";
 // Canonical types
 // =============================================================================
 
-export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED";
-export type SupportedLanguage = "pt" | "en" | "ar";
+export type SupportedCurrency = "BRL" | "USD" | "EUR" | "AED" | "CHF" | "SGD";
+export type SupportedLanguage = "pt" | "en" | "ar" | "de";
 
 export type CurrencyRecord = {
   code: SupportedCurrency;
@@ -41,6 +41,9 @@ export const SUPPORTED_CURRENCIES: CurrencyRecord[] = [
   { code: "USD", symbol: "$",   isActive: true },
   { code: "EUR", symbol: "€",   isActive: true },
   { code: "AED", symbol: "AED", isActive: true },
+  // Stage 12 — country-first MVP
+  { code: "CHF", symbol: "Fr.", isActive: true },
+  { code: "SGD", symbol: "S$",  isActive: true },
 ];
 
 export const SUPPORTED_LANGUAGES: LanguageRecord[] = [
@@ -62,14 +65,17 @@ export const STATIC_RATES: Record<SupportedCurrency, number> = {
   USD: 0.18,
   EUR: 0.17,
   AED: 0.67,
+  // Stage 12 — country-first MVP (indicative static rates; replace with live feed for production)
+  CHF: 0.16,
+  SGD: 0.24,
 };
 
 // =============================================================================
 // Guards
 // =============================================================================
 
-const CURRENCY_CODES = new Set<string>(["BRL", "USD", "EUR", "AED"]);
-const LANGUAGE_CODES = new Set<string>(["pt", "en", "ar"]);
+const CURRENCY_CODES = new Set<string>(["BRL", "USD", "EUR", "AED", "CHF", "SGD"]);
+const LANGUAGE_CODES = new Set<string>(["pt", "en", "ar", "de"]);
 
 export function isSupportedCurrency(code: string): code is SupportedCurrency {
   return CURRENCY_CODES.has(code);

@@ -48,6 +48,7 @@ import { listUsers } from "../domains/users/users.controller.js";
 import { requireAuth, requireAnyRole, requireRole } from "../middlewares/auth.js";
 import { authRateLimit, checkoutRateLimit } from "../middlewares/rate-limit.js";
 import { getCurrencies, getLanguages, getRates } from "../domains/i18n/i18n.controller.js";
+import { getCountryHandler, listCountriesHandler } from "../domains/countries/countries.controller.js";
 import { db } from "../lib/db.js";
 
 export const router = Router();
@@ -95,6 +96,13 @@ router.get("/freight/rates", getShippingRates);
 router.get("/i18n/currencies", getCurrencies);
 router.get("/i18n/languages", getLanguages);
 router.get("/i18n/rates", getRates);
+
+// ---------------------------------------------------------------------------
+// Countries — public (Stage 12, country-first MVP)
+// Used by checkout country selector and bag simulation.
+// ---------------------------------------------------------------------------
+router.get("/countries", listCountriesHandler);
+router.get("/countries/:code", getCountryHandler);
 
 // ---------------------------------------------------------------------------
 // Auth — session and profile (authenticated)

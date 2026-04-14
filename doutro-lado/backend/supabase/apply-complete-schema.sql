@@ -7,7 +7,7 @@
 --   4. Initialize Prisma migration history (_prisma_migrations)
 --
 -- Project ref: <set in Supabase dashboard — do not commit real ref here>
--- Last updated: 2026-04-11
+-- Last updated: 2026-04-13 (Stage 12 — country-first international MVP)
 -- =============================================================================
 
 -- =============================================================================
@@ -510,7 +510,9 @@ VALUES
   ('BRL', 'R$',  true),
   ('USD', '$',   true),
   ('EUR', '€',   true),
-  ('AED', 'AED', true)
+  ('AED', 'AED', true),
+  ('CHF', 'Fr.', true),
+  ('SGD', 'S$',  true)
 ON CONFLICT (code) DO UPDATE SET symbol = EXCLUDED.symbol, is_active = EXCLUDED.is_active;
 
 INSERT INTO languages (code, label, is_active)
@@ -525,7 +527,9 @@ VALUES
   ('BRL', 'BRL', 1.0,    'static'),
   ('BRL', 'USD', 0.18,   'static'),
   ('BRL', 'EUR', 0.17,   'static'),
-  ('BRL', 'AED', 0.67,   'static')
+  ('BRL', 'AED', 0.67,   'static'),
+  ('BRL', 'CHF', 0.16,   'static'),
+  ('BRL', 'SGD', 0.24,   'static')
 ON CONFLICT (from_currency, to_currency) DO UPDATE SET
   rate       = EXCLUDED.rate,
   source     = EXCLUDED.source,
@@ -554,6 +558,113 @@ VALUES
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
 -- =============================================================================
+-- STAGE 12 — Country-first international MVP
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS supported_countries (
+  code                VARCHAR(2)    PRIMARY KEY,
+  name                VARCHAR(100)  NOT NULL,
+  region_group        VARCHAR(50)   NOT NULL,
+  default_currency    VARCHAR(3)    NOT NULL,
+  default_language    VARCHAR(5)    NOT NULL DEFAULT 'en',
+  is_active           BOOLEAN       NOT NULL DEFAULT true,
+  checkout_enabled    BOOLEAN       NOT NULL DEFAULT true,
+  catalog_enabled     BOOLEAN       NOT NULL DEFAULT true,
+  display_position    INT           NOT NULL DEFAULT 0,
+  created_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS country_commerce_rules (
+  id                          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  country_code                VARCHAR(2)    NOT NULL REFERENCES supported_countries(code) ON DELETE CASCADE,
+  pricing_currency            VARCHAR(3)    NOT NULL,
+  tax_percent                 DECIMAL(6,3)  NOT NULL DEFAULT 0,
+  logistics_brl               DECIMAL(12,2) NOT NULL DEFAULT 0,
+  margin_percent              DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  minimum_order_brl           DECIMAL(12,2) NOT NULL DEFAULT 0,
+  allow_guest_checkout        BOOLEAN       NOT NULL DEFAULT true,
+  allow_discount_codes        BOOLEAN       NOT NULL DEFAULT true,
+  estimated_delivery_min_days INT           NOT NULL DEFAULT 5,
+  estimated_delivery_max_days INT           NOT NULL DEFAULT 10,
+  is_active                   BOOLEAN       NOT NULL DEFAULT true,
+  notes                       TEXT,
+  updated_at                  TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS country_commerce_rules_active_uq
+  ON country_commerce_rules (country_code)
+  WHERE is_active = true;
+
+CREATE TABLE IF NOT EXISTS country_shipping_rules (
+  id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  country_code    VARCHAR(2)    NOT NULL REFERENCES supported_countries(code) ON DELETE CASCADE,
+  weight_range    VARCHAR(20)   NOT NULL,
+  base_amount_brl DECIMAL(12,2) NOT NULL,
+  carrier_label   VARCHAR(100)  NOT NULL DEFAULT 'DHL Express',
+  sla_min_days    INT           NOT NULL DEFAULT 5,
+  sla_max_days    INT           NOT NULL DEFAULT 10,
+  is_active       BOOLEAN       NOT NULL DEFAULT true,
+  UNIQUE (country_code, weight_range)
+);
+
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS destination_country_code  VARCHAR(2),
+  ADD COLUMN IF NOT EXISTS destination_country_name  VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS destination_currency      VARCHAR(3),
+  ADD COLUMN IF NOT EXISTS exchange_rate_used        DECIMAL(10,6),
+  ADD COLUMN IF NOT EXISTS delivery_eta_min_days     INT,
+  ADD COLUMN IF NOT EXISTS delivery_eta_max_days     INT;
+
+-- Seeds
+INSERT INTO supported_countries
+  (code, name, region_group, default_currency, default_language, is_active, checkout_enabled, catalog_enabled, display_position)
+VALUES
+  ('US', 'United States', 'North America', 'USD', 'en', true, true, true, 1),
+  ('CH', 'Switzerland',   'Europe',        'CHF', 'en', true, true, true, 2),
+  ('IE', 'Ireland',       'Europe',        'EUR', 'en', true, true, true, 3),
+  ('DE', 'Germany',       'Europe',        'EUR', 'de', true, true, true, 4),
+  ('IS', 'Iceland',       'Europe',        'EUR', 'en', true, true, true, 5),
+  ('SG', 'Singapore',     'Asia Pacific',  'SGD', 'en', true, true, true, 6)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO country_commerce_rules
+  (country_code, pricing_currency, tax_percent, logistics_brl, margin_percent,
+   minimum_order_brl, allow_guest_checkout, allow_discount_codes,
+   estimated_delivery_min_days, estimated_delivery_max_days, is_active, notes)
+VALUES
+  ('US', 'USD', 0,    0,   0, 0,   true, true, 5,  10, true, 'Export — no US tax collected at origin'),
+  ('CH', 'CHF', 7.7,  80,  5, 500, true, true, 7,  12, true, 'Swiss VAT 7.7% + logistics surcharge'),
+  ('IE', 'EUR', 23,   60,  5, 400, true, true, 6,  10, true, 'Irish VAT 23%'),
+  ('DE', 'EUR', 19,   60,  5, 400, true, true, 6,  10, true, 'German VAT 19%'),
+  ('IS', 'EUR', 24,   120, 8, 600, true, true, 8,  14, true, 'Iceland — EUR pricing, VAT 24% included in price'),
+  ('SG', 'SGD', 9,    100, 5, 400, true, true, 7,  12, true, 'Singapore GST 9%')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO country_shipping_rules
+  (country_code, weight_range, base_amount_brl, carrier_label, sla_min_days, sla_max_days, is_active)
+VALUES
+  ('US','100g-1kg',180,'DHL Express',5,10,true),('US','1-3kg',320,'DHL Express',5,10,true),
+  ('US','3-5kg',480,'DHL Express',5,10,true),('US','5-10kg',720,'DHL Express',5,10,true),
+  ('US','10-15kg',960,'DHL Express',5,10,true),('US','15-20kg',1200,'DHL Express',5,10,true),
+  ('CH','100g-1kg',220,'DHL Express',7,12,true),('CH','1-3kg',380,'DHL Express',7,12,true),
+  ('CH','3-5kg',560,'DHL Express',7,12,true),('CH','5-10kg',820,'DHL Express',7,12,true),
+  ('CH','10-15kg',1080,'DHL Express',7,12,true),('CH','15-20kg',1340,'DHL Express',7,12,true),
+  ('IE','100g-1kg',200,'DHL Express',6,10,true),('IE','1-3kg',350,'DHL Express',6,10,true),
+  ('IE','3-5kg',520,'DHL Express',6,10,true),('IE','5-10kg',780,'DHL Express',6,10,true),
+  ('IE','10-15kg',1020,'DHL Express',6,10,true),('IE','15-20kg',1280,'DHL Express',6,10,true),
+  ('DE','100g-1kg',200,'DHL Express',6,10,true),('DE','1-3kg',350,'DHL Express',6,10,true),
+  ('DE','3-5kg',520,'DHL Express',6,10,true),('DE','5-10kg',780,'DHL Express',6,10,true),
+  ('DE','10-15kg',1020,'DHL Express',6,10,true),('DE','15-20kg',1280,'DHL Express',6,10,true),
+  ('IS','100g-1kg',280,'DHL Express',8,14,true),('IS','1-3kg',460,'DHL Express',8,14,true),
+  ('IS','3-5kg',660,'DHL Express',8,14,true),('IS','5-10kg',940,'DHL Express',8,14,true),
+  ('IS','10-15kg',1220,'DHL Express',8,14,true),('IS','15-20kg',1500,'DHL Express',8,14,true),
+  ('SG','100g-1kg',240,'DHL Express',7,12,true),('SG','1-3kg',400,'DHL Express',7,12,true),
+  ('SG','3-5kg',590,'DHL Express',7,12,true),('SG','5-10kg',860,'DHL Express',7,12,true),
+  ('SG','10-15kg',1120,'DHL Express',7,12,true),('SG','15-20kg',1380,'DHL Express',7,12,true)
+ON CONFLICT (country_code, weight_range) DO NOTHING;
+
+-- =============================================================================
 -- PRISMA MIGRATION HISTORY — Initialize tracking
 -- This lets "npx prisma migrate status" work correctly after this script runs.
 -- =============================================================================
@@ -579,7 +690,8 @@ VALUES
   (gen_random_uuid()::text, 'bootstrapped', now(), '20260406000003_stage6_gift_kits',       1),
   (gen_random_uuid()::text, 'bootstrapped', now(), '20260406000004_stage7_stripe',          1),
   (gen_random_uuid()::text, 'bootstrapped', now(), '20260406000005_stage9_i18n',            1),
-  (gen_random_uuid()::text, 'bootstrapped', now(), '20260406000006_stage11_pricing',        1)
+  (gen_random_uuid()::text, 'bootstrapped', now(), '20260406000006_stage11_pricing',        1),
+  (gen_random_uuid()::text, 'bootstrapped', now(), '20260413000007_stage12_country_first',  1)
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================================================
@@ -598,6 +710,7 @@ FROM (VALUES
   ('payment_records'), ('fiscal_records'), ('banners'), ('sliders'),
   ('site_settings'), ('recommendation_events'), ('admin_logs'),
   ('bag_pricing_rules'), ('bag_recovery_offers'), ('bag_abandonment_events'),
+  ('supported_countries'), ('country_commerce_rules'), ('country_shipping_rules'),
   ('_prisma_migrations')
 ) t(expected_table)
 LEFT JOIN information_schema.tables it

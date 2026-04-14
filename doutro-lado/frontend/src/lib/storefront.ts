@@ -8,6 +8,8 @@ import type {
   Brand,
   Campaign,
   Cart,
+  CountryCode,
+  CountryDetail,
   CreateGiftKitPayload,
   FreightRate,
   FreightQuote,
@@ -15,6 +17,7 @@ import type {
   PackagingOption,
   Product,
   Region,
+  SupportedCountry,
   WeightRange,
 } from "@/lib/types";
 
@@ -205,6 +208,28 @@ export async function simulateBag(
     token,
     revalidate: 0,
   });
+}
+
+// =============================================================================
+// Countries — Stage 12 (country-first MVP)
+// =============================================================================
+
+/**
+ * Fetch all active countries from the backend.
+ * Returns the 6 MVP countries ordered by display_position.
+ * Falls back to an empty array if the backend is unreachable.
+ */
+export async function getActiveCountries(): Promise<SupportedCountry[]> {
+  return (await fetchApiData<SupportedCountry[]>("/countries", { revalidate: 300 })) ?? [];
+}
+
+/**
+ * Fetch a single country with its active commerce rule.
+ * code is case-insensitive.
+ * Returns null if the country is not found or the backend is unreachable.
+ */
+export async function getCountryDetail(code: CountryCode): Promise<CountryDetail | null> {
+  return fetchApiData<CountryDetail>(`/countries/${code}`, { revalidate: 300 });
 }
 
 /**

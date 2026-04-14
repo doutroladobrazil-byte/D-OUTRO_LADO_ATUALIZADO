@@ -89,6 +89,11 @@ export type AppliedOffer = {
 export type BagSimulationResult = {
   /** false if any blockingIssues exist — frontend must not proceed to checkout. */
   isValid: boolean;
+  /**
+   * Destination country code (ISO 3166-1 alpha-2) — set when the simulation
+   * was routed via the country-first path (Stage 12). Null for legacy region calls.
+   */
+  countryCode: string | null;
   region: Region;
   currency: SupportedCurrency;
   /**
@@ -112,7 +117,7 @@ export type BagSimulationResult = {
 };
 
 // =============================================================================
-// Pricing rule — loaded from bag_pricing_rules table
+// Pricing rule — loaded from bag_pricing_rules table (legacy region-based)
 // =============================================================================
 
 export type BagPricingRule = {
@@ -124,4 +129,39 @@ export type BagPricingRule = {
   /** Margin percentage applied on top of (subtotal + freight + tax + logistics). Default: 0. */
   marginPercent: number;
   isActive: boolean;
+};
+
+// =============================================================================
+// Country-first pricing rule — Stage 12 (loaded from country_commerce_rules)
+// =============================================================================
+
+export type CountryPricingRule = {
+  countryCode: string;
+  pricingCurrency: SupportedCurrency;
+  /** Tax percentage applied to subtotal (e.g. 7.7 for Swiss VAT). */
+  taxPercent: number;
+  /** Flat BRL logistics surcharge per order. */
+  logisticsBRL: number;
+  /** Percentage margin on top of (subtotal + freight + tax + logistics). */
+  marginPercent: number;
+  minimumOrderBrl: number;
+  allowGuestCheckout: boolean;
+  allowDiscountCodes: boolean;
+  estimatedDeliveryMinDays: number;
+  estimatedDeliveryMaxDays: number;
+  isActive: boolean;
+  notes: string | null;
+};
+
+// =============================================================================
+// Country shipping quote — Stage 12 (from country_shipping_rules)
+// =============================================================================
+
+export type CountryShippingQuote = {
+  countryCode: string;
+  weightRange: WeightRange;
+  amountBRL: number;
+  carrierLabel: string;
+  slaMinDays: number;
+  slaMaxDays: number;
 };
