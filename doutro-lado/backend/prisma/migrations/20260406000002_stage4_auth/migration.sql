@@ -1,21 +1,27 @@
 -- Stage 4: auth foundation
--- Adds performance index on profiles.auth_user_id and a Supabase trigger
--- that auto-creates a profile row whenever a new user signs up.
+-- Adds performance index on profiles.auth_user_id and the profile-creation
+-- function used by the backend getOrCreateProfile service.
+--
+-- NOTE: The Supabase trigger (on auth.users INSERT) was intentionally removed
+-- from this migration. It lived in apply-complete-schema.sql for Supabase
+-- deployments only. On Neon / plain Postgres, profile creation is handled
+-- in application code (auth.controller → getOrCreateProfile).
 
 -- =============================================================================
--- Index: fast lookup of profile by Supabase auth user UUID
--- (Covered by the UNIQUE constraint in most setups, but made explicit here
---  because the column is nullable and the unique index only covers non-null values.)
+-- Index: fast lookup of profile by auth user UUID
+-- (The UNIQUE constraint already covers non-null values; this partial index
+--  makes the lookup explicit and efficient when auth_user_id IS NOT NULL.)
 -- =============================================================================
 CREATE INDEX IF NOT EXISTS profiles_auth_user_id_idx
   ON profiles (auth_user_id)
   WHERE auth_user_id IS NOT NULL;
 
 -- =============================================================================
--- Trigger: auto-create profile on Supabase Auth user creation
--- Fires after INSERT on auth.users (managed by Supabase Auth).
--- The ON CONFLICT clause makes this safe to re-run or call from the backend
--- getOrCreateProfile service concurrently.
+-- Function: upsert a profile row for a given auth user.
+-- Called from the backend after JWT validation (getOrCreateProfile).
+-- Safe to call multiple times — ON CONFLICT DO NOTHING is idempotent.
+-- On Supabase: this function is also wired up as an auth trigger.
+-- On Neon/plain Postgres: called explicitly from application code.
 -- =============================================================================
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS TRIGGER
@@ -36,11 +42,3 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
--- Drop and recreate to keep the trigger definition current.
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_auth_user();
