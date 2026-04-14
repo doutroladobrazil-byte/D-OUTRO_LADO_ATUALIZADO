@@ -82,6 +82,7 @@ export const COUNTRY_DEFAULT_CURRENCY: Record<CountryCode, SupportedCurrency> = 
 export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   pt: "Português",
   en: "English",
+  de: "Deutsch",
   ar: "العربية",
 };
 
