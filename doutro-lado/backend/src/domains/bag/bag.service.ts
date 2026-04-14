@@ -365,8 +365,19 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   }
 
   // ── Country availability check (Stage 13) ───────────────────────────────
+  // Block gift kit items in country-first path: kit component products are not
+  // individually validated against product_country_availability, so kits are
+  // explicitly disallowed when countryCode is provided to prevent silent bypass.
+  if (countryCode) {
+    const hasKitItems = simulatedItems.some((i) => i.type === "gift_kit");
+    if (hasKitItems) {
+      blockingIssues.push(
+        "Gift kits não estão disponíveis para envio internacional no momento. Adicione os produtos individualmente."
+      );
+    }
+  }
+
   // Validate each product item against product_country_availability.
-  // Kit items are not individually validated here (noted as known limitation).
   if (countryCode && simulatedItems.length > 0) {
     const productItemsWithIds = simulatedItems
       .filter((i): i is BagSimulatedItem => i.type === "product")

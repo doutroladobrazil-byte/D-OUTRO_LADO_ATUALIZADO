@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { useLocale } from "@/contexts/LocaleContext";
 import { COUNTRY_DEFAULT_CURRENCY } from "@/lib/i18n";
+import { useCountryPreference } from "@/hooks/useCountryPreference";
 
 type Props = { brand: Brand };
 
@@ -39,6 +40,8 @@ export function BrandCheckoutView({ brand }: Props) {
   const setCart = useCartStore((s) => s.setCart);
   const cart = getCart(brand);
   const kitItems = getKitItems(brand);
+
+  const { setCountryCode: persistCountryCode } = useCountryPreference();
 
   const [countries, setCountries] = useState<SupportedCountry[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<CountryCode | "">("");
@@ -70,11 +73,12 @@ export function BrandCheckoutView({ brand }: Props) {
     hydrate();
   }, [brand]);
 
-  // Auto-switch display currency when country changes.
+  // Auto-switch display currency and persist country preference when country changes.
   useEffect(() => {
     if (selectedCountry) {
       const countryCurrency = COUNTRY_DEFAULT_CURRENCY[selectedCountry as CountryCode];
       if (countryCurrency) setCurrency(countryCurrency);
+      persistCountryCode(selectedCountry as CountryCode);
     }
   }, [selectedCountry]);
 

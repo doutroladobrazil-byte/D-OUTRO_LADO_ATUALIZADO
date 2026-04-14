@@ -148,6 +148,15 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     });
   }
 
+  // ── Block kit items in country-first path (Stage 13) ──────────────────
+  // Kit component products are not individually validated against
+  // product_country_availability. Reject explicitly to prevent silent bypass.
+  if (parsed.countryCode && kitLineItems.length > 0) {
+    throw new Error(
+      "Gift kits are not available for international shipping. Please add products individually."
+    );
+  }
+
   const allItems = [...normalizedItems, ...kitLineItems];
 
   ensureSingleBrandOrder(parsed.brand, allItems.map((i) => i.brand));

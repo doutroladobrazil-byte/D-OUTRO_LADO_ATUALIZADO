@@ -21,8 +21,9 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const resolvedSearchParams = await searchParams;
   const category = typeof resolvedSearchParams.category === "string" ? resolvedSearchParams.category : undefined;
   const sort = typeof resolvedSearchParams.sort === "string" ? resolvedSearchParams.sort : undefined;
+  const countryCode = typeof resolvedSearchParams.cc === "string" ? resolvedSearchParams.cc.toUpperCase() : undefined;
 
-  const products = await getProducts({ brand: "moda", category, sort });
+  const products = await getProducts({ brand: "moda", category, sort, countryCode });
 
   return (
     <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">

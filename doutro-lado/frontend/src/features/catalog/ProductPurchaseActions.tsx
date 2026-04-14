@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCartStore } from "@/lib/cart-store";
 import { createClient } from "@/lib/supabase/client";
 import { syncCartItemToBackend } from "@/lib/storefront";
+import { useCountryPreference } from "@/hooks/useCountryPreference";
 import type { Brand, WeightRange } from "@/lib/types";
 
 type ProductForCart = {
@@ -46,6 +48,24 @@ export function ProductPurchaseActions({
   const addItem = useCartStore((s) => s.addItem);
   const setCart = useCartStore((s) => s.setCart);
   const router = useRouter();
+  const { countryCode } = useCountryPreference();
+  const [availableForCountry, setAvailableForCountry] = useState<boolean | null>(null);
+
+  // Check availability client-side when a country preference is stored.
+  useEffect(() => {
+    if (!countryCode) {
+      setAvailableForCountry(null);
+      return;
+    }
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+    fetch(`${base}/products/${product.slug}?countryCode=${countryCode}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const avail = j?.data?.availableForCountry;
+        setAvailableForCountry(typeof avail === "boolean" ? avail : null);
+      })
+      .catch(() => setAvailableForCountry(null));
+  }, [countryCode, product.slug]);
 
   function buildCartItem() {
     return {
@@ -87,23 +107,34 @@ export function ProductPurchaseActions({
     router.push(checkoutHref);
   }
 
+  const unavailable = availableForCountry === false;
+
   return (
-    <div className="grid gap-3 md:grid-cols-3">
-      <button
-        onClick={handleAddToCart}
-        className="rounded-full border border-gold bg-gold px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5"
-      >
-        Adicionar ao carrinho
-      </button>
-      <button
-        onClick={handleBuyNow}
-        className="rounded-full border border-black/10 bg-black/5 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/10"
-      >
-        Comprar agora
-      </button>
-      <button className="rounded-full border border-black/10 bg-transparent px-5 py-4 text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/5">
-        Favoritar
-      </button>
+    <div className="space-y-3">
+      {unavailable && (
+        <div className="rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+          Este produto não está disponível para entrega no país selecionado.
+        </div>
+      )}
+      <div className="grid gap-3 md:grid-cols-3">
+        <button
+          onClick={handleAddToCart}
+          disabled={unavailable}
+          className="rounded-full border border-gold bg-gold px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        >
+          Adicionar ao carrinho
+        </button>
+        <button
+          onClick={handleBuyNow}
+          disabled={unavailable}
+          className="rounded-full border border-black/10 bg-black/5 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        >
+          Comprar agora
+        </button>
+        <button className="rounded-full border border-black/10 bg-transparent px-5 py-4 text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/5">
+          Favoritar
+        </button>
+      </div>
     </div>
   );
 }
