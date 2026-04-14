@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchAdminOrderDetail } from "@/lib/admin-api";
 import {
   AdminPageHeader,
@@ -24,9 +24,7 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const token = await requireAdminToken();
   const order = await fetchAdminOrderDetail(token, id);
 
   if (!order) notFound();

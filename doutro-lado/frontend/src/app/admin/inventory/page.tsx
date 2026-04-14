@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchAdminStock } from "@/lib/admin-api";
 import type { StockOverview } from "@/lib/admin-api";
 import {
@@ -18,9 +18,7 @@ export const metadata: Metadata = { title: "Estoque — D'OUTRO LADO Admin" };
 type StockItem = StockOverview["items"][number];
 
 export default async function AdminInventoryPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const token = await requireAdminToken();
   const overview = await fetchAdminStock(token);
 
   // Sort: critical first, then by stock asc

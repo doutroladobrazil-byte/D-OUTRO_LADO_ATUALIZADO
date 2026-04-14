@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchAdminProducts } from "@/lib/admin-api";
 import {
   AdminPageHeader,
@@ -12,9 +12,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Produtos — D'OUTRO LADO Admin" };
 
 export default async function AdminProductsPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const token = await requireAdminToken();
   const products = (await fetchAdminProducts(token)) ?? [];
 
   const active = products.filter((p) => p.isActive).length;

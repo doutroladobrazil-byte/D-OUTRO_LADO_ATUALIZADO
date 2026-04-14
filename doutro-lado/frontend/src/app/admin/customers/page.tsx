@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchAdminCustomers } from "@/lib/admin-api";
 import type { AdminCustomer } from "@/lib/admin-api";
 import {
@@ -13,9 +13,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Usuários — D'OUTRO LADO Admin" };
 
 export default async function AdminCustomersPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const token = await requireAdminToken();
   const customers = (await fetchAdminCustomers(token)) ?? [];
 
   const roleCount = (role: string) => customers.filter((c) => c.role === role).length;

@@ -31,6 +31,18 @@ type ProfileRow = {
   is_active: boolean;
 };
 
+/**
+ * fetchProfileByAuthUserId — legitimate server-to-server use of service role.
+ *
+ * This function is called ONLY after supabase.auth.getUser() has already
+ * validated the user's JWT. The service role key is used here exclusively to
+ * read the user's own profile from the database (bypassing RLS is necessary
+ * because the profile lookup must resolve role before a user session is
+ * established). It is NEVER used as a substitute for a user session token.
+ *
+ * Do NOT replicate this pattern in page components — use requireAdminToken()
+ * from @/lib/admin-server-auth instead.
+ */
 async function fetchProfileByAuthUserId(authUserId: string): Promise<ProfileRow | null> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";

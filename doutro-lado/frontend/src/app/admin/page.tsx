@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import {
   fetchAdminOverview,
   fetchAdminOrders,
@@ -17,9 +17,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Dashboard — D'OUTRO LADO Admin" };
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const token = await requireAdminToken();
 
   const [overview, orders] = await Promise.all([
     fetchAdminOverview(token),

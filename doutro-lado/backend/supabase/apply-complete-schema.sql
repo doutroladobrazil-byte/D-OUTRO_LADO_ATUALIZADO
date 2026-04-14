@@ -6,7 +6,7 @@
 --   3. Seed reference data
 --   4. Initialize Prisma migration history (_prisma_migrations)
 --
--- Project ref: oazybcxrzxpvpavporrm
+-- Project ref: <set in Supabase dashboard — do not commit real ref here>
 -- Last updated: 2026-04-11
 -- =============================================================================
 

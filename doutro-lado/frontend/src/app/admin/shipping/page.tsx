@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchApiData } from "@/lib/api";
 import {
   AdminPageHeader,
@@ -12,9 +12,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Logística — D'OUTRO LADO Admin" };
 
 export default async function AdminShippingPage() {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const token = await requireAdminToken();
 
   const rates = (await fetchApiData<FreightRate[]>("/freight/rates", {
     token,

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchAdminProductById } from "@/lib/admin-api";
 import { AdminPageHeader } from "@/features/admin/AdminComponents";
 import { ProductForm } from "@/features/admin/ProductForm";
@@ -15,10 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EditProductPage({ params }: Props) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-
+  const token = await requireAdminToken();
   const product = await fetchAdminProductById(token, id);
   if (!product) notFound();
 
