@@ -104,10 +104,16 @@ export type ListProductsOptions = {
   search?: string;
   category?: string;
   sort?: "price_asc" | "price_desc" | "newest";
+  /**
+   * Stage 13 — when provided, only products available in this country are returned.
+   * Uses an INNER JOIN on product_country_availability (is_active = true).
+   * When absent, no availability filter is applied (backward-compatible).
+   */
+  countryCode?: string;
 };
 
 export async function listProducts(options: ListProductsOptions = {}): Promise<Product[]> {
-  const { brand, search, category, sort } = options;
+  const { brand, search, category, sort, countryCode } = options;
 
   // D'OUTRO LADO opera moda-only. "moda" e o brand efetivo por padrao.
   // Produtos de outras brands no banco nao sao expostos publicamente por omissao.
@@ -123,6 +129,14 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
+    ${
+      countryCode
+        ? db`INNER JOIN product_country_availability pca
+               ON pca.product_id = p.id
+              AND pca.country_code = ${countryCode.toUpperCase()}
+              AND pca.is_active = true`
+        : db``
+    }
     WHERE p.is_active = true
       AND p.brand = ${effectiveBrand}
       ${category ? db`AND c.name ILIKE ${category}` : db``}
@@ -140,8 +154,12 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
 /**
  * Single product — includes full media (images + videos) ordered by primary, then position.
  * Uses product_media + media_assets (Stage 2). Falls back gracefully if no media exists.
+ *
+ * Stage 13: pass countryCode to include availableForCountry in the returned product.
+ * When countryCode is provided, availableForCountry reflects the DB availability flag.
+ * When absent, availableForCountry is undefined (no filter applied).
  */
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(slug: string, countryCode?: string): Promise<Product | null> {
   // 1. Fetch the product row — restrito a brand=moda para nao expor produtos casa publicamente
   const productRows = await db`
     SELECT ${db.unsafe(PRODUCT_SELECT)}
@@ -188,6 +206,23 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   `;
 
   product.media = mediaRows.map(mapProductMedia);
+
+  // Stage 13 — availability check
+  if (countryCode) {
+    try {
+      const availRows = await db`
+        SELECT is_active
+        FROM product_country_availability
+        WHERE product_id = ${product.id}
+          AND country_code = ${countryCode.toUpperCase()}
+        LIMIT 1
+      `;
+      product.availableForCountry = availRows.length > 0 ? (availRows[0].is_active as boolean) : false;
+    } catch {
+      // Table not yet migrated — treat as available
+      product.availableForCountry = true;
+    }
+  }
 
   return product;
 }

@@ -7,12 +7,14 @@ import {
   getAdminOverview,
   getAdminOrderDetailHandler,
   getAdminProductByIdHandler,
+  getProductAvailabilityHandler,
   getStockOverviewHandler,
   listAdminCategoriesHandler,
   listAdminCustomersHandler,
   listAdminProductsHandler,
   patchAdminOrderHandler,
   patchAdminProductHandler,
+  patchProductAvailabilityHandler,
 } from "../domains/admin/admin.controller.js";
 import { getCart, putCartItem, removeCartItem } from "../domains/cart/cart.controller.js";
 import { getCampaigns } from "../domains/campaigns/campaigns.controller.js";
@@ -165,6 +167,12 @@ router.get("/admin/stock", requireAuth, requireRole("admin"), getStockOverviewHa
 router.get("/users", requireAuth, requireRole("admin"), listUsers);
 router.get("/content", requireAuth, requireRole("admin"), listContentBlocks);
 router.get("/fiscal/status", requireAuth, requireRole("admin"), listFiscalStatuses);
+
+// ---------------------------------------------------------------------------
+// Admin — product country availability (Stage 13)
+// ---------------------------------------------------------------------------
+router.get("/admin/products/:id/availability", requireAuth, requireRole("admin"), getProductAvailabilityHandler);
+router.patch("/admin/products/:id/availability", requireAuth, requireRole("admin"), patchProductAvailabilityHandler);
 
 // ---------------------------------------------------------------------------
 // Admin — media system (Stage 2)

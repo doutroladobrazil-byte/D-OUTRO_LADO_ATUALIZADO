@@ -4,6 +4,7 @@ import { fetchAdminProductById } from "@/lib/admin-api";
 import { AdminPageHeader } from "@/features/admin/AdminComponents";
 import { ProductForm } from "@/features/admin/ProductForm";
 import { ProductMediaManager } from "@/features/admin/ProductMediaManager";
+import { ProductCountryAvailability } from "@/features/admin/ProductCountryAvailability";
 import type { Metadata } from "next";
 
 type Props = { params: Promise<{ id: string }> };
@@ -39,6 +40,14 @@ export default async function EditProductPage({ params }: Props) {
       {/* Media manager */}
       <div className="max-w-4xl">
         <ProductMediaManager productId={product.id} productBrand={product.brand} />
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-white/5" />
+
+      {/* Country availability — Stage 13 */}
+      <div className="max-w-4xl">
+        <ProductCountryAvailability productId={product.id} token={token} />
       </div>
     </div>
   );

@@ -7,12 +7,14 @@ import {
   deleteAdminProduct,
   getAdminOrderDetail,
   getAdminProductById,
+  getAdminProductAvailability,
   getStockOverview,
   listAdminCategories,
   listAdminCustomers,
   listAdminProducts,
   patchAdminOrder,
   patchAdminProduct,
+  patchAdminProductAvailability,
   patchOrderStatusSchema,
   patchProductSchema,
 } from "./admin-crud.service.js";
@@ -164,4 +166,28 @@ export async function listAdminCategoriesHandler(req: Request, res: Response) {
 export async function getStockOverviewHandler(_req: Request, res: Response) {
   const overview = await getStockOverview();
   return ok(res, overview);
+}
+
+// =============================================================================
+// Product country availability — Stage 13
+// =============================================================================
+
+export async function getProductAvailabilityHandler(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const map = await getAdminProductAvailability(id);
+    return ok(res, map);
+  } catch (error) {
+    return fail(res, error instanceof Error ? error.message : "Unable to fetch availability", 400);
+  }
+}
+
+export async function patchProductAvailabilityHandler(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const map = await patchAdminProductAvailability(id, req.body);
+    return ok(res, map);
+  } catch (error) {
+    return fail(res, error instanceof Error ? error.message : "Unable to update availability", 400);
+  }
 }

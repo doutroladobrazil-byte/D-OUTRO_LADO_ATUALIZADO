@@ -10,6 +10,7 @@ import {
   loadCountryCommerceRule,
   quoteFreightByCountry,
 } from "../countries/countries.service.js";
+import { getUnavailableProductIds } from "../countries/availability.service.js";
 import type {
   AppliedOffer,
   BagPricingRule,
@@ -361,6 +362,34 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
 
   if (simulatedItems.length === 0) {
     blockingIssues.push("A bag não contém itens válidos.");
+  }
+
+  // ── Country availability check (Stage 13) ───────────────────────────────
+  // Validate each product item against product_country_availability.
+  // Kit items are not individually validated here (noted as known limitation).
+  if (countryCode && simulatedItems.length > 0) {
+    const productItemsWithIds = simulatedItems
+      .filter((i): i is BagSimulatedItem => i.type === "product")
+      .map((i) => ({
+        item: i,
+        productId: products.find((p) => p.slug === i.productSlug)?.id,
+      }))
+      .filter((x): x is { item: BagSimulatedItem; productId: string } => Boolean(x.productId));
+
+    if (productItemsWithIds.length > 0) {
+      const unavailableIds = await getUnavailableProductIds(
+        productItemsWithIds.map((x) => x.productId),
+        countryCode
+      );
+      for (const { item } of productItemsWithIds) {
+        const productId = products.find((p) => p.slug === item.productSlug)?.id;
+        if (productId && unavailableIds.has(productId)) {
+          blockingIssues.push(
+            `"${item.productName}" não está disponível para o destino selecionado.`
+          );
+        }
+      }
+    }
   }
 
   if (blockingIssues.length > 0) {

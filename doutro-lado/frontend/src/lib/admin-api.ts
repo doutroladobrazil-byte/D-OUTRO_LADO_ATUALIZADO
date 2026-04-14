@@ -8,6 +8,7 @@ import type {
   AdminOrderRow,
   AdminOverview,
   Brand,
+  ProductAvailabilityMap,
   ProductMedia,
 } from "@/lib/types";
 
@@ -179,6 +180,14 @@ export async function fetchAdminCategories(token: string, brand: Brand = "moda")
   return fetchApiData<AdminCategory[]>(`/admin/categories?brand=${brand}`, { token, revalidate: 300 });
 }
 
+/** Stage 13 — fetch country availability map for a product (server-side). */
+export async function fetchProductAvailability(token: string, productId: string) {
+  return fetchApiData<ProductAvailabilityMap>(
+    `/admin/products/${productId}/availability`,
+    { token, revalidate: 0 }
+  );
+}
+
 // =============================================================================
 // Client-side mutation helpers
 // These call fetch() from the browser with the Bearer token.
@@ -303,5 +312,24 @@ export const adminApi = {
   /** List categories for a brand (client-side). */
   listCategories(token: string, brand = "moda") {
     return callApi<AdminCategory[]>(`/admin/categories?brand=${brand}`, "GET", token);
+  },
+
+  /** Stage 13 — get country availability map for a product (client-side). */
+  getProductAvailability(token: string, productId: string) {
+    return callApi<ProductAvailabilityMap>(
+      `/admin/products/${productId}/availability`,
+      "GET",
+      token
+    );
+  },
+
+  /** Stage 13 — update country availability flags for a product. */
+  patchProductAvailability(token: string, productId: string, updates: ProductAvailabilityMap) {
+    return callApi<ProductAvailabilityMap>(
+      `/admin/products/${productId}/availability`,
+      "PATCH",
+      token,
+      updates
+    );
   },
 };

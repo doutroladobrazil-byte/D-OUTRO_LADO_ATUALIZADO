@@ -5,6 +5,12 @@
 export type Brand = "casa" | "moda";
 export type Role = "customer" | "wholesale" | "admin";
 export type Region = "North America" | "Europe" | "Middle East";
+/**
+ * Operational region — a superset of the legacy Region enum.
+ * "Asia Pacific" was added in Stage 13 (country-first) to cover SG.
+ * Use this type anywhere that can receive a regionGroup from supported_countries.
+ */
+export type OperationalRegion = Region | "Asia Pacific";
 export type WeightRange = "100g-1kg" | "1-3kg" | "3-5kg" | "5-10kg" | "10-15kg" | "15-20kg";
 export type PricingTier = "retail" | "wholesale";
 export type OrderStatus = "created" | "processing" | "packing" | "shipped" | "delivered" | "cancelled";
@@ -174,6 +180,13 @@ export type Product = {
 
   /** @deprecated use media instead */
   images?: ProductImage[];
+
+  /**
+   * Stage 13 — country availability flag.
+   * Set to false when the product is not available in the requested countryCode.
+   * Undefined when no countryCode filter was applied.
+   */
+  availableForCountry?: boolean;
 };
 
 export type Campaign = {
@@ -195,9 +208,11 @@ export type FreightRate = {
 /**
  * Typed snapshot of a freight quote — persisted in order records.
  * Created by quoteFreight() and stored in BuiltOrder.
+ * region uses OperationalRegion so the country-first path (which derives
+ * region from supported_countries.region_group) can include "Asia Pacific".
  */
 export type FreightQuote = {
-  region: Region;
+  region: OperationalRegion;
   weightRange: WeightRange;
   amountBRL: number;
 };
@@ -227,7 +242,8 @@ export type BuiltOrder = {
   publicId: string;
   brand: Brand;
   currency: string;
-  region: Region;
+  /** Operational region — uses OperationalRegion to include "Asia Pacific" for SG. */
+  region: OperationalRegion;
   pricingTier: PricingTier;
   items: BuiltOrderItem[];
   subtotalBRL: number;

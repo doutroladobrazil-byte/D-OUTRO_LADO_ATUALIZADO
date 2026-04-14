@@ -3,6 +3,11 @@ import { db } from "../../lib/db.js";
 import type { Brand } from "../../types/domain.js";
 import { WEIGHT_RANGES } from "../../config/constants.js";
 import type { WeightRange } from "../../types/domain.js";
+import {
+  getProductAvailabilityMap,
+  setProductAvailabilities,
+  type ProductAvailabilityMap,
+} from "../countries/availability.service.js";
 
 // =============================================================================
 // Input schemas
@@ -467,6 +472,41 @@ export async function listAdminCategories(brand: Brand) {
         slug: s.slug as string,
       })),
   }));
+}
+
+// =============================================================================
+// Product country availability — Stage 13
+// =============================================================================
+
+/**
+ * Returns the availability map for a product (admin view).
+ * Shows all 6 MVP countries with their current is_active flag.
+ */
+export async function getAdminProductAvailability(
+  productId: string
+): Promise<ProductAvailabilityMap> {
+  return getProductAvailabilityMap(productId);
+}
+
+export const updateAvailabilitySchema = z.record(
+  z.string().length(2),
+  z.boolean()
+);
+export type UpdateAvailabilityInput = z.infer<typeof updateAvailabilitySchema>;
+
+/**
+ * Batch-update country availability flags for a product.
+ * Only accepts valid 2-letter country codes; unknown codes are ignored.
+ */
+export async function patchAdminProductAvailability(
+  productId: string,
+  input: unknown
+): Promise<ProductAvailabilityMap> {
+  const parsed = updateAvailabilitySchema.parse(input);
+  // Verify product exists first
+  const [exists] = await db`SELECT id FROM products WHERE id = ${productId} LIMIT 1`;
+  if (!exists) throw new Error(`Product not found: ${productId}`);
+  return setProductAvailabilities(productId, parsed);
 }
 
 // =============================================================================

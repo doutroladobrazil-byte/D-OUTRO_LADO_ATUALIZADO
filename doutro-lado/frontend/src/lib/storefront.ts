@@ -41,6 +41,11 @@ export type GetProductsOptions = {
   category?: string;
   search?: string;
   sort?: string;
+  /**
+   * Stage 13 — when provided, only products available in this country are returned.
+   * Passed as ?countryCode=CH to the backend (INNER JOIN on product_country_availability).
+   */
+  countryCode?: string;
 };
 
 export async function getProducts(options?: Brand | GetProductsOptions) {
@@ -55,6 +60,7 @@ export async function getProducts(options?: Brand | GetProductsOptions) {
   if (opts.category) params.set("category", opts.category);
   if (opts.search) params.set("search", opts.search);
   if (opts.sort) params.set("sort", opts.sort);
+  if (opts.countryCode) params.set("countryCode", opts.countryCode.toUpperCase());
 
   // Public catalog reads from the real backend only.
   // Returns an empty array when the API is unreachable rather than showing
@@ -62,8 +68,13 @@ export async function getProducts(options?: Brand | GetProductsOptions) {
   return (await fetchApiData<Product[]>(`/products?${params.toString()}`)) ?? [];
 }
 
-export async function getProductBySlug(slug: string) {
-  return (await fetchApiData<Product>(`/products/${slug}`)) ?? null;
+/**
+ * Stage 13: pass countryCode to receive availableForCountry in the product.
+ * When provided, the product includes availableForCountry: boolean.
+ */
+export async function getProductBySlug(slug: string, countryCode?: string) {
+  const qs = countryCode ? `?countryCode=${encodeURIComponent(countryCode.toUpperCase())}` : "";
+  return (await fetchApiData<Product>(`/products/${slug}${qs}`)) ?? null;
 }
 
 export async function getFreightRates(weightRange?: WeightRange) {

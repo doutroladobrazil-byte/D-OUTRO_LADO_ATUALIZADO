@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "../../lib/db.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
-import type { Brand, BuiltOrder, CountryCode, FreightQuote, Region, Role, WeightRange } from "../../types/domain.js";
+import type { Brand, BuiltOrder, CountryCode, FreightQuote, OperationalRegion, Region, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
 import {
   computeAllInTotals,
@@ -16,6 +16,7 @@ import {
   quoteFreightByCountry,
   type CountryDetail,
 } from "../countries/countries.service.js";
+import { getUnavailableProductIds } from "../countries/availability.service.js";
 import { COUNTRY_CODES } from "../../config/constants.js";
 
 // =============================================================================
@@ -150,6 +151,26 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   const allItems = [...normalizedItems, ...kitLineItems];
 
   ensureSingleBrandOrder(parsed.brand, allItems.map((i) => i.brand));
+
+  // ── Product country availability (Stage 13) ─────────────────────────────
+  // Validated here (before country resolution) so we reject unavailable items
+  // even before loading country commerce rules. The countryCode from the parsed
+  // payload is used — kit items are not individually checked (see availability.service).
+  const earlyCountryCode = parsed.countryCode as string | undefined;
+  if (earlyCountryCode) {
+    const productIds = normalizedItems.map((i) => i.productId).filter(Boolean) as string[];
+    if (productIds.length > 0) {
+      const unavailableIds = await getUnavailableProductIds(productIds, earlyCountryCode);
+      if (unavailableIds.size > 0) {
+        const unavailableNames = normalizedItems
+          .filter((i) => unavailableIds.has(i.productId))
+          .map((i) => i.name);
+        throw new Error(
+          `The following products are not available for the selected destination: ${unavailableNames.join(", ")}`
+        );
+      }
+    }
+  }
 
   const countryCode = (parsed.countryCode as CountryCode | undefined) ?? null;
   const legacyRegion = parsed.region ?? "North America";
@@ -317,16 +338,21 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   }
 
   // ── Return the built order snapshot ────────────────────────────────────
+  // BLOCO A1: use shippingRegionForOrder (already set to countryDetail.regionGroup
+  // for country-first orders, or freight.region for legacy orders). This keeps
+  // the in-memory return consistent with what was persisted to the DB.
+  const operationalRegion = shippingRegionForOrder as OperationalRegion;
+
   return {
     orderId,
     publicId,
     brand: parsed.brand,
     currency: parsed.currency,
-    region: legacyRegion,
+    region: operationalRegion,
     pricingTier,
     items: allItems as BuiltOrder["items"],
     subtotalBRL,
-    freight: { region: legacyRegion, weightRange: estimatedWeightRange, amountBRL: freightAmountBRL },
+    freight: { region: operationalRegion, weightRange: estimatedWeightRange, amountBRL: freightAmountBRL },
     freightBRL: freightAmountBRL,
     totalBRL,
     estimatedWeightRange,

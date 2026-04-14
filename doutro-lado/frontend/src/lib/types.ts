@@ -5,6 +5,8 @@
 export type Brand = "casa" | "moda";
 export type Role = "customer" | "wholesale" | "admin";
 export type Region = "North America" | "Europe" | "Middle East";
+/** Stage 13 — superset of Region that includes "Asia Pacific" for SG. */
+export type OperationalRegion = Region | "Asia Pacific";
 export type WeightRange = "100g-1kg" | "1-3kg" | "3-5kg" | "5-10kg" | "10-15kg" | "15-20kg";
 export type PricingTier = "retail" | "wholesale";
 export type OrderStatus = "created" | "processing" | "packing" | "shipped" | "delivered" | "cancelled";
@@ -160,6 +162,13 @@ export type Product = {
 
   /** @deprecated Use media instead */
   images?: ProductImage[];
+
+  /**
+   * Stage 13 — country availability flag.
+   * Set to false when the product is not available in the requested countryCode.
+   * Undefined when no countryCode filter was applied.
+   */
+  availableForCountry?: boolean;
 };
 
 export type Campaign = {
@@ -460,3 +469,13 @@ export type CountryDetail = SupportedCountry & {
     estimatedDeliveryMaxDays: number;
   } | null;
 };
+
+// =============================================================================
+// Stage 13 — Product country availability
+// =============================================================================
+
+/**
+ * Map of country_code → is_active returned by admin availability endpoints.
+ * Example: { US: true, CH: true, SG: false, IE: true, DE: true, IS: true }
+ */
+export type ProductAvailabilityMap = Record<string, boolean>;
