@@ -121,7 +121,11 @@ export type BagSimulationResult = {
 // =============================================================================
 
 export type BagPricingRule = {
-  region: Region;
+  /**
+   * Legacy region identifier — present for region-based rules, absent for
+   * country-first rules (which carry no meaningful Region mapping).
+   */
+  region?: Region;
   /** Flat tax component in BRL. Default: 0. */
   taxBRL: number;
   /** Flat logistics surcharge in BRL. Default: 0. */

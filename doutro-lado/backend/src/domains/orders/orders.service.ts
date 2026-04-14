@@ -8,12 +8,13 @@ import {
   countryRuleToBagPricingRule,
   loadPricingRule,
   makePricingVersion,
+  makeCountryPricingVersion,
 } from "../bag/bag.service.js";
 import { isSupportedCurrency, STATIC_RATES } from "../../services/i18n.service.js";
 import {
   getCountryByCode,
-  loadCountryCommerceRule,
   quoteFreightByCountry,
+  type CountryDetail,
 } from "../countries/countries.service.js";
 import { COUNTRY_CODES } from "../../config/constants.js";
 
@@ -150,10 +151,39 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
 
   ensureSingleBrandOrder(parsed.brand, allItems.map((i) => i.brand));
 
+  const countryCode = (parsed.countryCode as CountryCode | undefined) ?? null;
+  const legacyRegion = parsed.region ?? "North America";
+
+  // ── Country resolution (country-first path — loaded ONCE, reused throughout) ──
+  // Doing this early so allowGuestCheckout and allowDiscountCodes can gate
+  // subsequent steps before any further DB work is done.
+  let countryDetail: CountryDetail | null = null;
+  let discountCodesAllowed = true;
+
+  if (countryCode) {
+    countryDetail = await getCountryByCode(countryCode);
+    if (!countryDetail || !countryDetail.isActive || !countryDetail.checkoutEnabled) {
+      throw new Error(`Country "${countryCode}" is not available for checkout.`);
+    }
+
+    const cr = countryDetail.commerceRule;
+
+    // BLOCO 4 — allowGuestCheckout enforcement
+    if (!profileId && cr && !cr.allowGuestCheckout) {
+      throw new Error(
+        "Guest checkout is not available for this destination. Please sign in to continue."
+      );
+    }
+
+    // BLOCO 5 — allowDiscountCodes flag (gates offer lookup below)
+    discountCodesAllowed = !cr || cr.allowDiscountCodes;
+  }
+
   // ── Offer code validation ───────────────────────────────────────────────
+  // BLOCO 5: offerCode is only looked up if the country (or legacy path) allows it.
   let discountPercent = 0;
   let offerRow: { id: string } | null = null;
-  if (parsed.offerCode) {
+  if (parsed.offerCode && discountCodesAllowed) {
     const offerRows = await db`
       SELECT id, discount_percent FROM bag_recovery_offers
       WHERE code = ${parsed.offerCode}
@@ -173,16 +203,17 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     allItems.map((i) => ({ weightRange: i.weightRange, quantity: i.quantity }))
   );
 
-  const countryCode = (parsed.countryCode as CountryCode | undefined) ?? null;
-  const legacyRegion = parsed.region ?? "North America";
-
   let freightAmountBRL: number;
   let shippingRegionForOrder: string;
 
-  if (countryCode) {
+  if (countryCode && countryDetail) {
     const countryFreight = await quoteFreightByCountry(countryCode, estimatedWeightRange);
     freightAmountBRL = countryFreight.amountBRL;
-    shippingRegionForOrder = countryCode; // store country code in shipping_region for country-path orders
+    // BLOCO 1: store the operational region group, not the country code.
+    // shipping_region is a legacy field for regional groupings ("Europe",
+    // "North America", "Asia Pacific"). Country identity lives in the
+    // destination_country_* columns added in Stage 12.
+    shippingRegionForOrder = countryDetail.regionGroup;
   } else {
     const freight: FreightQuote = await quoteFreight({
       region: legacyRegion,
@@ -196,12 +227,10 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   const subtotalBRL = allItems.reduce((sum, i) => sum + i.lineTotalBRL, 0);
   const displayCurrency = isSupportedCurrency(parsed.currency) ? parsed.currency : "BRL";
 
+  const countryRule = countryDetail?.commerceRule ?? null;
   let rule;
-  if (countryCode) {
-    const countryRule = await loadCountryCommerceRule(countryCode);
-    rule = countryRule
-      ? countryRuleToBagPricingRule(countryRule, subtotalBRL)
-      : await loadPricingRule(legacyRegion);
+  if (countryCode && countryRule) {
+    rule = countryRuleToBagPricingRule(countryRule, subtotalBRL);
   } else {
     rule = await loadPricingRule(legacyRegion);
   }
@@ -209,7 +238,13 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   const allIn = computeAllInTotals(subtotalBRL, freightAmountBRL, rule, displayCurrency, discountPercent);
   const totalBRL = allIn.adjustedFinalTotalBRL;
   const discountBRL = allIn.discountBRL;
-  const pricingVersion = makePricingVersion(freightAmountBRL, rule);
+
+  // BLOCO 2: country-first orders get a semantically correct pricingVersion that
+  // identifies the country and uses taxPercent (the configured rate) not taxBRL
+  // (a derived value that varies with subtotal and would be meaningless without context).
+  const pricingVersion = countryCode && countryRule
+    ? makeCountryPricingVersion(countryCode, freightAmountBRL, countryRule)
+    : makePricingVersion(freightAmountBRL, rule);
 
   const publicId = `DL-${Date.now()}`;
   const pricingTier = role === "wholesale" ? "wholesale" : "retail";
@@ -222,16 +257,16 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   let deliveryEtaMinDays: number | null = null;
   let deliveryEtaMaxDays: number | null = null;
 
-  if (countryCode) {
-    const countryDetail = await getCountryByCode(countryCode);
-    if (countryDetail) {
-      destinationCountryCode = countryDetail.code;
-      destinationCountryName = countryDetail.name;
-      destinationCurrency = countryDetail.defaultCurrency;
-      exchangeRateUsed = STATIC_RATES[countryDetail.defaultCurrency] ?? null;
-      deliveryEtaMinDays = countryDetail.commerceRule?.estimatedDeliveryMinDays ?? null;
-      deliveryEtaMaxDays = countryDetail.commerceRule?.estimatedDeliveryMaxDays ?? null;
-    }
+  if (countryCode && countryDetail) {
+    destinationCountryCode = countryDetail.code;
+    destinationCountryName = countryDetail.name;
+    // BLOCO 3: persist the currency and exchange rate ACTUALLY used in the
+    // calculation, not the country's default. If the customer selected USD
+    // for a Swiss order, displayCurrency is USD and that is what was applied.
+    destinationCurrency = displayCurrency;
+    exchangeRateUsed = STATIC_RATES[displayCurrency] ?? 1;
+    deliveryEtaMinDays = countryRule?.estimatedDeliveryMinDays ?? null;
+    deliveryEtaMaxDays = countryRule?.estimatedDeliveryMaxDays ?? null;
   }
 
   // ── Persist ─────────────────────────────────────────────────────────────

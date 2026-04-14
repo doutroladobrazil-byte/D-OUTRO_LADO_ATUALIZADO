@@ -84,7 +84,7 @@ export function countryRuleToBagPricingRule(
   subtotalBRL: number
 ): BagPricingRule {
   return {
-    region: "Europe" as Region,          // dummy — not used in amount computation
+    // region is omitted — country-first rules have no legacy Region mapping.
     taxBRL: Number((subtotalBRL * rule.taxPercent / 100).toFixed(2)),
     logisticsBRL: rule.logisticsBRL,
     marginPercent: rule.marginPercent,
@@ -176,6 +176,20 @@ export function computeAllInTotals(
 
 export function makePricingVersion(freightBRL: number, rule: BagPricingRule): string {
   return `allin_v1:f${freightBRL}:t${rule.taxBRL}:l${rule.logisticsBRL}:m${rule.marginPercent}`;
+}
+
+/**
+ * Deterministic pricing version for country-first orders.
+ * Encodes the country code and the configured rule parameters (taxPercent, not
+ * the derived taxBRL) so the string is stable and semantically meaningful.
+ * Stored in orders.pricing_version for audit.
+ */
+export function makeCountryPricingVersion(
+  countryCode: string,
+  freightBRL: number,
+  rule: CountryPricingRule
+): string {
+  return `country_v1:cc=${countryCode}:f${freightBRL}:tp=${rule.taxPercent}:l=${rule.logisticsBRL}:m=${rule.marginPercent}`;
 }
 
 // =============================================================================
@@ -419,11 +433,27 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
     }
   }
 
+  const subtotalBRL = Number(
+    simulatedItems.reduce((s, i) => s + i.lineTotalBRL, 0).toFixed(2)
+  );
+
+  // ── Country commerce rule (load early — needed for discount / pricing) ──
+  // Loaded here so allowDiscountCodes can gate offer resolution below,
+  // and so the rule is available for both pricing and pricingVersion.
+  let countryRule: CountryPricingRule | null = null;
+  if (countryCode) {
+    countryRule = await loadCountryCommerceRule(countryCode);
+  }
+
   // ── Offer code resolution ────────────────────────────────────────────────
+  // BLOCO 5: respect allowDiscountCodes per country rule.
+  // If the country disables discount codes, the offer is silently ignored.
   let appliedOffer: AppliedOffer | null = null;
   let discountPercent = 0;
 
-  if (offerCode) {
+  const discountCodesAllowed = !countryCode || !countryRule || countryRule.allowDiscountCodes;
+
+  if (offerCode && discountCodesAllowed) {
     const offer = await resolveOffer(offerCode);
     if (offer) {
       discountPercent = offer.discountPercent;
@@ -432,23 +462,21 @@ export async function simulateBag(input: unknown): Promise<BagSimulationResult> 
   }
 
   // ── All-in pricing ──────────────────────────────────────────────────────
-  const subtotalBRL = Number(
-    simulatedItems.reduce((s, i) => s + i.lineTotalBRL, 0).toFixed(2)
-  );
-
   let rule: BagPricingRule;
   if (countryCode) {
-    // Country-first: load country commerce rule and adapt to BagPricingRule
-    const countryRule = await loadCountryCommerceRule(countryCode);
     rule = countryRule
       ? countryRuleToBagPricingRule(countryRule, subtotalBRL)
-      : { region, taxBRL: 0, logisticsBRL: 0, marginPercent: 0, isActive: true };
+      : { taxBRL: 0, logisticsBRL: 0, marginPercent: 0, isActive: true };
   } else {
     rule = await loadPricingRule(region);
   }
 
   const totals = computeAllInTotals(subtotalBRL, freightBRL, rule, currency, discountPercent);
-  const pricingVersion = makePricingVersion(freightBRL, rule);
+
+  // BLOCO 2: country-first path gets a semantically correct version string.
+  const pricingVersion = countryCode && countryRule
+    ? makeCountryPricingVersion(countryCode, freightBRL, countryRule)
+    : makePricingVersion(freightBRL, rule);
 
   if (discountPercent > 0 && totals.discountBRL > 0) {
     appliedOffer = {
