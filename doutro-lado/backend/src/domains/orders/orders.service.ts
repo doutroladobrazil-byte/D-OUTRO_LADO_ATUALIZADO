@@ -225,7 +225,7 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     // we parse it again here to get the typed value reliably.
     const contactResult = checkoutAddressSchema.safeParse(parsed.contact);
     if (!contactResult.success) {
-      throw new Error(`Invalid shipping address: ${contactResult.error.errors[0]?.message ?? "validation failed"}`);
+      throw new Error(`Invalid shipping address: ${contactResult.error.issues[0]?.message ?? "validation failed"}`);
     }
     resolvedContact = contactResult.data;
     // Country consistency: address.countryCode must match order.countryCode.
