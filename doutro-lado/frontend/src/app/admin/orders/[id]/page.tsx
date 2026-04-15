@@ -82,35 +82,47 @@ export default async function AdminOrderDetailPage({
       {/* Financial snapshot — Stage 16 */}
       <AdminSection title="Snapshot de margem" eyebrow="Calculado na criacao do pedido">
         {order.grossMarginBRLSnapshot != null ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              label="Custo produtos (BRL)"
-              value={`R$ ${order.productCostBRLSnapshot!.toFixed(2)}`}
-            />
-            <MetricCard
-              label="Fee gateway (est.)"
-              value={`R$ ${order.gatewayFeeBRLSnapshot!.toFixed(2)}`}
-              sub="~3.5% do total — estimativa"
-            />
-            <MetricCard
-              label="Margem bruta"
-              value={`R$ ${order.grossMarginBRLSnapshot.toFixed(2)}`}
-              sub={`${((order.grossMarginBRLSnapshot / order.totalBRL) * 100).toFixed(1)}%`}
-              highlight="green"
-            />
-            <MetricCard
-              label="Margem liquida"
-              value={`R$ ${order.netMarginBRLSnapshot!.toFixed(2)}`}
-              sub={`${((order.netMarginBRLSnapshot! / order.totalBRL) * 100).toFixed(1)}%`}
-              highlight={order.netMarginBRLSnapshot! >= 0 ? "green" : "red"}
-            />
-          </div>
-        ) : (
-          <p className="text-[13px] text-white/35">
-            N/A — custo de produto nao configurado para um ou mais itens deste pedido,
-            ou pedido anterior ao Stage 16.
-          </p>
-        )}
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <MetricCard
+                label="Custo produtos (BRL)"
+                value={`R$ ${order.productCostBRLSnapshot!.toFixed(2)}`}
+              />
+              <MetricCard
+                label="Fee gateway (est.)"
+                value={`R$ ${order.gatewayFeeBRLSnapshot!.toFixed(2)}`}
+                sub="~3.5% do total — estimativa"
+              />
+              <MetricCard
+                label="Margem bruta"
+                value={`R$ ${order.grossMarginBRLSnapshot.toFixed(2)}`}
+                sub={`${((order.grossMarginBRLSnapshot / order.totalBRL) * 100).toFixed(1)}% sobre total do pedido`}
+                highlight="green"
+              />
+              <MetricCard
+                label="Margem liquida"
+                value={`R$ ${order.netMarginBRLSnapshot!.toFixed(2)}`}
+                sub={`${((order.netMarginBRLSnapshot! / order.totalBRL) * 100).toFixed(1)}% sobre total do pedido`}
+                highlight={order.netMarginBRLSnapshot! >= 0 ? "green" : "red"}
+              />
+            </div>
+            <p className="mt-3 text-[11px] text-white/30">
+              Fee de gateway e estimativa (~3.5% Stripe BR) — nao e registro preciso da gateway.
+              Snapshot capturado no momento da criacao do pedido.
+            </p>
+          </>
+        ) : (() => {
+          const hasKitItem = order.items.some((i) => i.isKitItem);
+          const reason = hasKitItem
+            ? "Pedido contém kit — custo de componentes nao consolidado (politica MVP: snapshot nulo para pedidos com kit)."
+            : "Custo de produto nao configurado para um ou mais itens, ou pedido criado antes do Stage 16.";
+          return (
+            <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-5 py-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-white/30 mb-2">N/D — sem snapshot financeiro</p>
+              <p className="text-[13px] text-white/45">{reason}</p>
+            </div>
+          );
+        })()}
       </AdminSection>
 
       {/* Status badges */}

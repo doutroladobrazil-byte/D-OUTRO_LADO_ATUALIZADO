@@ -334,8 +334,12 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   }
 
   // ── Stage 16: Financial snapshot ───────────────────────────────────────
-  // Query cost_price_brl for all product items (kit items have no cost).
-  // If ANY product item is missing cost → all snapshots are null (null policy).
+  // Null policy:
+  //   1. Kit items (kitLineItems.length > 0): kit component costs are not individually
+  //      accessible here. To avoid misleading partial margins, the entire order-level
+  //      financial snapshot is null when any kit is present (Option B, MVP policy).
+  //   2. Missing product cost: if ANY product item has no cost_price_brl, all snapshots null.
+  // In both cases the order is treated as "not covered" by the financial aggregates.
   const productItemIds = normalizedItems.map((i) => i.productId).filter(Boolean) as string[];
   let productCostBRLSnapshot: number | null = null;
   let gatewayFeeBRLSnapshot: number | null = null;
@@ -345,7 +349,8 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
   type CostMap = Map<string, number | null>;
   const costMap: CostMap = new Map();
 
-  if (productItemIds.length > 0) {
+  // Only attempt snapshot when there are no kit items.
+  if (kitLineItems.length === 0 && productItemIds.length > 0) {
     const costRows = await db`
       SELECT id, cost_price_brl FROM products WHERE id = ANY(${productItemIds}::uuid[])
     `;

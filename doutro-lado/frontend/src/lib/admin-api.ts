@@ -117,6 +117,7 @@ export type AdminOrderDetail = {
     unitCostBRLSnapshot: number | null;
     lineCostBRLSnapshot: number | null;
     lineMarginBRLSnapshot: number | null;
+    isKitItem: boolean;
   }[];
 };
 

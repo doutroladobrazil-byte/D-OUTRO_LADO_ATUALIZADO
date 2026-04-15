@@ -284,10 +284,20 @@ export type BrandOrderSummary = {
 export type CountryBreakdownRow = {
   countryCode: string;
   countryName: string | null;
+  // Total paid orders for this country
   paidOrders: number;
-  revenueBRL: number;
+  // Orders covered by financial snapshot (gross_margin_brl_snapshot IS NOT NULL)
+  coveredOrders: number;
+  // Total revenue across ALL paid orders for this country
+  revenueBRLTotal: number;
+  // Revenue covered by financial snapshot only
+  revenueBRLCovered: number;
+  // Margin figures — summed only over covered orders
   grossMarginBRL: number | null;
   netMarginBRL: number | null;
+  // Percentages calculated over covered revenue only (null when no coverage)
+  grossMarginPctOnCovered: number | null;
+  netMarginPctOnCovered: number | null;
 };
 
 export type TopProductRow = {
@@ -304,12 +314,18 @@ export type AdminOverview = {
   newCustomers: number;
   alerts: string[];
   brandSummaries: BrandOrderSummary[];
-  // Stage 16 — financial snapshot aggregates (paid orders only)
-  paidRevenueBRL: number;
+  // Stage 16 — financial snapshot aggregates
+  // Total = all paid orders; Covered = only paid orders with gross_margin_brl_snapshot IS NOT NULL
+  paidOrdersTotal: number;
+  paidOrdersCovered: number;
+  paidRevenueBRLTotal: number;
+  paidRevenueBRLCovered: number;
+  // Margin figures — summed only over covered orders
   grossMarginBRL: number | null;
   netMarginBRL: number | null;
-  grossMarginPct: number | null;
-  netMarginPct: number | null;
+  // Percentages calculated over covered revenue only (null when no coverage)
+  grossMarginPctOnCovered: number | null;
+  netMarginPctOnCovered: number | null;
   countryBreakdown: CountryBreakdownRow[];
   topProducts: TopProductRow[];
 };

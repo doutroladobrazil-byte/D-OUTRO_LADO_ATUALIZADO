@@ -385,7 +385,8 @@ export async function getAdminOrderDetail(publicId: string) {
 
   const items = await db`
     SELECT product_name, sku, brand, quantity, unit_price_brl, line_total_brl, weight_range,
-           unit_cost_brl_snapshot, line_cost_brl_snapshot, line_margin_brl_snapshot
+           unit_cost_brl_snapshot, line_cost_brl_snapshot, line_margin_brl_snapshot,
+           (gift_kit_id IS NOT NULL) AS is_kit_item
     FROM order_items
     WHERE order_id = ${order.id}
     ORDER BY id
@@ -435,6 +436,7 @@ export async function getAdminOrderDetail(publicId: string) {
       unitCostBRLSnapshot: i.unit_cost_brl_snapshot != null ? Number(i.unit_cost_brl_snapshot) : null,
       lineCostBRLSnapshot: i.line_cost_brl_snapshot != null ? Number(i.line_cost_brl_snapshot) : null,
       lineMarginBRLSnapshot: i.line_margin_brl_snapshot != null ? Number(i.line_margin_brl_snapshot) : null,
+      isKitItem: (i.is_kit_item as boolean) ?? false,
     })),
   };
 }

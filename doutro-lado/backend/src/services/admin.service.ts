@@ -46,30 +46,44 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     WHERE fiscal_status = 'pending' AND order_status != 'created'
   `;
 
-  // Stage 16 — financial aggregates (paid orders only)
+  // Stage 16 — financial aggregates (paid orders only).
+  // Separate TOTAL base (all paid orders) from COVERED base (paid orders with
+  // gross_margin_brl_snapshot IS NOT NULL). Percentages are calculated only over
+  // covered revenue to avoid the denominator-mismatch problem.
   const [paidStats] = await db`
     SELECT
-      COALESCE(SUM(total_brl), 0)                AS paid_revenue_brl,
-      SUM(gross_margin_brl_snapshot)             AS gross_margin_brl,
-      SUM(net_margin_brl_snapshot)               AS net_margin_brl
+      COUNT(*)::int                                                              AS paid_orders_total,
+      COUNT(*) FILTER (WHERE gross_margin_brl_snapshot IS NOT NULL)::int        AS paid_orders_covered,
+      COALESCE(SUM(total_brl), 0)                                               AS paid_revenue_brl_total,
+      COALESCE(
+        SUM(total_brl) FILTER (WHERE gross_margin_brl_snapshot IS NOT NULL),
+        0
+      )                                                                          AS paid_revenue_brl_covered,
+      SUM(gross_margin_brl_snapshot)                                            AS gross_margin_brl,
+      SUM(net_margin_brl_snapshot)                                              AS net_margin_brl
     FROM orders
     WHERE payment_status = 'paid'
   `;
 
-  // Country breakdown — paid orders only
+  // Country breakdown — paid orders only, with total vs covered split.
   const countryRows = await db`
     SELECT
-      destination_country_code                       AS country_code,
-      MAX(destination_country_name)                  AS country_name,
-      COUNT(*)::int                                  AS paid_orders,
-      COALESCE(SUM(total_brl), 0)                   AS revenue_brl,
-      SUM(gross_margin_brl_snapshot)                AS gross_margin_brl,
-      SUM(net_margin_brl_snapshot)                  AS net_margin_brl
+      destination_country_code                                                        AS country_code,
+      MAX(destination_country_name)                                                   AS country_name,
+      COUNT(*)::int                                                                   AS paid_orders,
+      COUNT(*) FILTER (WHERE gross_margin_brl_snapshot IS NOT NULL)::int             AS covered_orders,
+      COALESCE(SUM(total_brl), 0)                                                    AS revenue_brl_total,
+      COALESCE(
+        SUM(total_brl) FILTER (WHERE gross_margin_brl_snapshot IS NOT NULL),
+        0
+      )                                                                               AS revenue_brl_covered,
+      SUM(gross_margin_brl_snapshot)                                                 AS gross_margin_brl,
+      SUM(net_margin_brl_snapshot)                                                   AS net_margin_brl
     FROM orders
     WHERE payment_status = 'paid'
       AND destination_country_code IS NOT NULL
     GROUP BY destination_country_code
-    ORDER BY revenue_brl DESC
+    ORDER BY revenue_brl_total DESC
   `;
 
   // Top products — paid orders, by revenue
@@ -94,7 +108,10 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   if (Number(lowStock.count) > 0)
     alerts.push(`${lowStock.count} SKUs com estoque critico`);
 
-  const paidRevenueBRL = Number(paidStats.paid_revenue_brl ?? 0);
+  const paidOrdersTotal = Number(paidStats.paid_orders_total ?? 0);
+  const paidOrdersCovered = Number(paidStats.paid_orders_covered ?? 0);
+  const paidRevenueBRLTotal = Number(paidStats.paid_revenue_brl_total ?? 0);
+  const paidRevenueBRLCovered = Number(paidStats.paid_revenue_brl_covered ?? 0);
   const grossMarginBRL = paidStats.gross_margin_brl != null ? Number(paidStats.gross_margin_brl) : null;
   const netMarginBRL = paidStats.net_margin_brl != null ? Number(paidStats.net_margin_brl) : null;
 
@@ -109,23 +126,40 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       revenueBRL: Number(row.revenue_brl),
       orders: Number(row.orders),
     })),
-    paidRevenueBRL,
+    paidOrdersTotal,
+    paidOrdersCovered,
+    paidRevenueBRLTotal,
+    paidRevenueBRLCovered,
     grossMarginBRL,
     netMarginBRL,
-    grossMarginPct: grossMarginBRL != null && paidRevenueBRL > 0
-      ? Math.round((grossMarginBRL / paidRevenueBRL) * 1000) / 10
+    // Percentages calculated over covered revenue only — honest denominator.
+    grossMarginPctOnCovered: grossMarginBRL != null && paidRevenueBRLCovered > 0
+      ? Math.round((grossMarginBRL / paidRevenueBRLCovered) * 1000) / 10
       : null,
-    netMarginPct: netMarginBRL != null && paidRevenueBRL > 0
-      ? Math.round((netMarginBRL / paidRevenueBRL) * 1000) / 10
+    netMarginPctOnCovered: netMarginBRL != null && paidRevenueBRLCovered > 0
+      ? Math.round((netMarginBRL / paidRevenueBRLCovered) * 1000) / 10
       : null,
-    countryBreakdown: countryRows.map((row): CountryBreakdownRow => ({
-      countryCode: row.country_code as string,
-      countryName: (row.country_name as string | null) ?? null,
-      paidOrders: row.paid_orders as number,
-      revenueBRL: Number(row.revenue_brl),
-      grossMarginBRL: row.gross_margin_brl != null ? Number(row.gross_margin_brl) : null,
-      netMarginBRL: row.net_margin_brl != null ? Number(row.net_margin_brl) : null,
-    })),
+    countryBreakdown: countryRows.map((row): CountryBreakdownRow => {
+      const gmbrl = row.gross_margin_brl != null ? Number(row.gross_margin_brl) : null;
+      const nmbrl = row.net_margin_brl != null ? Number(row.net_margin_brl) : null;
+      const covered = Number(row.revenue_brl_covered ?? 0);
+      return {
+        countryCode: row.country_code as string,
+        countryName: (row.country_name as string | null) ?? null,
+        paidOrders: row.paid_orders as number,
+        coveredOrders: row.covered_orders as number,
+        revenueBRLTotal: Number(row.revenue_brl_total),
+        revenueBRLCovered: covered,
+        grossMarginBRL: gmbrl,
+        netMarginBRL: nmbrl,
+        grossMarginPctOnCovered: gmbrl != null && covered > 0
+          ? Math.round((gmbrl / covered) * 1000) / 10
+          : null,
+        netMarginPctOnCovered: nmbrl != null && covered > 0
+          ? Math.round((nmbrl / covered) * 1000) / 10
+          : null,
+      };
+    }),
     topProducts: topProductRows.map((row): TopProductRow => ({
       sku: row.sku as string,
       productName: row.product_name as string,
