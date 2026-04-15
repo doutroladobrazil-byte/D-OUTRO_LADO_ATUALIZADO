@@ -4,7 +4,9 @@ import type {
   AdminOverview,
   Brand,
   ContentBlockRecord,
+  CountryBreakdownRow,
   FiscalStatusRecord,
+  TopProductRow,
   UserRecord
 } from "../types/domain.js";
 
@@ -44,11 +46,57 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     WHERE fiscal_status = 'pending' AND order_status != 'created'
   `;
 
+  // Stage 16 — financial aggregates (paid orders only)
+  const [paidStats] = await db`
+    SELECT
+      COALESCE(SUM(total_brl), 0)                AS paid_revenue_brl,
+      SUM(gross_margin_brl_snapshot)             AS gross_margin_brl,
+      SUM(net_margin_brl_snapshot)               AS net_margin_brl
+    FROM orders
+    WHERE payment_status = 'paid'
+  `;
+
+  // Country breakdown — paid orders only
+  const countryRows = await db`
+    SELECT
+      destination_country_code                       AS country_code,
+      MAX(destination_country_name)                  AS country_name,
+      COUNT(*)::int                                  AS paid_orders,
+      COALESCE(SUM(total_brl), 0)                   AS revenue_brl,
+      SUM(gross_margin_brl_snapshot)                AS gross_margin_brl,
+      SUM(net_margin_brl_snapshot)                  AS net_margin_brl
+    FROM orders
+    WHERE payment_status = 'paid'
+      AND destination_country_code IS NOT NULL
+    GROUP BY destination_country_code
+    ORDER BY revenue_brl DESC
+  `;
+
+  // Top products — paid orders, by revenue
+  const topProductRows = await db`
+    SELECT
+      oi.sku,
+      oi.product_name,
+      SUM(oi.quantity)::int                          AS units_sold,
+      COALESCE(SUM(oi.line_total_brl), 0)           AS revenue_brl
+    FROM order_items oi
+    JOIN orders o ON o.id = oi.order_id
+    WHERE o.payment_status = 'paid'
+      AND oi.sku IS NOT NULL
+    GROUP BY oi.sku, oi.product_name
+    ORDER BY revenue_brl DESC
+    LIMIT 10
+  `;
+
   const alerts: string[] = [];
   if (Number(pendingFiscal.count) > 0)
     alerts.push(`${pendingFiscal.count} pedidos aguardando revisao fiscal`);
   if (Number(lowStock.count) > 0)
     alerts.push(`${lowStock.count} SKUs com estoque critico`);
+
+  const paidRevenueBRL = Number(paidStats.paid_revenue_brl ?? 0);
+  const grossMarginBRL = paidStats.gross_margin_brl != null ? Number(paidStats.gross_margin_brl) : null;
+  const netMarginBRL = paidStats.net_margin_brl != null ? Number(paidStats.net_margin_brl) : null;
 
   return {
     revenueBRL: Number(stats.revenue_brl),
@@ -60,6 +108,29 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       brand: row.brand as Brand,
       revenueBRL: Number(row.revenue_brl),
       orders: Number(row.orders),
+    })),
+    paidRevenueBRL,
+    grossMarginBRL,
+    netMarginBRL,
+    grossMarginPct: grossMarginBRL != null && paidRevenueBRL > 0
+      ? Math.round((grossMarginBRL / paidRevenueBRL) * 1000) / 10
+      : null,
+    netMarginPct: netMarginBRL != null && paidRevenueBRL > 0
+      ? Math.round((netMarginBRL / paidRevenueBRL) * 1000) / 10
+      : null,
+    countryBreakdown: countryRows.map((row): CountryBreakdownRow => ({
+      countryCode: row.country_code as string,
+      countryName: (row.country_name as string | null) ?? null,
+      paidOrders: row.paid_orders as number,
+      revenueBRL: Number(row.revenue_brl),
+      grossMarginBRL: row.gross_margin_brl != null ? Number(row.gross_margin_brl) : null,
+      netMarginBRL: row.net_margin_brl != null ? Number(row.net_margin_brl) : null,
+    })),
+    topProducts: topProductRows.map((row): TopProductRow => ({
+      sku: row.sku as string,
+      productName: row.product_name as string,
+      unitsSold: row.units_sold as number,
+      revenueBRL: Number(row.revenue_brl),
     })),
   };
 }

@@ -11,7 +11,7 @@ import {
   MetricCard,
   StatusBadge,
 } from "@/features/admin/AdminComponents";
-import type { AdminOrderRow } from "@/lib/types";
+import type { AdminOrderRow, CountryBreakdownRow, TopProductRow } from "@/lib/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Dashboard — D'OUTRO LADO Admin" };
@@ -41,12 +41,41 @@ export default async function AdminDashboardPage() {
     { key: "createdAt", label: "Data" },
   ];
 
+  const countryColumns = [
+    { key: "countryCode", label: "Pais", render: (r: CountryBreakdownRow) => (
+      <span>{r.countryName ?? r.countryCode} <span className="text-white/30">({r.countryCode})</span></span>
+    )},
+    { key: "paidOrders", label: "Pedidos pagos", align: "right" as const },
+    { key: "revenueBRL", label: "Receita (BRL)", align: "right" as const,
+      render: (r: CountryBreakdownRow) => <span>R$ {r.revenueBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span> },
+    { key: "grossMarginBRL", label: "Margem bruta", align: "right" as const,
+      render: (r: CountryBreakdownRow) => r.grossMarginBRL != null
+        ? <span className="text-green-400">R$ {r.grossMarginBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+        : <span className="text-white/25">N/D</span> },
+    { key: "netMarginBRL", label: "Margem liquida", align: "right" as const,
+      render: (r: CountryBreakdownRow) => r.netMarginBRL != null
+        ? <span className={r.netMarginBRL >= 0 ? "text-green-400" : "text-red-400"}>
+            R$ {r.netMarginBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </span>
+        : <span className="text-white/25">N/D</span> },
+  ];
+
+  const topProductColumns = [
+    { key: "sku", label: "SKU" },
+    { key: "productName", label: "Produto" },
+    { key: "unitsSold", label: "Unidades", align: "right" as const },
+    { key: "revenueBRL", label: "Receita (BRL)", align: "right" as const,
+      render: (r: TopProductRow) => <span>R$ {r.revenueBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span> },
+  ];
+
+  const hasFinancialData = overview?.grossMarginBRL != null || overview?.netMarginBRL != null;
+
   return (
     <div className="space-y-10">
       <AdminPageHeader
         eyebrow="Painel administrativo"
         title="Dashboard operacional."
-        description="Visao consolidada de receita, pedidos e alertas — D'OUTRO LADO Moda."
+        description="Visao consolidada de receita, margem e pedidos — D'OUTRO LADO Moda."
       />
 
       {overview?.alerts && <AlertBanner alerts={overview.alerts} />}
@@ -67,6 +96,68 @@ export default async function AdminDashboardPage() {
           <MetricCard label="Novos clientes (30d)" value={overview?.newCustomers ?? 0} highlight="green" />
         </div>
       </AdminSection>
+
+      {/* Financial KPIs — paid orders only */}
+      <AdminSection title="Margem financeira" eyebrow="Pedidos pagos — estimativa">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Receita paga (BRL)"
+            value={`R$ ${(overview?.paidRevenueBRL ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+            highlight="gold"
+          />
+          <MetricCard
+            label="Margem bruta (BRL)"
+            value={hasFinancialData && overview?.grossMarginBRL != null
+              ? `R$ ${overview.grossMarginBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+              : "N/D"}
+            sub={overview?.grossMarginPct != null ? `${overview.grossMarginPct.toFixed(1)}%` : undefined}
+            highlight={hasFinancialData ? "green" : "default"}
+          />
+          <MetricCard
+            label="Margem liquida (BRL)"
+            value={hasFinancialData && overview?.netMarginBRL != null
+              ? `R$ ${overview.netMarginBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+              : "N/D"}
+            sub={overview?.netMarginPct != null ? `${overview.netMarginPct.toFixed(1)}%` : undefined}
+            highlight={hasFinancialData ? (overview?.netMarginBRL != null && overview.netMarginBRL >= 0 ? "green" : "red") : "default"}
+          />
+          <MetricCard
+            label="Fee gateway (est.)"
+            value="~3.5%"
+            sub="Estimativa Stripe BR — nao precisa"
+            highlight="default"
+          />
+        </div>
+        {!hasFinancialData && (
+          <p className="mt-3 text-[12px] text-white/30">
+            Dados de margem disponíveis somente para pedidos com custo de produto preenchido.
+          </p>
+        )}
+      </AdminSection>
+
+      {/* Country breakdown */}
+      {(overview?.countryBreakdown ?? []).length > 0 && (
+        <AdminSection title="Por pais de destino" eyebrow="Pedidos pagos">
+          <AdminTable
+            columns={countryColumns}
+            rows={(overview?.countryBreakdown ?? []) as CountryBreakdownRow[]}
+            rowKey={(r) => r.countryCode}
+            emptyMessage="Nenhum pedido pago com pais de destino."
+          />
+        </AdminSection>
+      )}
+
+      {/* Top products */}
+      {(overview?.topProducts ?? []).length > 0 && (
+        <AdminSection title="Produtos mais vendidos" eyebrow="Pedidos pagos — top 10">
+          <AdminTable
+            columns={topProductColumns}
+            rows={(overview?.topProducts ?? []) as TopProductRow[]}
+            rowKey={(r) => r.sku}
+            emptyMessage="Nenhum produto vendido ainda."
+          />
+        </AdminSection>
+      )}
 
       {/* Moda summary */}
       {modaSummary && (

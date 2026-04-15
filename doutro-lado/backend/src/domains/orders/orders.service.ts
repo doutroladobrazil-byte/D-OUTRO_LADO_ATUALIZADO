@@ -333,6 +333,45 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     deliveryEtaMaxDays = countryRule?.estimatedDeliveryMaxDays ?? null;
   }
 
+  // ── Stage 16: Financial snapshot ───────────────────────────────────────
+  // Query cost_price_brl for all product items (kit items have no cost).
+  // If ANY product item is missing cost → all snapshots are null (null policy).
+  const productItemIds = normalizedItems.map((i) => i.productId).filter(Boolean) as string[];
+  let productCostBRLSnapshot: number | null = null;
+  let gatewayFeeBRLSnapshot: number | null = null;
+  let grossMarginBRLSnapshot: number | null = null;
+  let netMarginBRLSnapshot: number | null = null;
+
+  type CostMap = Map<string, number | null>;
+  const costMap: CostMap = new Map();
+
+  if (productItemIds.length > 0) {
+    const costRows = await db`
+      SELECT id, cost_price_brl FROM products WHERE id = ANY(${productItemIds}::uuid[])
+    `;
+    for (const row of costRows) {
+      costMap.set(row.id as string, row.cost_price_brl != null ? Number(row.cost_price_brl) : null);
+    }
+
+    const allHaveCost = normalizedItems.every((i) => {
+      const cost = costMap.get(i.productId);
+      return cost != null;
+    });
+
+    if (allHaveCost) {
+      const totalProductCost = normalizedItems.reduce((sum, item) => {
+        const unitCost = costMap.get(item.productId) as number;
+        return sum + unitCost * item.quantity;
+      }, 0);
+      // Gateway fee: estimated ~3.5% flat (Stripe Brazil rate — documented estimate, not precise).
+      const gatewayFee = Math.round(totalBRL * 0.035 * 100) / 100;
+      productCostBRLSnapshot = Math.round(totalProductCost * 100) / 100;
+      gatewayFeeBRLSnapshot = gatewayFee;
+      grossMarginBRLSnapshot = Math.round((totalBRL - productCostBRLSnapshot) * 100) / 100;
+      netMarginBRLSnapshot = Math.round((totalBRL - productCostBRLSnapshot - freightAmountBRL - gatewayFee) * 100) / 100;
+    }
+  }
+
   // ── Persist ─────────────────────────────────────────────────────────────
   const [order] = await db`
     INSERT INTO orders (
@@ -344,7 +383,9 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
       exchange_rate_used, delivery_eta_min_days, delivery_eta_max_days,
       customer_name_snapshot, customer_email_snapshot, customer_phone_snapshot,
       shipping_line1_snapshot, shipping_line2_snapshot, shipping_city_snapshot,
-      shipping_state_region_snapshot, shipping_postal_code_snapshot
+      shipping_state_region_snapshot, shipping_postal_code_snapshot,
+      product_cost_brl_snapshot, gateway_fee_brl_snapshot,
+      gross_margin_brl_snapshot, net_margin_brl_snapshot
     ) VALUES (
       ${publicId}, ${profileId ?? null}, ${parsed.brand}, ${parsed.currency},
       ${subtotalBRL}, ${freightAmountBRL}, ${totalBRL},
@@ -354,7 +395,9 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
       ${exchangeRateUsed}, ${deliveryEtaMinDays}, ${deliveryEtaMaxDays},
       ${resolvedContact?.fullName ?? null}, ${resolvedContact?.email ?? null}, ${resolvedContact?.phone ?? null},
       ${resolvedContact?.line1 ?? null}, ${resolvedContact?.line2 ?? null}, ${resolvedContact?.city ?? null},
-      ${resolvedContact?.stateRegion ?? null}, ${resolvedContact?.postalCode ?? null}
+      ${resolvedContact?.stateRegion ?? null}, ${resolvedContact?.postalCode ?? null},
+      ${productCostBRLSnapshot}, ${gatewayFeeBRLSnapshot},
+      ${grossMarginBRLSnapshot}, ${netMarginBRLSnapshot}
     )
     RETURNING id
   `;
@@ -362,18 +405,26 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
 
   await db`
     INSERT INTO order_items ${db(
-      allItems.map((item) => ({
-        order_id: orderId,
-        product_id: item.productId ?? null,
-        gift_kit_id: item.giftKitId ?? null,
-        brand: item.brand,
-        product_name: item.name,
-        sku: item.sku,
-        quantity: item.quantity,
-        unit_price_brl: item.unitPriceBRL,
-        weight_range: item.weightRange,
-        line_total_brl: item.lineTotalBRL,
-      }))
+      allItems.map((item) => {
+        const unitCost = item.productId ? (costMap.get(item.productId) ?? null) : null;
+        const lineCost = unitCost != null ? Math.round(unitCost * item.quantity * 100) / 100 : null;
+        const lineMargin = lineCost != null ? Math.round((item.lineTotalBRL - lineCost) * 100) / 100 : null;
+        return {
+          order_id: orderId,
+          product_id: item.productId ?? null,
+          gift_kit_id: item.giftKitId ?? null,
+          brand: item.brand,
+          product_name: item.name,
+          sku: item.sku,
+          quantity: item.quantity,
+          unit_price_brl: item.unitPriceBRL,
+          weight_range: item.weightRange,
+          line_total_brl: item.lineTotalBRL,
+          unit_cost_brl_snapshot: unitCost,
+          line_cost_brl_snapshot: lineCost,
+          line_margin_brl_snapshot: lineMargin,
+        };
+      })
     )}
   `;
 

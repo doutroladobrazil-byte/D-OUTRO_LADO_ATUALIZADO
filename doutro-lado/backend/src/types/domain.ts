@@ -281,6 +281,22 @@ export type BrandOrderSummary = {
   orders: number;
 };
 
+export type CountryBreakdownRow = {
+  countryCode: string;
+  countryName: string | null;
+  paidOrders: number;
+  revenueBRL: number;
+  grossMarginBRL: number | null;
+  netMarginBRL: number | null;
+};
+
+export type TopProductRow = {
+  sku: string;
+  productName: string;
+  unitsSold: number;
+  revenueBRL: number;
+};
+
 export type AdminOverview = {
   revenueBRL: number;
   orders: number;
@@ -288,6 +304,14 @@ export type AdminOverview = {
   newCustomers: number;
   alerts: string[];
   brandSummaries: BrandOrderSummary[];
+  // Stage 16 — financial snapshot aggregates (paid orders only)
+  paidRevenueBRL: number;
+  grossMarginBRL: number | null;
+  netMarginBRL: number | null;
+  grossMarginPct: number | null;
+  netMarginPct: number | null;
+  countryBreakdown: CountryBreakdownRow[];
+  topProducts: TopProductRow[];
 };
 
 // =============================================================================

@@ -103,7 +103,14 @@ export async function getAdminDashboard(token: string) {
     averageTicketBRL: Math.round(fallbackRevenueBRL / adminOrders.length),
     newCustomers: 0,
     alerts: ["Backend indisponivel. Dados locais para continuidade."],
-    brandSummaries: getFallbackBrandSummaries()
+    brandSummaries: getFallbackBrandSummaries(),
+    paidRevenueBRL: 0,
+    grossMarginBRL: null,
+    netMarginBRL: null,
+    grossMarginPct: null,
+    netMarginPct: null,
+    countryBreakdown: [],
+    topProducts: [],
   };
 
   const [overview, orders] = await Promise.all([

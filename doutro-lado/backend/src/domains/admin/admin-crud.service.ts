@@ -36,6 +36,7 @@ export const createProductSchema = z.object({
   wholesalePriceBRL: z.coerce.number().positive().nullable().optional(),
   wholesaleMinQty: z.coerce.number().int().min(1).default(1),
   stock: z.coerce.number().int().min(0).default(0),
+  costPriceBRL: z.coerce.number().min(0).nullable().optional(),
   badge: z.string().max(64).nullable().optional(),
   isFeatured: z.boolean().default(false),
   isActive: z.boolean().default(true),
@@ -77,6 +78,7 @@ export const patchProductSchema = z.object({
   wholesaleMinQty: z.coerce.number().int().min(1).optional(),
   // Stock
   stock: z.coerce.number().int().min(0).optional(),
+  costPriceBRL: z.coerce.number().min(0).nullable().optional(),
   // Merchandising
   badge: z.string().max(64).nullable().optional(),
   isFeatured: z.boolean().optional(),
@@ -93,7 +95,7 @@ export type PatchProductInput = z.infer<typeof patchProductSchema>;
 
 export const patchOrderStatusSchema = z.object({
   orderStatus: z.enum([
-    "created", "processing", "packing", "shipped", "delivered", "cancelled",
+    "created", "awaiting_payment", "processing", "packing", "shipped", "delivered", "cancelled",
   ]).optional(),
   paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
   fiscalStatus: z.enum(["pending", "in_review", "issued", "rejected"]).optional(),
@@ -115,7 +117,7 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
     SELECT
       p.id, p.brand, p.name, p.slug, p.sku,
       p.retail_price_brl, p.wholesale_price_brl, p.wholesale_min_qty,
-      p.stock, p.weight_range, p.badge, p.is_featured, p.is_active,
+      p.stock, p.cost_price_brl, p.weight_range, p.badge, p.is_featured, p.is_active,
       p.collection, p.created_at,
       c.name AS category_name
     FROM products p
@@ -138,6 +140,7 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
     wholesalePriceBRL: row.wholesale_price_brl != null ? Number(row.wholesale_price_brl) : 0,
     wholesaleMinQty: row.wholesale_min_qty as number,
     stock: row.stock as number,
+    costPriceBRL: row.cost_price_brl != null ? Number(row.cost_price_brl) : null,
     weightRange: row.weight_range as WeightRange,
     badge: (row.badge as string | null) ?? null,
     isFeatured: row.is_featured as boolean,
@@ -159,7 +162,7 @@ export async function getAdminProductById(productId: string) {
       p.material, p.dimensions, p.origin, p.care_instructions,
       p.weight_range, p.weight_grams,
       p.retail_price_brl, p.wholesale_price_brl, p.wholesale_min_qty,
-      p.stock, p.badge, p.is_featured, p.is_active,
+      p.stock, p.cost_price_brl, p.badge, p.is_featured, p.is_active,
       p.collection, p.tags, p.position,
       p.category_id, p.subcategory_id,
       p.created_at, p.updated_at,
@@ -192,6 +195,7 @@ export async function getAdminProductById(productId: string) {
     wholesalePriceBRL: row.wholesale_price_brl != null ? Number(row.wholesale_price_brl) : null,
     wholesaleMinQty: row.wholesale_min_qty as number,
     stock: row.stock as number,
+    costPriceBRL: row.cost_price_brl != null ? Number(row.cost_price_brl) : null,
     badge: (row.badge as string | null) ?? null,
     isFeatured: row.is_featured as boolean,
     isActive: row.is_active as boolean,
@@ -222,7 +226,7 @@ export async function createAdminProduct(input: CreateProductInput) {
       material, dimensions, origin, care_instructions,
       weight_range, weight_grams,
       retail_price_brl, wholesale_price_brl, wholesale_min_qty,
-      stock, badge, is_featured, is_active,
+      stock, cost_price_brl, badge, is_featured, is_active,
       collection, tags, position,
       category_id, subcategory_id
     ) VALUES (
@@ -233,7 +237,7 @@ export async function createAdminProduct(input: CreateProductInput) {
       ${parsed.origin ?? null}, ${parsed.careInstructions ?? null},
       ${parsed.weightRange}, ${parsed.weightGrams ?? null},
       ${parsed.retailPriceBRL}, ${parsed.wholesalePriceBRL ?? null}, ${parsed.wholesaleMinQty},
-      ${parsed.stock}, ${parsed.badge ?? null}, ${parsed.isFeatured}, ${parsed.isActive},
+      ${parsed.stock}, ${parsed.costPriceBRL ?? null}, ${parsed.badge ?? null}, ${parsed.isFeatured}, ${parsed.isActive},
       ${parsed.collection ?? null}, ${parsed.tags}, ${parsed.position},
       ${parsed.categoryId ?? null}, ${parsed.subcategoryId ?? null}
     )
@@ -283,6 +287,7 @@ export async function patchAdminProduct(productId: string, input: PatchProductIn
   if (parsed.wholesaleMinQty !== undefined) updates.wholesale_min_qty = parsed.wholesaleMinQty;
   // Stock
   if (parsed.stock !== undefined) updates.stock = parsed.stock;
+  if (parsed.costPriceBRL !== undefined) updates.cost_price_brl = parsed.costPriceBRL;
   // Merchandising
   if (parsed.badge !== undefined) updates.badge = parsed.badge;
   if (parsed.isFeatured !== undefined) updates.is_featured = parsed.isFeatured;
@@ -359,6 +364,9 @@ export async function getAdminOrderDetail(publicId: string) {
       o.stripe_session_id, o.notes,
       o.created_at, o.updated_at,
       o.destination_country_code, o.destination_country_name,
+      -- Stage 16: financial snapshot
+      o.product_cost_brl_snapshot, o.gateway_fee_brl_snapshot,
+      o.gross_margin_brl_snapshot, o.net_margin_brl_snapshot,
       -- Stage 14: contact + address snapshots (prefer snapshot over live profile)
       COALESCE(o.customer_name_snapshot, p.full_name, 'Guest') AS customer_name,
       COALESCE(o.customer_email_snapshot, p.email)             AS customer_email,
@@ -376,7 +384,8 @@ export async function getAdminOrderDetail(publicId: string) {
   if (!order) throw new Error(`Order not found: ${publicId}`);
 
   const items = await db`
-    SELECT product_name, sku, brand, quantity, unit_price_brl, line_total_brl, weight_range
+    SELECT product_name, sku, brand, quantity, unit_price_brl, line_total_brl, weight_range,
+           unit_cost_brl_snapshot, line_cost_brl_snapshot, line_margin_brl_snapshot
     FROM order_items
     WHERE order_id = ${order.id}
     ORDER BY id
@@ -404,6 +413,10 @@ export async function getAdminOrderDetail(publicId: string) {
     isGuest: !order.profile_id,
     destinationCountryCode: (order.destination_country_code as string | null) ?? null,
     destinationCountryName: (order.destination_country_name as string | null) ?? null,
+    productCostBRLSnapshot: order.product_cost_brl_snapshot != null ? Number(order.product_cost_brl_snapshot) : null,
+    gatewayFeeBRLSnapshot: order.gateway_fee_brl_snapshot != null ? Number(order.gateway_fee_brl_snapshot) : null,
+    grossMarginBRLSnapshot: order.gross_margin_brl_snapshot != null ? Number(order.gross_margin_brl_snapshot) : null,
+    netMarginBRLSnapshot: order.net_margin_brl_snapshot != null ? Number(order.net_margin_brl_snapshot) : null,
     shippingLine1: (order.shipping_line1_snapshot as string | null) ?? null,
     shippingLine2: (order.shipping_line2_snapshot as string | null) ?? null,
     shippingCity: (order.shipping_city_snapshot as string | null) ?? null,
@@ -419,6 +432,9 @@ export async function getAdminOrderDetail(publicId: string) {
       unitPriceBRL: Number(i.unit_price_brl),
       lineTotalBRL: Number(i.line_total_brl),
       weightRange: i.weight_range as string,
+      unitCostBRLSnapshot: i.unit_cost_brl_snapshot != null ? Number(i.unit_cost_brl_snapshot) : null,
+      lineCostBRLSnapshot: i.line_cost_brl_snapshot != null ? Number(i.line_cost_brl_snapshot) : null,
+      lineMarginBRLSnapshot: i.line_margin_brl_snapshot != null ? Number(i.line_margin_brl_snapshot) : null,
     })),
   };
 }

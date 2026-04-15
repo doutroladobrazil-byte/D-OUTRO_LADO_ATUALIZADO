@@ -79,6 +79,40 @@ export default async function AdminOrderDetailPage({
         </div>
       </AdminSection>
 
+      {/* Financial snapshot — Stage 16 */}
+      <AdminSection title="Snapshot de margem" eyebrow="Calculado na criacao do pedido">
+        {order.grossMarginBRLSnapshot != null ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              label="Custo produtos (BRL)"
+              value={`R$ ${order.productCostBRLSnapshot!.toFixed(2)}`}
+            />
+            <MetricCard
+              label="Fee gateway (est.)"
+              value={`R$ ${order.gatewayFeeBRLSnapshot!.toFixed(2)}`}
+              sub="~3.5% do total — estimativa"
+            />
+            <MetricCard
+              label="Margem bruta"
+              value={`R$ ${order.grossMarginBRLSnapshot.toFixed(2)}`}
+              sub={`${((order.grossMarginBRLSnapshot / order.totalBRL) * 100).toFixed(1)}%`}
+              highlight="green"
+            />
+            <MetricCard
+              label="Margem liquida"
+              value={`R$ ${order.netMarginBRLSnapshot!.toFixed(2)}`}
+              sub={`${((order.netMarginBRLSnapshot! / order.totalBRL) * 100).toFixed(1)}%`}
+              highlight={order.netMarginBRLSnapshot! >= 0 ? "green" : "red"}
+            />
+          </div>
+        ) : (
+          <p className="text-[13px] text-white/35">
+            N/A — custo de produto nao configurado para um ou mais itens deste pedido,
+            ou pedido anterior ao Stage 16.
+          </p>
+        )}
+      </AdminSection>
+
       {/* Status badges */}
       <AdminSection title="Status atual" eyebrow="Classificações">
         <div className="flex flex-wrap gap-3">

@@ -27,6 +27,7 @@ export type AdminProduct = {
   wholesalePriceBRL: number;
   wholesaleMinQty: number;
   stock: number;
+  costPriceBRL: number | null;
   weightRange: string;
   badge: string | null;
   isFeatured: boolean;
@@ -60,6 +61,7 @@ export type AdminProductDetail = {
   wholesalePriceBRL: number | null;
   wholesaleMinQty: number;
   stock: number;
+  costPriceBRL: number | null;
   badge: string | null;
   isFeatured: boolean;
   isActive: boolean;
@@ -97,6 +99,11 @@ export type AdminOrderDetail = {
   shippingCity: string | null;
   shippingStateRegion: string | null;
   shippingPostalCode: string | null;
+  // Stage 16 — financial snapshot (null for pre-Stage 16 orders)
+  productCostBRLSnapshot: number | null;
+  gatewayFeeBRLSnapshot: number | null;
+  grossMarginBRLSnapshot: number | null;
+  netMarginBRLSnapshot: number | null;
   createdAt: string;
   updatedAt: string;
   items: {
@@ -107,6 +114,9 @@ export type AdminOrderDetail = {
     unitPriceBRL: number;
     lineTotalBRL: number;
     weightRange: string;
+    unitCostBRLSnapshot: number | null;
+    lineCostBRLSnapshot: number | null;
+    lineMarginBRLSnapshot: number | null;
   }[];
 };
 

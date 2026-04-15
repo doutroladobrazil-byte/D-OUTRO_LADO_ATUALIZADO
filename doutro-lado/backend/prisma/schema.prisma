@@ -100,6 +100,8 @@ model Product {
   wholesalePriceBrl Decimal? @map("wholesale_price_brl") @db.Decimal(12, 2)
   wholesaleMinQty   Int      @default(1) @map("wholesale_min_qty")
   stock             Int      @default(0)
+  /// Landed cost of the product (manufacturing + logistics in). Used for margin calculation only — never exposed in public catalog API.
+  costPriceBrl      Decimal? @map("cost_price_brl") @db.Decimal(12, 2)
   badge             String?
   collection        String?
   tags              String[] @default([])
@@ -448,6 +450,21 @@ model Order {
   shippingStateRegionSnapshot String?  @map("shipping_state_region_snapshot") @db.VarChar(100)
   shippingPostalCodeSnapshot  String?  @map("shipping_postal_code_snapshot") @db.VarChar(20)
 
+  // -------------------------------------------------------------------------
+  // Stage 16 — Financial snapshot columns (all nullable).
+  // Historical orders (pre-Stage 16) will have NULL values.
+  // product_cost_brl_snapshot = SUM(unit_cost × qty) for all items at order time.
+  //   NULL when any product item has no cost_price_brl set.
+  // gateway_fee_brl_snapshot  = ESTIMATED ~3.5% of total_brl (Stripe BR flat rate).
+  //   Documented as an estimate; not a precise gateway record.
+  // gross_margin_brl_snapshot = total_brl − product_cost_brl_snapshot
+  // net_margin_brl_snapshot   = total_brl − product_cost_brl_snapshot − freight_brl − gateway_fee_brl_snapshot
+  // -------------------------------------------------------------------------
+  productCostBrlSnapshot  Decimal? @map("product_cost_brl_snapshot") @db.Decimal(12, 2)
+  gatewayFeeBrlSnapshot   Decimal? @map("gateway_fee_brl_snapshot") @db.Decimal(12, 2)
+  grossMarginBrlSnapshot  Decimal? @map("gross_margin_brl_snapshot") @db.Decimal(12, 2)
+  netMarginBrlSnapshot    Decimal? @map("net_margin_brl_snapshot") @db.Decimal(12, 2)
+
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])
   orderItems     OrderItem[]
@@ -525,6 +542,11 @@ model OrderItem {
   unitPriceBrl Decimal @map("unit_price_brl") @db.Decimal(12, 2)
   lineTotalBrl Decimal @map("line_total_brl") @db.Decimal(12, 2)
   weightRange  String  @map("weight_range")
+
+  // Stage 16 — Cost snapshot at order creation. NULL when product has no cost_price_brl set.
+  unitCostBrlSnapshot   Decimal? @map("unit_cost_brl_snapshot") @db.Decimal(12, 2)
+  lineCostBrlSnapshot   Decimal? @map("line_cost_brl_snapshot") @db.Decimal(12, 2)
+  lineMarginBrlSnapshot Decimal? @map("line_margin_brl_snapshot") @db.Decimal(12, 2)
 
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)

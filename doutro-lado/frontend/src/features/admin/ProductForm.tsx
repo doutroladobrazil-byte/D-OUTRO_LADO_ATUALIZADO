@@ -95,6 +95,7 @@ type FormData = {
   wholesalePriceBRL: string;
   wholesaleMinQty: string;
   stock: string;
+  costPriceBRL: string;
   badge: string;
   isFeatured: boolean;
   isActive: boolean;
@@ -125,6 +126,7 @@ function initForm(product?: AdminProductDetail): FormData {
       wholesalePriceBRL: "",
       wholesaleMinQty: "1",
       stock: "0",
+      costPriceBRL: "",
       badge: "",
       isFeatured: false,
       isActive: true,
@@ -153,6 +155,7 @@ function initForm(product?: AdminProductDetail): FormData {
     wholesalePriceBRL: product.wholesalePriceBRL != null ? String(product.wholesalePriceBRL) : "",
     wholesaleMinQty: String(product.wholesaleMinQty),
     stock: String(product.stock),
+    costPriceBRL: product.costPriceBRL != null ? String(product.costPriceBRL) : "",
     badge: product.badge ?? "",
     isFeatured: product.isFeatured,
     isActive: product.isActive,
@@ -189,6 +192,7 @@ function buildPayload(form: FormData): Record<string, unknown> {
     wholesalePriceBRL: form.wholesalePriceBRL ? Number(form.wholesalePriceBRL) : null,
     wholesaleMinQty: Number(form.wholesaleMinQty),
     stock: Number(form.stock),
+    costPriceBRL: form.costPriceBRL ? Number(form.costPriceBRL) : null,
     badge: form.badge.trim() || null,
     isFeatured: form.isFeatured,
     isActive: form.isActive,
@@ -409,6 +413,20 @@ export function ProductForm({ mode, product }: Props) {
             onChange={(e) => set("stock", e.target.value)}
             required
           />
+        </div>
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label>Custo de aquisição (BRL) — interno</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.costPriceBRL}
+            onChange={(e) => set("costPriceBRL", e.target.value)}
+            placeholder="420.00"
+          />
+          <p className="mt-1 text-[11px] text-white/30">Custo de fabricação + logística inbound. Não é exibido na loja.</p>
         </div>
       </div>
 
