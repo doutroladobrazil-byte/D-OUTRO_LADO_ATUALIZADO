@@ -58,6 +58,13 @@ const schema = z.object({
   /** Secret token used to authenticate calls to POST /api/internal/recovery/process. */
   RECOVERY_JOB_SECRET: optionalString,
 
+  // ==========================================================================
+  // Inventory reservations — Stage 15
+  // ==========================================================================
+
+  /** Minutes a stock reservation is held before it expires. Default: 20. */
+  RESERVATION_TTL_MINUTES: z.coerce.number().int().min(1).default(20),
+
   // Resend (email)
   RESEND_API_KEY: optionalString,
   /** From address for recovery emails. Default: noreply@doutrolado.com */

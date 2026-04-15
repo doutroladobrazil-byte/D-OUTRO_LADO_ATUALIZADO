@@ -137,7 +137,12 @@ export type StockOverview = {
     brand: Brand;
     sku: string;
     name: string;
+    /** Physical units on shelf */
     stock: number;
+    /** Units currently reserved (active, non-expired reservations) */
+    reserved: number;
+    /** available = stock − reserved */
+    available: number;
     isActive: boolean;
   }[];
 };

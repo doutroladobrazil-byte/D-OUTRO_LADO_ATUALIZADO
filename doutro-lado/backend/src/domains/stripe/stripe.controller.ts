@@ -9,6 +9,12 @@ import {
   deductStockForOrder,
   updatePaymentStatus,
 } from "../orders/orders.service.js";
+import {
+  attachSessionToReservations,
+  checkAndReserve,
+  consumeReservations,
+} from "../orders/reservation.service.js";
+import { logSystemEvent } from "../admin/system-log.service.js";
 import { clearCart } from "../cart/cart.service.js";
 import { getCartByProfile } from "../cart/cart.service.js";
 
@@ -32,6 +38,19 @@ export async function createCheckoutSession(req: Request, res: Response) {
 
     // Build the order — persisted to DB
     const orderPreview = await buildOrder(req.body, role, profileId);
+
+    // Stage 15: Reserve stock for all items before creating the Stripe session.
+    // Throws if any item is out of stock — order is already persisted but will
+    // remain in 'created' status until payment is confirmed.
+    await checkAndReserve(
+      orderPreview.items.map((item) => ({
+        productId: item.productId,
+        slug: item.slug,
+        name: item.name,
+        quantity: item.quantity,
+      })),
+      orderPreview.orderId
+    );
 
     // ── Mock mode (no Stripe key) ───────────────────────────────────────────
     if (!stripe || env.PAYMENTS_MODE !== "stripe") {
@@ -106,6 +125,8 @@ export async function createCheckoutSession(req: Request, res: Response) {
 
     // Persist payment record + attach session ID to order
     await attachStripeSession(orderPreview.orderId, session.id);
+    // Stage 15: Link reservations to the Stripe session for webhook lookup
+    await attachSessionToReservations(orderPreview.orderId, session.id);
 
     // Clear cart after successful order + session creation
     if (profileId) {
@@ -162,9 +183,17 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const paymentIntentId =
           typeof session.payment_intent === "string" ? session.payment_intent : undefined;
         await updatePaymentStatus(session.id, "paid", paymentIntentId);
+        // Stage 15: Consume active reservations (idempotent — only transitions 'active')
+        await consumeReservations(session.id);
         // Deduct stock once — idempotent via stock_deducted_at
         const orderId = session.metadata?.orderId;
-        if (orderId) await deductStockForOrder(orderId);
+        if (orderId) {
+          await deductStockForOrder(orderId);
+          await logSystemEvent("payment_confirmed", "order", orderId, {
+            stripeSessionId: session.id,
+            paymentIntentId,
+          });
+        }
         break;
       }
       case "checkout.session.expired": {

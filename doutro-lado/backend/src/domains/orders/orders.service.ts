@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "../../lib/db.js";
+import { logSystemEvent } from "../admin/system-log.service.js";
 import { getProductsBySlug } from "../../services/catalog.service.js";
 import type { Brand, BuiltOrder, CountryCode, FreightQuote, OperationalRegion, Region, Role, WeightRange } from "../../types/domain.js";
 import { quoteFreight, resolveOrderWeightRange } from "../freight/freight.service.js";
@@ -498,6 +499,11 @@ export async function deductStockForOrder(orderId: string): Promise<void> {
     WHERE oi.order_id = ${orderId}
       AND p.id        = oi.product_id
   `;
+
+  // Stage 15: Audit log for stock deduction
+  await logSystemEvent("stock_decremented", "order", orderId, {
+    deductedAt: new Date().toISOString(),
+  });
 }
 
 /**

@@ -122,6 +122,7 @@ model Product {
   recommendationEvents RecommendationEvent[]
   translations         ProductTranslation[]
   countryAvailability  ProductCountryAvailability[]
+  reservations         InventoryReservation[]
 
   @@map("products")
 }
@@ -452,8 +453,37 @@ model Order {
   orderItems     OrderItem[]
   paymentRecords PaymentRecord[]
   fiscalRecords  FiscalRecord[]
+  reservations   InventoryReservation[]
 
   @@map("orders")
+}
+
+// =============================================================================
+// Stage 15 — Inventory Reservations
+// =============================================================================
+// Temporary stock holds created at checkout start, before payment confirmation.
+// Prevents oversell by atomically reserving stock while the user pays.
+// Expires after RESERVATION_TTL_MINUTES (default 20) if payment is not received.
+
+model InventoryReservation {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId                  String?   @map("order_id") @db.Uuid
+  stripeCheckoutSessionId  String?   @map("stripe_checkout_session_id") @db.VarChar(255)
+  productId                String    @map("product_id") @db.Uuid
+  quantity                 Int
+  /// active | consumed | expired | released
+  status                   String    @default("active") @db.VarChar(20)
+  expiresAt                DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, status, expiresAt], map: "idx_ir_product_status_expires")
+  @@index([orderId], map: "idx_ir_order_id")
+  @@index([stripeCheckoutSessionId], map: "idx_ir_stripe_session")
+  @@map("inventory_reservations")
 }
 
 // =============================================================================

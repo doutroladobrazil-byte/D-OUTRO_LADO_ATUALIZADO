@@ -21,8 +21,8 @@ export default async function AdminInventoryPage() {
   const token = await requireAdminToken();
   const overview = await fetchAdminStock(token);
 
-  // Sort: critical first, then by stock asc
-  const items = (overview?.items ?? []).slice().sort((a, b) => a.stock - b.stock);
+  // Sort: critical first by available stock
+  const items = (overview?.items ?? []).slice().sort((a, b) => a.available - b.available);
 
   const columns = [
     { key: "brand", label: "Brand", render: (r: StockItem) => <BrandChip brand={r.brand} /> },
@@ -30,9 +30,25 @@ export default async function AdminInventoryPage() {
     { key: "name", label: "Produto" },
     {
       key: "stock",
-      label: "Estoque",
+      label: "Físico",
       align: "right" as const,
       render: (r: StockItem) => <StockIndicator stock={r.stock} />,
+    },
+    {
+      key: "reserved",
+      label: "Reservado",
+      align: "right" as const,
+      render: (r: StockItem) => (
+        <span className={r.reserved > 0 ? "text-amber-400 font-mono text-sm" : "text-white/30 font-mono text-sm"}>
+          {r.reserved}
+        </span>
+      ),
+    },
+    {
+      key: "available",
+      label: "Disponível",
+      align: "right" as const,
+      render: (r: StockItem) => <StockIndicator stock={r.available} />,
     },
     {
       key: "isActive",

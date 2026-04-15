@@ -44,6 +44,7 @@ import {
 import { simulateBagHandler } from "../domains/bag/bag.controller.js";
 import { processRecoveryHandler } from "../domains/recovery/recovery.controller.js";
 import { createOrder, listMyOrders } from "../domains/orders/orders.controller.js";
+import { expireReservationsHandler } from "../domains/orders/reservation.controller.js";
 import { getProduct, listProducts } from "../domains/products/products.controller.js";
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
 import { listUsers } from "../domains/users/users.controller.js";
@@ -76,9 +77,10 @@ router.get("/health", async (_req: Request, res: Response) => {
 router.post("/bag/simulate", simulateBagHandler);
 
 // ---------------------------------------------------------------------------
-// Internal — bag recovery job (protected by RECOVERY_JOB_SECRET)
+// Internal — bag recovery job + reservation expiry (protected by RECOVERY_JOB_SECRET)
 // ---------------------------------------------------------------------------
 router.post("/internal/recovery/process", processRecoveryHandler);
+router.post("/internal/reservations/expire", expireReservationsHandler);
 
 // ---------------------------------------------------------------------------
 // Public catalog

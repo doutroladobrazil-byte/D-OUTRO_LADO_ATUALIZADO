@@ -534,27 +534,45 @@ export async function patchAdminProductAvailability(
 
 export async function getStockOverview() {
   const rows = await db`
-    SELECT brand, sku, name, stock, is_active
-    FROM products
-    ORDER BY stock ASC, brand, name
+    SELECT
+      p.brand,
+      p.sku,
+      p.name,
+      p.stock,
+      p.is_active,
+      COALESCE(SUM(ir.quantity) FILTER (
+        WHERE ir.status = 'active' AND ir.expires_at > NOW()
+      ), 0)::int AS reserved
+    FROM products p
+    LEFT JOIN inventory_reservations ir ON ir.product_id = p.id
+    GROUP BY p.id, p.brand, p.sku, p.name, p.stock, p.is_active
+    ORDER BY p.stock ASC, p.brand, p.name
     LIMIT 200
   `;
 
-  const critical = rows.filter((r) => Number(r.stock) < 5).length;
-  const outOfStock = rows.filter((r) => Number(r.stock) === 0).length;
-  const healthy = rows.filter((r) => Number(r.stock) >= 20).length;
-
-  return {
-    totalSKUs: rows.length,
-    critical,
-    outOfStock,
-    healthy,
-    items: rows.map((row) => ({
+  const items = rows.map((row) => {
+    const physical = Number(row.stock);
+    const reserved = Number(row.reserved ?? 0);
+    return {
       brand: row.brand as Brand,
       sku: row.sku as string,
       name: row.name as string,
-      stock: Number(row.stock),
+      stock: physical,
+      reserved,
+      available: Math.max(0, physical - reserved),
       isActive: row.is_active as boolean,
-    })),
+    };
+  });
+
+  const critical = items.filter((r) => r.available < 5).length;
+  const outOfStock = items.filter((r) => r.available === 0).length;
+  const healthy = items.filter((r) => r.available >= 20).length;
+
+  return {
+    totalSKUs: items.length,
+    critical,
+    outOfStock,
+    healthy,
+    items,
   };
 }
