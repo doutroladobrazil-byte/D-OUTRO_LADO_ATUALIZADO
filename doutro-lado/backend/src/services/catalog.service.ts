@@ -125,7 +125,37 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
   else if (sort === "newest") orderClause = db`ORDER BY p.created_at DESC`;
 
   const rows = await db`
-    SELECT ${db.unsafe(PRODUCT_SELECT)}
+    SELECT
+      ${db.unsafe(PRODUCT_SELECT)},
+      -- Primary media — scalar subqueries to avoid GROUP BY on all product columns
+      (
+        SELECT ma.public_url
+        FROM product_media pm
+        JOIN media_assets ma ON ma.id = pm.media_asset_id
+        WHERE pm.product_id = p.id AND ma.is_active = true AND pm.is_primary = true
+        LIMIT 1
+      ) AS primary_image_url,
+      (
+        SELECT ma.alt_text
+        FROM product_media pm
+        JOIN media_assets ma ON ma.id = pm.media_asset_id
+        WHERE pm.product_id = p.id AND ma.is_active = true AND pm.is_primary = true
+        LIMIT 1
+      ) AS primary_image_alt,
+      (
+        SELECT ma.media_type
+        FROM product_media pm
+        JOIN media_assets ma ON ma.id = pm.media_asset_id
+        WHERE pm.product_id = p.id AND ma.is_active = true AND pm.is_primary = true
+        LIMIT 1
+      ) AS primary_media_type,
+      (
+        SELECT ma.poster_url
+        FROM product_media pm
+        JOIN media_assets ma ON ma.id = pm.media_asset_id
+        WHERE pm.product_id = p.id AND ma.is_active = true AND pm.is_primary = true
+        LIMIT 1
+      ) AS primary_poster_url
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN subcategories s ON s.id = p.subcategory_id
@@ -148,7 +178,34 @@ export async function listProducts(options: ListProductsOptions = {}): Promise<P
     ${orderClause}
   `;
 
-  return rows.map(mapProduct);
+  return rows.map((row) => {
+    const product = mapProduct(row);
+    const primaryUrl = row.primary_image_url as string | null;
+    if (primaryUrl) {
+      product.media = [
+        {
+          id: "primary",
+          productId: product.id,
+          position: 0,
+          isPrimary: true,
+          createdAt: "",
+          asset: {
+            id: "primary",
+            brand: product.brand,
+            mediaType: (row.primary_media_type ?? "image") as "image" | "video",
+            bucket: "",
+            storagePath: "",
+            publicUrl: primaryUrl,
+            posterUrl: (row.primary_poster_url as string | null) ?? undefined,
+            altText: (row.primary_image_alt as string | null) ?? undefined,
+            isActive: true,
+            createdAt: "",
+          },
+        },
+      ];
+    }
+    return product;
+  });
 }
 
 /**

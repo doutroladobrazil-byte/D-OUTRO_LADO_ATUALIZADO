@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: false,
 
+  images: {
+    remotePatterns: [
+      // Supabase Storage — product media (images uploaded via admin)
+      {
+        protocol: "https",
+        hostname: "oazybcxrzxpvpavporrm.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
+
   async headers() {
     return [
       {
