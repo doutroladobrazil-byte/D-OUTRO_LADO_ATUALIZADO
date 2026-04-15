@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import type { BagSimulationResult, Brand, CountryCode, SupportedCountry } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
-import { getActiveCountries, getBackendCart, simulateBag } from "@/lib/storefront";
+import { getActiveCountries, getBackendCart, getCountryDetail, simulateBag } from "@/lib/storefront";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +25,60 @@ const COUNTRY_FLAGS: Record<CountryCode, string> = {
   IS: "🇮🇸",
   SG: "🇸🇬",
 };
+
+type ContactForm = {
+  fullName: string;
+  email: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  stateRegion: string;
+  postalCode: string;
+};
+
+const EMPTY_CONTACT: ContactForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  line1: "",
+  line2: "",
+  city: "",
+  stateRegion: "",
+  postalCode: "",
+};
+
+/** Simple text input used in the checkout form. */
+function CheckoutInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  type?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/25 focus:outline-none focus:ring-0 transition"
+      />
+    </div>
+  );
+}
 
 export function BrandCheckoutView({ brand }: Props) {
   const router = useRouter();
@@ -50,17 +104,44 @@ export function BrandCheckoutView({ brand }: Props) {
   const [sim, setSim] = useState<BagSimulationResult | null>(null);
   const [simLoading, setSimLoading] = useState(false);
 
+  // Stage 14 — auth + guest checkout state
+  /** null = not yet resolved; undefined = not authenticated */
+  const [authUser, setAuthUser] = useState<{ email: string; name: string | null } | undefined | null>(null);
+  /** null = not yet loaded; true/false = commerce rule result */
+  const [allowGuestCheckout, setAllowGuestCheckout] = useState<boolean | null>(null);
+  const [contact, setContact] = useState<ContactForm>(EMPTY_CONTACT);
+
+  const isAuthenticated = authUser !== undefined && authUser !== null;
+  const isAuthResolved = authUser !== null; // null = loading, undefined = guest
+
+  // ── Resolve auth user on mount ─────────────────────────────────────────────
   useEffect(() => {
-    getActiveCountries().then((list) => {
-      const active = list.filter((c) => c.checkoutEnabled);
-      setCountries(active);
-      if (active.length > 0 && !selectedCountry) {
-        setSelectedCountry(active[0].code);
+    async function resolveAuth() {
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setAuthUser({
+            email: session.user.email ?? "",
+            name: session.user.user_metadata?.full_name ?? null,
+          });
+          // Pre-fill email + name from session
+          setContact((prev) => ({
+            ...prev,
+            email: prev.email || session.user.email || "",
+            fullName: prev.fullName || session.user.user_metadata?.full_name || "",
+          }));
+        } else {
+          setAuthUser(undefined); // not authenticated
+        }
+      } catch {
+        setAuthUser(undefined);
       }
-    });
+    }
+    resolveAuth();
   }, []);
 
-  // Hydrate cart from backend on mount when authenticated.
+  // ── Hydrate cart from backend ──────────────────────────────────────────────
   useEffect(() => {
     async function hydrate() {
       const supabase = createClient();
@@ -73,21 +154,37 @@ export function BrandCheckoutView({ brand }: Props) {
     hydrate();
   }, [brand]);
 
-  // Auto-switch display currency and persist country preference when country changes.
+  // ── Load active countries ──────────────────────────────────────────────────
   useEffect(() => {
-    if (selectedCountry) {
-      const countryCurrency = COUNTRY_DEFAULT_CURRENCY[selectedCountry as CountryCode];
-      if (countryCurrency) setCurrency(countryCurrency);
-      persistCountryCode(selectedCountry as CountryCode);
-    }
+    getActiveCountries().then((list) => {
+      const active = list.filter((c) => c.checkoutEnabled);
+      setCountries(active);
+      if (active.length > 0 && !selectedCountry) {
+        setSelectedCountry(active[0].code);
+      }
+    });
+  }, []);
+
+  // ── Handle country change: update currency, persist preference, load rules ─
+  useEffect(() => {
+    if (!selectedCountry) return;
+    const countryCurrency = COUNTRY_DEFAULT_CURRENCY[selectedCountry as CountryCode];
+    if (countryCurrency) setCurrency(countryCurrency);
+    persistCountryCode(selectedCountry as CountryCode);
+
+    // Load allowGuestCheckout for the selected country
+    setAllowGuestCheckout(null); // reset while loading
+    getCountryDetail(selectedCountry as CountryCode).then((detail) => {
+      setAllowGuestCheckout(detail?.commerceRule?.allowGuestCheckout ?? true);
+    }).catch(() => setAllowGuestCheckout(true)); // default to allow on error
   }, [selectedCountry]);
 
-  // Clear local cart once backend confirms payment.
+  // ── Clear cart on payment success ─────────────────────────────────────────
   useEffect(() => {
     if (status === "success") clearCart(brand);
   }, [status, brand, clearCart]);
 
-  // Re-simulate whenever country, currency, cart items, kit items, or offerCode change.
+  // ── Re-simulate on cart/country change ────────────────────────────────────
   useEffect(() => {
     if (!selectedCountry || (cart.items.length === 0 && kitItems.length === 0)) {
       setSim(null);
@@ -164,7 +261,7 @@ export function BrandCheckoutView({ brand }: Props) {
     );
   }
 
-  // ── Cancelled state ─────────────────────────────────────────────────────────
+  // ── Cancelled state ────────────────────────────────────────────────────────
   if (status === "cancelled") {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
@@ -179,7 +276,7 @@ export function BrandCheckoutView({ brand }: Props) {
     );
   }
 
-  // ── Empty cart guard ─────────────────────────────────────────────────────────
+  // ── Empty cart guard ───────────────────────────────────────────────────────
   if (cart.items.length === 0 && kitItems.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
@@ -194,13 +291,47 @@ export function BrandCheckoutView({ brand }: Props) {
     );
   }
 
-  // ── Checkout form ───────────────────────────────────────────────────────────
+  // ── Derived state ──────────────────────────────────────────────────────────
+  const guestIsAllowed = allowGuestCheckout === true;
+  const guestIsBlocked = isAuthResolved && !isAuthenticated && allowGuestCheckout === false;
+  const showContactForm = selectedCountry && isAuthResolved && (isAuthenticated || guestIsAllowed);
+
+  const kitSubtotalBRL = kitItems.reduce((s, k) => s + k.totalBRL * k.quantity, 0);
+  const displayTotalBRL = sim?.totals.adjustedFinalTotalBRL ?? (cart.subtotalBRL + kitSubtotalBRL);
+  const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
+  const appliedOffer = sim?.appliedOffer ?? null;
+
+  // Contact form is required for guests; for auth users it's used to snapshot data.
+  const contactValid =
+    contact.fullName.trim().length >= 2 &&
+    contact.email.trim().includes("@") &&
+    contact.phone.trim().length >= 5 &&
+    contact.line1.trim().length >= 1 &&
+    contact.city.trim().length >= 1 &&
+    contact.postalCode.trim().length >= 1;
+
+  const checkoutBlocked =
+    submitting ||
+    !selectedCountry ||
+    simLoading ||
+    (sim !== null && !sim.isValid) ||
+    guestIsBlocked ||
+    !showContactForm ||
+    !contactValid;
+
+  // ── Checkout handler ───────────────────────────────────────────────────────
   async function handleCheckout() {
     if (!selectedCountry) return;
-
-    // Block checkout if simulation shows invalid bag
     if (sim !== null && !sim.isValid) {
       setError(sim.blockingIssues[0] ?? "Bag inválida. Revise os itens antes de continuar.");
+      return;
+    }
+    if (guestIsBlocked) {
+      setError("Faça login para finalizar o pedido neste destino.");
+      return;
+    }
+    if (!contactValid) {
+      setError("Preencha todos os campos obrigatórios de contato e endereço.");
       return;
     }
 
@@ -211,22 +342,24 @@ export function BrandCheckoutView({ brand }: Props) {
 
     let token: string | null = null;
     try {
-      const { createBrowserClient } = await import("@supabase/ssr");
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-      );
+      const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       token = data.session?.access_token ?? null;
     } catch {
-      // auth not available
+      // auth not available — proceed as guest
     }
 
-    if (!token) {
-      setError("Faça login para finalizar o pedido.");
-      setSubmitting(false);
-      return;
-    }
+    const contactPayload = {
+      fullName: contact.fullName.trim(),
+      email: contact.email.trim().toLowerCase(),
+      phone: contact.phone.trim(),
+      line1: contact.line1.trim(),
+      ...(contact.line2.trim() ? { line2: contact.line2.trim() } : {}),
+      city: contact.city.trim(),
+      ...(contact.stateRegion.trim() ? { stateRegion: contact.stateRegion.trim() } : {}),
+      postalCode: contact.postalCode.trim(),
+      countryCode: selectedCountry,
+    };
 
     const payload = {
       brand,
@@ -235,14 +368,15 @@ export function BrandCheckoutView({ brand }: Props) {
       items: cart.items.map((i) => ({ productSlug: i.productSlug, quantity: i.quantity })),
       kitItems: kitItems.map((k) => ({ kitId: k.kitId, quantity: k.quantity })),
       offerCode: offerCode ?? undefined,
+      contact: contactPayload,
     };
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     const res = await fetch(`${apiBase}/stripe/checkout`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -264,17 +398,11 @@ export function BrandCheckoutView({ brand }: Props) {
     }
   }
 
-  // Total to display: simulation result when available, fallback to local subtotal.
-  const kitSubtotalBRL = kitItems.reduce((s, k) => s + k.totalBRL * k.quantity, 0);
-  const displayTotalBRL = sim?.totals.adjustedFinalTotalBRL ?? (cart.subtotalBRL + kitSubtotalBRL);
-  const hasBlockingIssues = sim !== null && !sim.isValid && sim.blockingIssues.length > 0;
-  const appliedOffer = sim?.appliedOffer ?? null;
-  const checkoutBlocked = submitting || !selectedCountry || simLoading || (sim !== null && !sim.isValid);
-
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.45fr]">
-      {/* Left — country selection */}
+      {/* Left — destination + contact form */}
       <div className="space-y-6">
+        {/* Country selection */}
         <GlassCard className="space-y-6">
           <h2 className="font-display text-[28px] tracking-[-0.4px] text-white">Entrega internacional</h2>
           <div className="space-y-3">
@@ -306,6 +434,126 @@ export function BrandCheckoutView({ brand }: Props) {
             Entrega com rastreamento internacional. O total exibido já inclui frete, impostos e encargos.
           </div>
         </GlassCard>
+
+        {/* Login gate — shown when country blocks guest checkout and user is not auth */}
+        {selectedCountry && isAuthResolved && guestIsBlocked && (
+          <GlassCard className="space-y-4 border border-amber-400/20 bg-amber-400/5">
+            <div className="flex items-start gap-3">
+              <svg className="mt-0.5 shrink-0 text-amber-400" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <div>
+                <p className="font-medium text-white">Login obrigatório para este destino</p>
+                <p className="mt-1 text-sm text-white/60">
+                  O checkout como visitante não está disponível para {countries.find(c => c.code === selectedCountry)?.name ?? selectedCountry}. Faça login para continuar.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(`/login?redirect=/brands/${brand}/checkout`)}
+              className="w-full rounded-full border border-[#C6A96B]/60 bg-[rgba(198,169,107,0.1)] py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
+            >
+              Entrar na minha conta
+            </button>
+          </GlassCard>
+        )}
+
+        {/* Contact + address form — shown when country is selected and guest is allowed (or auth) */}
+        {showContactForm && !guestIsBlocked && (
+          <GlassCard className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-[22px] tracking-[-0.3px] text-white">Contato e entrega</h3>
+              {isAuthenticated ? (
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-emerald-300">
+                  Conectado
+                </span>
+              ) : (
+                <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-white/50">
+                  Visitante
+                </span>
+              )}
+            </div>
+
+            {/* Contact info */}
+            <div className="space-y-4">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Informações de contato</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CheckoutInput
+                  label="Nome completo"
+                  value={contact.fullName}
+                  onChange={(v) => setContact((p) => ({ ...p, fullName: v }))}
+                  placeholder="Seu nome"
+                  required
+                />
+                <CheckoutInput
+                  label="E-mail"
+                  type="email"
+                  value={contact.email}
+                  onChange={(v) => setContact((p) => ({ ...p, email: v }))}
+                  placeholder="email@exemplo.com"
+                  required
+                />
+              </div>
+              <CheckoutInput
+                label="Telefone / WhatsApp"
+                type="tel"
+                value={contact.phone}
+                onChange={(v) => setContact((p) => ({ ...p, phone: v }))}
+                placeholder="+41 79 000 0000"
+                required
+              />
+            </div>
+
+            {/* Shipping address */}
+            <div className="space-y-4">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Endereço de entrega</p>
+              <CheckoutInput
+                label="Endereço (linha 1)"
+                value={contact.line1}
+                onChange={(v) => setContact((p) => ({ ...p, line1: v }))}
+                placeholder="Rua, número, apartamento…"
+                required
+              />
+              <CheckoutInput
+                label="Complemento (opcional)"
+                value={contact.line2}
+                onChange={(v) => setContact((p) => ({ ...p, line2: v }))}
+                placeholder="Bloco, andar…"
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CheckoutInput
+                  label="Cidade"
+                  value={contact.city}
+                  onChange={(v) => setContact((p) => ({ ...p, city: v }))}
+                  placeholder="Zurique"
+                  required
+                />
+                <CheckoutInput
+                  label="Estado / Cantão / Região"
+                  value={contact.stateRegion}
+                  onChange={(v) => setContact((p) => ({ ...p, stateRegion: v }))}
+                  placeholder="ZH"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CheckoutInput
+                  label="Código postal"
+                  value={contact.postalCode}
+                  onChange={(v) => setContact((p) => ({ ...p, postalCode: v }))}
+                  placeholder="8001"
+                  required
+                />
+                <div className="space-y-1">
+                  <label className="text-[11px] uppercase tracking-[0.22em] text-white/45">País</label>
+                  <div className="flex items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/60">
+                    <span>{COUNTRY_FLAGS[selectedCountry as CountryCode] ?? "🌐"}</span>
+                    <span>{countries.find(c => c.code === selectedCountry)?.name ?? selectedCountry}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        )}
       </div>
 
       {/* Right — order summary */}

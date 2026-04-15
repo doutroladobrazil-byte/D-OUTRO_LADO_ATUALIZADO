@@ -49,12 +49,16 @@ export default async function AdminOrderDetailPage({
     { key: "weightRange", label: "Peso" },
   ];
 
+  const countryLabel = order.destinationCountryName
+    ? `${order.destinationCountryName} (${order.destinationCountryCode})`
+    : order.shippingRegion;
+
   return (
     <div className="space-y-10">
       <AdminPageHeader
         eyebrow={`Pedido ${order.publicId}`}
         title={`${order.customerName}`}
-        description={`Moda · ${order.shippingRegion} · ${order.createdAt.split("T")[0]}`}
+        description={`${order.isGuest ? "Guest" : "Autenticado"} · ${countryLabel} · ${order.createdAt.split("T")[0]}`}
       />
 
       {/* Status Trinity */}
@@ -93,6 +97,38 @@ export default async function AdminOrderDetailPage({
             {order.notes}
           </div>
         )}
+      </AdminSection>
+
+      {/* Contact + Shipping */}
+      <AdminSection title="Contato e entrega" eyebrow={order.isGuest ? "Pedido Guest" : "Pedido Autenticado"}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4 space-y-2 text-sm">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-white/35 mb-3">Contato</p>
+            <p className="text-white">{order.customerName}</p>
+            {order.customerEmail && <p className="text-white/60">{order.customerEmail}</p>}
+            {order.customerPhone && <p className="text-white/60">{order.customerPhone}</p>}
+            {order.isGuest && (
+              <span className="inline-block mt-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-amber-300">
+                Guest
+              </span>
+            )}
+          </div>
+          <div className="rounded-[16px] border border-white/8 bg-white/[0.02] p-4 space-y-1 text-sm">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-white/35 mb-3">Endereço de entrega</p>
+            {order.shippingLine1 ? (
+              <>
+                <p className="text-white">{order.shippingLine1}</p>
+                {order.shippingLine2 && <p className="text-white/70">{order.shippingLine2}</p>}
+                <p className="text-white/70">
+                  {[order.shippingCity, order.shippingStateRegion, order.shippingPostalCode].filter(Boolean).join(", ")}
+                </p>
+                <p className="text-white/70">{order.destinationCountryName ?? order.destinationCountryCode}</p>
+              </>
+            ) : (
+              <p className="text-white/30">Endereço não disponível (pedido pré-Stage 14)</p>
+            )}
+          </div>
+        </div>
       </AdminSection>
 
       {/* Order items */}

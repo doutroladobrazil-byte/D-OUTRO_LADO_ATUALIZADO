@@ -358,7 +358,16 @@ export async function getAdminOrderDetail(publicId: string) {
       o.order_status, o.payment_status, o.fiscal_status,
       o.stripe_session_id, o.notes,
       o.created_at, o.updated_at,
-      COALESCE(p.full_name, 'Guest') AS customer_name,
+      o.destination_country_code, o.destination_country_name,
+      -- Stage 14: contact + address snapshots (prefer snapshot over live profile)
+      COALESCE(o.customer_name_snapshot, p.full_name, 'Guest') AS customer_name,
+      COALESCE(o.customer_email_snapshot, p.email)             AS customer_email,
+      o.customer_phone_snapshot,
+      o.shipping_line1_snapshot,
+      o.shipping_line2_snapshot,
+      o.shipping_city_snapshot,
+      o.shipping_state_region_snapshot,
+      o.shipping_postal_code_snapshot,
       p.id AS profile_id
     FROM orders o
     LEFT JOIN profiles p ON p.id = o.profile_id
@@ -389,7 +398,17 @@ export async function getAdminOrderDetail(publicId: string) {
     stripeSessionId: (order.stripe_session_id as string | null) ?? null,
     notes: (order.notes as string | null) ?? null,
     customerName: order.customer_name as string,
+    customerEmail: (order.customer_email as string | null) ?? null,
+    customerPhone: (order.customer_phone_snapshot as string | null) ?? null,
     profileId: (order.profile_id as string | null) ?? null,
+    isGuest: !order.profile_id,
+    destinationCountryCode: (order.destination_country_code as string | null) ?? null,
+    destinationCountryName: (order.destination_country_name as string | null) ?? null,
+    shippingLine1: (order.shipping_line1_snapshot as string | null) ?? null,
+    shippingLine2: (order.shipping_line2_snapshot as string | null) ?? null,
+    shippingCity: (order.shipping_city_snapshot as string | null) ?? null,
+    shippingStateRegion: (order.shipping_state_region_snapshot as string | null) ?? null,
+    shippingPostalCode: (order.shipping_postal_code_snapshot as string | null) ?? null,
     createdAt: (order.created_at as Date).toISOString(),
     updatedAt: (order.updated_at as Date).toISOString(),
     items: items.map((i) => ({

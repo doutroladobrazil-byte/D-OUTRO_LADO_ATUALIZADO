@@ -465,6 +465,8 @@ export type CountryDetail = SupportedCountry & {
     logisticsBRL: number;
     marginPercent: number;
     minimumOrderBrl: number;
+    allowGuestCheckout: boolean;
+    allowDiscountCodes: boolean;
     estimatedDeliveryMinDays: number;
     estimatedDeliveryMaxDays: number;
   } | null;

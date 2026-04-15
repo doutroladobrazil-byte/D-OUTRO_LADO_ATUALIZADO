@@ -26,6 +26,7 @@ import { getCartByProfile } from "../cart/cart.service.js";
  */
 export async function createCheckoutSession(req: Request, res: Response) {
   try {
+    // Stage 14: req.user is optional — guest checkout uses optionalAuth.
     const profileId = req.user?.profileId;
     const role = req.user?.role ?? "customer";
 
@@ -72,10 +73,17 @@ export async function createCheckoutSession(req: Request, res: Response) {
     // Last item absorbs any rounding remainder
     lineAmountCents.push(totalCents - allocatedCents);
 
+    // Stage 14: pre-fill Stripe customer email from contact snapshot when available.
+    const contactEmail = (req.body as Record<string, unknown>)?.contact &&
+      typeof (req.body as Record<string, { email?: string }>).contact.email === "string"
+        ? (req.body as Record<string, { email?: string }>).contact.email
+        : undefined;
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       success_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=cancelled`,
+      ...(contactEmail ? { customer_email: contactEmail } : {}),
       metadata: {
         orderId: orderPreview.orderId,
         publicId: orderPreview.publicId,

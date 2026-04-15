@@ -86,7 +86,17 @@ export type AdminOrderDetail = {
   stripeSessionId: string | null;
   notes: string | null;
   customerName: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
   profileId: string | null;
+  isGuest: boolean;
+  destinationCountryCode: string | null;
+  destinationCountryName: string | null;
+  shippingLine1: string | null;
+  shippingLine2: string | null;
+  shippingCity: string | null;
+  shippingStateRegion: string | null;
+  shippingPostalCode: string | null;
   createdAt: string;
   updatedAt: string;
   items: {

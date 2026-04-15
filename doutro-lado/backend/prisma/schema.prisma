@@ -431,6 +431,22 @@ model Order {
   /// Maximum estimated delivery in business days from country_commerce_rules.
   deliveryEtaMaxDays     Int?     @map("delivery_eta_max_days")
 
+  // -------------------------------------------------------------------------
+  // Stage 14 — Checkout contact + shipping address snapshots (all nullable).
+  // Captured at purchase time so the order is fully operational without
+  // depending on the profile or address records (which may change later).
+  // Guest orders rely exclusively on these snapshots (profile_id = null).
+  // Note: destination country is already in destination_country_code / name.
+  // -------------------------------------------------------------------------
+  customerNameSnapshot        String?  @map("customer_name_snapshot") @db.VarChar(200)
+  customerEmailSnapshot       String?  @map("customer_email_snapshot") @db.VarChar(200)
+  customerPhoneSnapshot       String?  @map("customer_phone_snapshot") @db.VarChar(50)
+  shippingLine1Snapshot       String?  @map("shipping_line1_snapshot") @db.VarChar(200)
+  shippingLine2Snapshot       String?  @map("shipping_line2_snapshot") @db.VarChar(200)
+  shippingCitySnapshot        String?  @map("shipping_city_snapshot") @db.VarChar(100)
+  shippingStateRegionSnapshot String?  @map("shipping_state_region_snapshot") @db.VarChar(100)
+  shippingPostalCodeSnapshot  String?  @map("shipping_postal_code_snapshot") @db.VarChar(20)
+
   profile        Profile?        @relation(fields: [profileId], references: [id], onDelete: SetNull)
   address        Address?        @relation(fields: [addressId], references: [id])
   orderItems     OrderItem[]

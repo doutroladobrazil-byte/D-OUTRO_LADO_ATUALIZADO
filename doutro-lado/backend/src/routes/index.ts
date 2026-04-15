@@ -43,11 +43,11 @@ import {
 } from "../domains/media/media.controller.js";
 import { simulateBagHandler } from "../domains/bag/bag.controller.js";
 import { processRecoveryHandler } from "../domains/recovery/recovery.controller.js";
-import { createOrder } from "../domains/orders/orders.controller.js";
+import { createOrder, listMyOrders } from "../domains/orders/orders.controller.js";
 import { getProduct, listProducts } from "../domains/products/products.controller.js";
 import { createCheckoutSession } from "../domains/stripe/stripe.controller.js";
 import { listUsers } from "../domains/users/users.controller.js";
-import { requireAuth, requireAnyRole, requireRole } from "../middlewares/auth.js";
+import { requireAuth, requireAnyRole, requireRole, optionalAuth } from "../middlewares/auth.js";
 import { authRateLimit, checkoutRateLimit } from "../middlewares/rate-limit.js";
 import { getCurrencies, getLanguages, getRates } from "../domains/i18n/i18n.controller.js";
 import { getCountryHandler, listCountriesHandler } from "../domains/countries/countries.controller.js";
@@ -114,11 +114,14 @@ router.get("/auth/session", authRateLimit, requireAuth, getSession);
 router.patch("/auth/profile", authRateLimit, requireAuth, patchProfile);
 
 // ---------------------------------------------------------------------------
-// Customer+ — requires any authenticated user
+// Customer+ — order creation (Stage 14: optionalAuth enables guest checkout)
 // Rate-limited: prevents duplicate order creation and checkout spam.
+// Guest access is gated per-country via allowGuestCheckout commerce rule.
 // ---------------------------------------------------------------------------
-router.post("/orders", checkoutRateLimit, requireAuth, createOrder);
-router.post("/stripe/checkout", checkoutRateLimit, requireAuth, createCheckoutSession);
+router.post("/orders", checkoutRateLimit, optionalAuth, createOrder);
+router.post("/stripe/checkout", checkoutRateLimit, optionalAuth, createCheckoutSession);
+// List the authenticated user's own orders (for Minha Conta page)
+router.get("/orders/mine", requireAuth, listMyOrders);
 
 // ---------------------------------------------------------------------------
 // Cart — Stage 7 (authenticated)

@@ -18,6 +18,7 @@ import {
 } from "../countries/countries.service.js";
 import { getUnavailableProductIds } from "../countries/availability.service.js";
 import { COUNTRY_CODES } from "../../config/constants.js";
+import { checkoutAddressSchema, type CheckoutAddress } from "../checkout/checkout-address.schema.js";
 
 // =============================================================================
 // Validation
@@ -54,6 +55,12 @@ const orderSchema = z
     items: z.array(productItemSchema).default([]),
     kitItems: z.array(giftKitItemSchema).optional().default([]),
     offerCode: z.string().min(1).max(32).optional(),
+    /**
+     * Stage 14 — buyer contact + shipping address.
+     * Required for guest orders (profile_id = null).
+     * Optional for authenticated orders — when provided, data is always snapshotted.
+     */
+    contact: checkoutAddressSchema.optional(),
   })
   .refine(
     (data) => data.items.length > 0 || (data.kitItems && data.kitItems.length > 0),
@@ -209,6 +216,32 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     discountCodesAllowed = !cr || cr.allowDiscountCodes;
   }
 
+  // Stage 14 — contact/address validation.
+  // Guest orders require contact (it's the only identity we have).
+  // Authenticated orders: contact is optional but always snapshotted when provided.
+  let resolvedContact: CheckoutAddress | null = null;
+  if (parsed.contact) {
+    // Validate and coerce — checkoutAddressSchema is applied via Zod above, but
+    // we parse it again here to get the typed value reliably.
+    const contactResult = checkoutAddressSchema.safeParse(parsed.contact);
+    if (!contactResult.success) {
+      throw new Error(`Invalid shipping address: ${contactResult.error.errors[0]?.message ?? "validation failed"}`);
+    }
+    resolvedContact = contactResult.data;
+    // Country consistency: address.countryCode must match order.countryCode.
+    if (parsed.countryCode && resolvedContact.countryCode !== parsed.countryCode) {
+      throw new Error(
+        `Shipping address country (${resolvedContact.countryCode}) does not match the selected destination (${parsed.countryCode}).`
+      );
+    }
+  } else if (!profileId) {
+    // Guest with no contact — only blocked if we're on the country-first path.
+    // Legacy region path (authenticated-only) does not require contact.
+    if (parsed.countryCode) {
+      throw new Error("Contact and shipping address are required for guest checkout.");
+    }
+  }
+
   // ── Offer code validation ───────────────────────────────────────────────
   // BLOCO 5: offerCode is only looked up if the country (or legacy path) allows it.
   let discountPercent = 0;
@@ -307,14 +340,20 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
       shipping_region, estimated_weight_range, pricing_version,
       offer_code, discount_brl,
       destination_country_code, destination_country_name, destination_currency,
-      exchange_rate_used, delivery_eta_min_days, delivery_eta_max_days
+      exchange_rate_used, delivery_eta_min_days, delivery_eta_max_days,
+      customer_name_snapshot, customer_email_snapshot, customer_phone_snapshot,
+      shipping_line1_snapshot, shipping_line2_snapshot, shipping_city_snapshot,
+      shipping_state_region_snapshot, shipping_postal_code_snapshot
     ) VALUES (
       ${publicId}, ${profileId ?? null}, ${parsed.brand}, ${parsed.currency},
       ${subtotalBRL}, ${freightAmountBRL}, ${totalBRL},
       ${shippingRegionForOrder}, ${estimatedWeightRange}, ${pricingVersion},
       ${parsed.offerCode ?? null}, ${discountBRL},
       ${destinationCountryCode}, ${destinationCountryName}, ${destinationCurrency},
-      ${exchangeRateUsed}, ${deliveryEtaMinDays}, ${deliveryEtaMaxDays}
+      ${exchangeRateUsed}, ${deliveryEtaMinDays}, ${deliveryEtaMaxDays},
+      ${resolvedContact?.fullName ?? null}, ${resolvedContact?.email ?? null}, ${resolvedContact?.phone ?? null},
+      ${resolvedContact?.line1 ?? null}, ${resolvedContact?.line2 ?? null}, ${resolvedContact?.city ?? null},
+      ${resolvedContact?.stateRegion ?? null}, ${resolvedContact?.postalCode ?? null}
     )
     RETURNING id
   `;
@@ -369,6 +408,44 @@ export async function buildOrder(payload: unknown, role: Role = "customer", prof
     orderStatus: "created",
     fiscalStatus: "pending",
   };
+}
+
+// =============================================================================
+// Orders by profile — for Minha Conta / Stage 14
+// =============================================================================
+
+/**
+ * Fetch the most recent 20 orders for an authenticated user.
+ * Returns enough for the account page list — no pagination needed at MVP scale.
+ */
+export async function getOrdersByProfile(profileId: string) {
+  const rows = await db`
+    SELECT
+      public_id, brand, currency,
+      subtotal_brl, freight_brl, total_brl,
+      order_status, payment_status,
+      destination_country_code, destination_country_name,
+      customer_name_snapshot,
+      created_at
+    FROM orders
+    WHERE profile_id = ${profileId}
+    ORDER BY created_at DESC
+    LIMIT 20
+  `;
+  return rows.map((r) => ({
+    publicId: r.public_id as string,
+    brand: r.brand as Brand,
+    currency: r.currency as string,
+    subtotalBRL: Number(r.subtotal_brl),
+    freightBRL: Number(r.freight_brl),
+    totalBRL: Number(r.total_brl),
+    orderStatus: r.order_status as string,
+    paymentStatus: r.payment_status as string,
+    destinationCountryCode: (r.destination_country_code as string | null) ?? null,
+    destinationCountryName: (r.destination_country_name as string | null) ?? null,
+    customerNameSnapshot: (r.customer_name_snapshot as string | null) ?? null,
+    createdAt: (r.created_at as Date).toISOString(),
+  }));
 }
 
 // =============================================================================

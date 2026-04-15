@@ -18,6 +18,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 }
 
 /**
+ * Stage 14 — Optional auth: resolves the Bearer token if present, attaches
+ * req.user, then always calls next(). Endpoints using optionalAuth accept both
+ * authenticated and guest requests; business logic downstream decides whether
+ * a guest is permitted based on country commerce rules (allowGuestCheckout).
+ */
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const user = await resolveRequestUser(req);
+  if (user) req.user = user;
+  next();
+}
+
+/**
  * Enforces a single required role. Must be used after requireAuth.
  * Returns 403 if the authenticated user does not have the required role.
  */
