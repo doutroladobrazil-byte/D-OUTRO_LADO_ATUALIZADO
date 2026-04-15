@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import Stripe from "stripe";
 import { env } from "../../config/env.js";
 import { stripe } from "../../lib/stripe.js";
+import { db } from "../../lib/db.js";
 import { fail, ok } from "../../utils/http.js";
 import {
   attachStripeSession,
@@ -21,6 +22,9 @@ import {
 } from "../orders/reservation.service.js";
 import { logSystemEvent } from "../admin/system-log.service.js";
 import { clearCart, getCartByProfile } from "../cart/cart.service.js";
+import { sendOrderConfirmationEmail } from "../notifications/email.provider.js";
+import { loadCountryPolicy } from "../countries/countries.service.js";
+import type { CountryCode } from "../../types/domain.js";
 
 // =============================================================================
 // POST /stripe/checkout
@@ -221,6 +225,13 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             stripeSessionId: session.id,
             paymentIntentId,
           });
+
+          // ── Send order confirmation email (fire-and-forget) ───────────────
+          // Fetch the persisted order + items to build the email payload.
+          // Failure must not break the webhook response.
+          sendOrderConfirmationEmailForOrder(orderId).catch((err) => {
+            console.error("[webhook] Order confirmation email failed:", err);
+          });
         }
         break;
       }
@@ -268,5 +279,54 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     mode: "stripe",
     eventType: event.type,
     publicId: session.metadata?.publicId ?? null,
+  });
+}
+
+// =============================================================================
+// Confirmation email helper — fire-and-forget after payment confirmed
+// =============================================================================
+
+async function sendOrderConfirmationEmailForOrder(orderId: string): Promise<void> {
+  const orderRows = await db`
+    SELECT
+      o.public_id, o.brand, o.currency, o.total_brl,
+      o.customer_email_snapshot, o.customer_name_snapshot,
+      o.destination_country_code, o.destination_country_name
+    FROM orders o
+    WHERE o.id = ${orderId}
+    LIMIT 1
+  `;
+  if (orderRows.length === 0) return;
+  const o = orderRows[0];
+
+  const customerEmail = o.customer_email_snapshot as string | null;
+  if (!customerEmail) return; // no email to send to
+
+  const itemRows = await db`
+    SELECT product_name, quantity, unit_price_brl
+    FROM order_items
+    WHERE order_id = ${orderId}
+  `;
+
+  const countryCode = o.destination_country_code as CountryCode | null;
+  const policy = countryCode ? await loadCountryPolicy(countryCode) : null;
+
+  await sendOrderConfirmationEmail({
+    to: customerEmail,
+    recipientName: o.customer_name_snapshot as string | null,
+    publicOrderId: o.public_id as string,
+    brand: o.brand as string,
+    destinationCountryCode: countryCode,
+    destinationCountryName: o.destination_country_name as string | null,
+    totalBRL: Number(o.total_brl),
+    displayCurrency: o.currency as string,
+    totalDisplay: Number(o.total_brl), // BRL as display for now; extend for FX later
+    items: itemRows.map((r) => ({
+      name: r.product_name as string,
+      quantity: r.quantity as number,
+      unitPriceBRL: Number(r.unit_price_brl),
+    })),
+    countryConfirmationNote: policy?.orderConfirmationNote ?? null,
+    supportEmail: policy?.supportEmail ?? null,
   });
 }

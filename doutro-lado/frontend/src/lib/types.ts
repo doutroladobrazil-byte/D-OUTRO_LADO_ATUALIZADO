@@ -490,7 +490,21 @@ export type SupportedCountry = {
   displayPosition: number;
 };
 
-/** Shape returned by GET /api/countries/:code — includes commerce rule. */
+/** Stage 17 — customer-facing commercial policy per country. */
+export type CountryPolicy = {
+  deliveryNote: string | null;
+  shippingPolicySummary: string | null;
+  returnsEnabled: boolean;
+  returnsWindowDays: number;
+  returnsPolicySummary: string | null;
+  dutiesAndTaxesSummary: string | null;
+  supportEmail: string | null;
+  supportWhatsappOrContact: string | null;
+  checkoutNotice: string | null;
+  orderConfirmationNote: string | null;
+};
+
+/** Shape returned by GET /api/countries/:code — includes commerce rule and policy. */
 export type CountryDetail = SupportedCountry & {
   commerceRule: {
     pricingCurrency: SupportedCurrency;
@@ -503,6 +517,8 @@ export type CountryDetail = SupportedCountry & {
     estimatedDeliveryMinDays: number;
     estimatedDeliveryMaxDays: number;
   } | null;
+  /** Stage 17 — customer-facing policy text. Null when table not yet seeded. */
+  policy: CountryPolicy | null;
 };
 
 // =============================================================================

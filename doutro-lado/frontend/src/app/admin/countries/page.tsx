@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdminToken } from "@/lib/admin-server-auth";
 import { fetchApiData } from "@/lib/api";
 import {
@@ -7,7 +8,7 @@ import {
   MetricCard,
   StatusBadge,
 } from "@/features/admin/AdminComponents";
-import type { CountryDetail, SupportedCountry } from "@/lib/types";
+import type { SupportedCountry } from "@/lib/types";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Países — D'OUTRO LADO Admin" };
@@ -65,6 +66,18 @@ export default async function AdminCountriesPage() {
       label: "Status",
       render: (r: SupportedCountry) => (
         <StatusBadge status={r.isActive ? "active" : "inactive"} />
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      render: (r: SupportedCountry) => (
+        <Link
+          href={`/admin/countries/${r.code.toLowerCase()}`}
+          className="text-[11px] uppercase tracking-[0.15em] text-white/40 hover:text-[#C6A96B] transition"
+        >
+          Edit policy →
+        </Link>
       ),
     },
   ];

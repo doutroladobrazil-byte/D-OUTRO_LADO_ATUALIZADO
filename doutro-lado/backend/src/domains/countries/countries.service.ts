@@ -35,8 +35,22 @@ export type SupportedCountryRecord = {
   displayPosition: number;
 };
 
+export type CountryPolicy = {
+  deliveryNote: string | null;
+  shippingPolicySummary: string | null;
+  returnsEnabled: boolean;
+  returnsWindowDays: number;
+  returnsPolicySummary: string | null;
+  dutiesAndTaxesSummary: string | null;
+  supportEmail: string | null;
+  supportWhatsappOrContact: string | null;
+  checkoutNotice: string | null;
+  orderConfirmationNote: string | null;
+};
+
 export type CountryDetail = SupportedCountryRecord & {
   commerceRule: CountryPricingRule | null;
+  policy: CountryPolicy | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -112,8 +126,46 @@ export async function getCountryByCode(code: string): Promise<CountryDetail | nu
       displayPosition: r.display_position as number,
     };
 
-    const commerceRule = await loadCountryCommerceRule(upperCode as CountryCode);
-    return { ...country, commerceRule };
+    const [commerceRule, policy] = await Promise.all([
+      loadCountryCommerceRule(upperCode as CountryCode),
+      loadCountryPolicy(upperCode as CountryCode),
+    ]);
+    return { ...country, commerceRule, policy };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load the customer-facing commercial policy for a country, or null if not seeded.
+ */
+export async function loadCountryPolicy(countryCode: CountryCode): Promise<CountryPolicy | null> {
+  try {
+    const rows = await db`
+      SELECT
+        delivery_note, shipping_policy_summary,
+        returns_enabled, returns_window_days, returns_policy_summary,
+        duties_and_taxes_summary,
+        support_email, support_whatsapp_or_contact,
+        checkout_notice, order_confirmation_note
+      FROM country_policies
+      WHERE country_code = ${countryCode}
+      LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      deliveryNote: r.delivery_note as string | null,
+      shippingPolicySummary: r.shipping_policy_summary as string | null,
+      returnsEnabled: r.returns_enabled as boolean,
+      returnsWindowDays: r.returns_window_days as number,
+      returnsPolicySummary: r.returns_policy_summary as string | null,
+      dutiesAndTaxesSummary: r.duties_and_taxes_summary as string | null,
+      supportEmail: r.support_email as string | null,
+      supportWhatsappOrContact: r.support_whatsapp_or_contact as string | null,
+      checkoutNotice: r.checkout_notice as string | null,
+      orderConfirmationNote: r.order_confirmation_note as string | null,
+    };
   } catch {
     return null;
   }

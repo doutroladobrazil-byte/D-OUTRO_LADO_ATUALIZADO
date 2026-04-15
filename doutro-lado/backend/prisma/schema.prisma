@@ -679,6 +679,7 @@ model SupportedCountry {
 
   commerceRules  CountryCommerceRule[]
   shippingRules  CountryShippingRule[]
+  policy         CountryPolicy?
 
   @@map("supported_countries")
 }
@@ -707,6 +708,26 @@ model CountryCommerceRule {
   country SupportedCountry @relation(fields: [countryCode], references: [code], onDelete: Cascade)
 
   @@map("country_commerce_rules")
+}
+
+/// Stage 17 — customer-facing commercial policies per country (shipping, returns, duties, support).
+model CountryPolicy {
+  countryCode              String   @id @map("country_code") @db.VarChar(2)
+  deliveryNote             String?  @map("delivery_note")
+  shippingPolicySummary    String?  @map("shipping_policy_summary")
+  returnsEnabled           Boolean  @default(true) @map("returns_enabled")
+  returnsWindowDays        Int      @default(14) @map("returns_window_days")
+  returnsPolicySummary     String?  @map("returns_policy_summary")
+  dutiesAndTaxesSummary    String?  @map("duties_and_taxes_summary")
+  supportEmail             String?  @map("support_email")
+  supportWhatsappOrContact String?  @map("support_whatsapp_or_contact")
+  checkoutNotice           String?  @map("checkout_notice")
+  orderConfirmationNote    String?  @map("order_confirmation_note")
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country SupportedCountry @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@map("country_policies")
 }
 
 /// Stage 13 — opt-in availability per product per country.

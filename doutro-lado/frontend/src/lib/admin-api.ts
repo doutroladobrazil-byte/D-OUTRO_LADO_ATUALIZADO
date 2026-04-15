@@ -8,6 +8,7 @@ import type {
   AdminOrderRow,
   AdminOverview,
   Brand,
+  CountryPolicy,
   ProductAvailabilityMap,
   ProductMedia,
 } from "@/lib/types";
@@ -357,5 +358,15 @@ export const adminApi = {
       token,
       updates
     );
+  },
+
+  /** Stage 17 — get country policy (client-side). */
+  getCountryPolicy(token: string, code: string) {
+    return callApi<CountryPolicy>(`/admin/countries/${code}/policy`, "GET", token);
+  },
+
+  /** Stage 17 — update country policy (client-side). */
+  patchCountryPolicy(token: string, code: string, body: Partial<CountryPolicy>) {
+    return callApi<CountryPolicy>(`/admin/countries/${code}/policy`, "PATCH", token, body);
   },
 };

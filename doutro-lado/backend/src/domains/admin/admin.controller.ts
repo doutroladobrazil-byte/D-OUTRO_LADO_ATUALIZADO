@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { getAdminOverview as getOverview, listAdminOrders } from "../../services/admin.service.js";
+import { loadCountryPolicy } from "../countries/countries.service.js";
+import { db } from "../../lib/db.js";
 import {
   createAdminProduct,
   createProductSchema,
@@ -189,5 +191,73 @@ export async function patchProductAvailabilityHandler(req: Request, res: Respons
     return ok(res, map);
   } catch (error) {
     return fail(res, error instanceof Error ? error.message : "Unable to update availability", 400);
+  }
+}
+
+// =============================================================================
+// Country policies — Stage 17
+// =============================================================================
+
+const patchCountryPolicySchema = z.object({
+  deliveryNote: z.string().max(500).nullish(),
+  shippingPolicySummary: z.string().max(2000).nullish(),
+  returnsEnabled: z.boolean().optional(),
+  returnsWindowDays: z.number().int().min(0).max(365).optional(),
+  returnsPolicySummary: z.string().max(2000).nullish(),
+  dutiesAndTaxesSummary: z.string().max(500).nullish(),
+  supportEmail: z.string().email().max(200).nullish(),
+  supportWhatsappOrContact: z.string().max(200).nullish(),
+  checkoutNotice: z.string().max(500).nullish(),
+  orderConfirmationNote: z.string().max(2000).nullish(),
+}).strict();
+
+export async function getAdminCountryPolicyHandler(req: Request, res: Response) {
+  const code = (req.params.code as string).toUpperCase();
+  const policy = await loadCountryPolicy(code as import("../../types/domain.js").CountryCode);
+  return ok(res, policy ?? {});
+}
+
+export async function patchAdminCountryPolicyHandler(req: Request, res: Response) {
+  const code = (req.params.code as string).toUpperCase();
+  const parsed = patchCountryPolicySchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, parsed.error.issues[0]?.message ?? parsed.error.message, 400);
+
+  const d = parsed.data;
+  try {
+    await db`
+      INSERT INTO country_policies (
+        country_code,
+        delivery_note, shipping_policy_summary,
+        returns_enabled, returns_window_days, returns_policy_summary,
+        duties_and_taxes_summary,
+        support_email, support_whatsapp_or_contact,
+        checkout_notice, order_confirmation_note,
+        updated_at
+      ) VALUES (
+        ${code},
+        ${d.deliveryNote ?? null}, ${d.shippingPolicySummary ?? null},
+        ${d.returnsEnabled ?? true}, ${d.returnsWindowDays ?? 14}, ${d.returnsPolicySummary ?? null},
+        ${d.dutiesAndTaxesSummary ?? null},
+        ${d.supportEmail ?? null}, ${d.supportWhatsappOrContact ?? null},
+        ${d.checkoutNotice ?? null}, ${d.orderConfirmationNote ?? null},
+        NOW()
+      )
+      ON CONFLICT (country_code) DO UPDATE SET
+        delivery_note                = COALESCE(EXCLUDED.delivery_note,                country_policies.delivery_note),
+        shipping_policy_summary      = COALESCE(EXCLUDED.shipping_policy_summary,      country_policies.shipping_policy_summary),
+        returns_enabled              = EXCLUDED.returns_enabled,
+        returns_window_days          = EXCLUDED.returns_window_days,
+        returns_policy_summary       = COALESCE(EXCLUDED.returns_policy_summary,       country_policies.returns_policy_summary),
+        duties_and_taxes_summary     = COALESCE(EXCLUDED.duties_and_taxes_summary,     country_policies.duties_and_taxes_summary),
+        support_email                = COALESCE(EXCLUDED.support_email,                country_policies.support_email),
+        support_whatsapp_or_contact  = COALESCE(EXCLUDED.support_whatsapp_or_contact, country_policies.support_whatsapp_or_contact),
+        checkout_notice              = COALESCE(EXCLUDED.checkout_notice,              country_policies.checkout_notice),
+        order_confirmation_note      = COALESCE(EXCLUDED.order_confirmation_note,      country_policies.order_confirmation_note),
+        updated_at                   = NOW()
+    `;
+    const updated = await loadCountryPolicy(code as import("../../types/domain.js").CountryCode);
+    return ok(res, updated);
+  } catch (err) {
+    return fail(res, err instanceof Error ? err.message : "Failed to update policy", 400);
   }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import type { BagSimulationResult, Brand, CountryCode, SupportedCountry } from "@/lib/types";
+import type { BagSimulationResult, Brand, CountryCode, CountryDetail, SupportedCountry } from "@/lib/types";
 import { useCartStore } from "@/lib/cart-store";
 import { getActiveCountries, getBackendCart, getCountryDetail, simulateBag } from "@/lib/storefront";
 import { createClient } from "@/lib/supabase/client";
@@ -99,6 +99,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
   const [countries, setCountries] = useState<SupportedCountry[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<CountryCode | "">("");
+  const [countryDetail, setCountryDetail] = useState<CountryDetail | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sim, setSim] = useState<BagSimulationResult | null>(null);
@@ -172,10 +173,12 @@ export function BrandCheckoutView({ brand }: Props) {
     if (countryCurrency) setCurrency(countryCurrency);
     persistCountryCode(selectedCountry as CountryCode);
 
-    // Load allowGuestCheckout for the selected country
+    // Load country detail (commerce rule + policy) for the selected country
     setAllowGuestCheckout(null); // reset while loading
+    setCountryDetail(null);
     getCountryDetail(selectedCountry as CountryCode).then((detail) => {
       setAllowGuestCheckout(detail?.commerceRule?.allowGuestCheckout ?? true);
+      setCountryDetail(detail);
     }).catch(() => setAllowGuestCheckout(true)); // default to allow on error
   }, [selectedCountry]);
 
@@ -242,20 +245,24 @@ export function BrandCheckoutView({ brand }: Props) {
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
-        <div>
-          <p className="text-[12px] uppercase tracking-[0.3em] text-[#C6A96B]/70">Pedido confirmado</p>
+        <div className="max-w-md">
+          <p className="text-[12px] uppercase tracking-[0.3em] text-[#C6A96B]/70">Order confirmed</p>
           <h2 className="mt-3 font-display text-[36px] leading-[1.05] tracking-[-0.5px] text-white">
-            Obrigado pela sua compra.
+            Thank you for your purchase.
           </h2>
           <p className="mt-4 text-sm text-white/55">
-            Você receberá um email de confirmação em breve. Acompanhe o status em Minha Conta.
+            A confirmation email is on its way. Your order will be dispatched within 1–2 business days with international tracking.
           </p>
+          <div className="mt-6 rounded-[16px] border border-white/8 bg-white/[0.03] p-4 text-left space-y-2 text-sm text-white/50">
+            <p>Questions? Reach us at <span className="text-white/75">support@doutrolado.com</span></p>
+            <p>Track your order in <span className="text-white/75">My Account → Orders</span></p>
+          </div>
         </div>
         <button
           onClick={() => router.push(`/brands/${brand}`)}
           className="rounded-full border border-white/15 px-8 py-3 text-sm uppercase tracking-[0.18em] text-white/70 hover:text-white"
         >
-          Continuar explorando
+          Continue exploring
         </button>
       </motion.div>
     );
@@ -265,12 +272,12 @@ export function BrandCheckoutView({ brand }: Props) {
   if (status === "cancelled") {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-white/55">Pagamento cancelado. Sua bag foi preservada.</p>
+        <p className="text-white/55">Payment cancelled. Your bag has been saved.</p>
         <button
           onClick={() => router.push(`/brands/${brand}/cart`)}
           className="rounded-full border border-white/15 px-6 py-3 text-sm uppercase tracking-[0.18em] text-white/70 hover:text-white"
         >
-          Voltar à bag
+          Back to bag
         </button>
       </div>
     );
@@ -280,12 +287,12 @@ export function BrandCheckoutView({ brand }: Props) {
   if (cart.items.length === 0 && kitItems.length === 0) {
     return (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-white/55">Nenhum item na bag.</p>
+        <p className="text-white/55">Your bag is empty.</p>
         <button
           onClick={() => router.push(`/categories/${brand}`)}
           className="rounded-full border border-[#C6A96B]/60 px-6 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
         >
-          Ver coleção
+          Browse the collection
         </button>
       </div>
     );
@@ -323,15 +330,15 @@ export function BrandCheckoutView({ brand }: Props) {
   async function handleCheckout() {
     if (!selectedCountry) return;
     if (sim !== null && !sim.isValid) {
-      setError(sim.blockingIssues[0] ?? "Bag inválida. Revise os itens antes de continuar.");
+      setError(sim.blockingIssues[0] ?? "Bag is invalid. Please review your items before continuing.");
       return;
     }
     if (guestIsBlocked) {
-      setError("Faça login para finalizar o pedido neste destino.");
+      setError("Please sign in to complete your order for this destination.");
       return;
     }
     if (!contactValid) {
-      setError("Preencha todos os campos obrigatórios de contato e endereço.");
+      setError("Please fill in all required contact and address fields.");
       return;
     }
 
@@ -384,7 +391,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      setError(err.message ?? "Erro ao iniciar o pagamento.");
+      setError(err.message ?? "Failed to start payment. Please try again.");
       return;
     }
 
@@ -404,11 +411,11 @@ export function BrandCheckoutView({ brand }: Props) {
       <div className="space-y-6">
         {/* Country selection */}
         <GlassCard className="space-y-6">
-          <h2 className="font-display text-[28px] tracking-[-0.4px] text-white">Entrega internacional</h2>
+          <h2 className="font-display text-[28px] tracking-[-0.4px] text-white">International delivery</h2>
           <div className="space-y-3">
-            <label className="text-[12px] uppercase tracking-[0.24em] text-white/50">País de destino</label>
+            <label className="text-[12px] uppercase tracking-[0.24em] text-white/50">Destination country</label>
             {countries.length === 0 ? (
-              <p className="text-sm text-white/30">Carregando países disponíveis…</p>
+              <p className="text-sm text-white/30">Loading available countries…</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {countries.map((country) => (
@@ -430,9 +437,30 @@ export function BrandCheckoutView({ brand }: Props) {
               </div>
             )}
           </div>
-          <div className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
-            Entrega com rastreamento internacional. O total exibido já inclui frete, impostos e encargos.
-          </div>
+          {/* Policy info for selected country */}
+          {selectedCountry && countryDetail?.policy ? (
+            <div className="space-y-3">
+              {countryDetail.policy.deliveryNote && (
+                <div className="rounded-[14px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
+                  <span className="mr-2">🚚</span>{countryDetail.policy.deliveryNote}
+                </div>
+              )}
+              {countryDetail.policy.dutiesAndTaxesSummary && (
+                <div className="rounded-[14px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
+                  <span className="mr-2">🧾</span>{countryDetail.policy.dutiesAndTaxesSummary}
+                </div>
+              )}
+              {countryDetail.policy.returnsEnabled && (
+                <div className="rounded-[14px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
+                  <span className="mr-2">↩️</span>Returns accepted within {countryDetail.policy.returnsWindowDays} days of delivery.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm text-white/55">
+              International tracked shipping. Displayed total includes freight, taxes and all fees.
+            </div>
+          )}
         </GlassCard>
 
         {/* Login gate — shown when country blocks guest checkout and user is not auth */}
@@ -443,9 +471,9 @@ export function BrandCheckoutView({ brand }: Props) {
                 <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
               <div>
-                <p className="font-medium text-white">Login obrigatório para este destino</p>
+                <p className="font-medium text-white">Account required for this destination</p>
                 <p className="mt-1 text-sm text-white/60">
-                  O checkout como visitante não está disponível para {countries.find(c => c.code === selectedCountry)?.name ?? selectedCountry}. Faça login para continuar.
+                  Guest checkout is not available for {countries.find(c => c.code === selectedCountry)?.name ?? selectedCountry}. Please sign in to continue.
                 </p>
               </div>
             </div>
@@ -453,7 +481,7 @@ export function BrandCheckoutView({ brand }: Props) {
               onClick={() => router.push(`/login?redirect=/brands/${brand}/checkout`)}
               className="w-full rounded-full border border-[#C6A96B]/60 bg-[rgba(198,169,107,0.1)] py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
             >
-              Entrar na minha conta
+              Sign in to my account
             </button>
           </GlassCard>
         )}
@@ -462,40 +490,40 @@ export function BrandCheckoutView({ brand }: Props) {
         {showContactForm && !guestIsBlocked && (
           <GlassCard className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-[22px] tracking-[-0.3px] text-white">Contato e entrega</h3>
+              <h3 className="font-display text-[22px] tracking-[-0.3px] text-white">Contact &amp; delivery</h3>
               {isAuthenticated ? (
                 <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-emerald-300">
-                  Conectado
+                  Signed in
                 </span>
               ) : (
                 <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.15em] text-white/50">
-                  Visitante
+                  Guest
                 </span>
               )}
             </div>
 
             {/* Contact info */}
             <div className="space-y-4">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Informações de contato</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Contact information</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <CheckoutInput
-                  label="Nome completo"
+                  label="Full name"
                   value={contact.fullName}
                   onChange={(v) => setContact((p) => ({ ...p, fullName: v }))}
-                  placeholder="Seu nome"
+                  placeholder="Your name"
                   required
                 />
                 <CheckoutInput
-                  label="E-mail"
+                  label="Email"
                   type="email"
                   value={contact.email}
                   onChange={(v) => setContact((p) => ({ ...p, email: v }))}
-                  placeholder="email@exemplo.com"
+                  placeholder="email@example.com"
                   required
                 />
               </div>
               <CheckoutInput
-                label="Telefone / WhatsApp"
+                label="Phone / WhatsApp"
                 type="tel"
                 value={contact.phone}
                 onChange={(v) => setContact((p) => ({ ...p, phone: v }))}
@@ -506,30 +534,30 @@ export function BrandCheckoutView({ brand }: Props) {
 
             {/* Shipping address */}
             <div className="space-y-4">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Endereço de entrega</p>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Shipping address</p>
               <CheckoutInput
-                label="Endereço (linha 1)"
+                label="Address line 1"
                 value={contact.line1}
                 onChange={(v) => setContact((p) => ({ ...p, line1: v }))}
-                placeholder="Rua, número, apartamento…"
+                placeholder="Street, number, apartment…"
                 required
               />
               <CheckoutInput
-                label="Complemento (opcional)"
+                label="Address line 2 (optional)"
                 value={contact.line2}
                 onChange={(v) => setContact((p) => ({ ...p, line2: v }))}
-                placeholder="Bloco, andar…"
+                placeholder="Building, floor…"
               />
               <div className="grid gap-4 sm:grid-cols-2">
                 <CheckoutInput
-                  label="Cidade"
+                  label="City"
                   value={contact.city}
                   onChange={(v) => setContact((p) => ({ ...p, city: v }))}
-                  placeholder="Zurique"
+                  placeholder="Zurich"
                   required
                 />
                 <CheckoutInput
-                  label="Estado / Cantão / Região"
+                  label="State / Canton / Region"
                   value={contact.stateRegion}
                   onChange={(v) => setContact((p) => ({ ...p, stateRegion: v }))}
                   placeholder="ZH"
@@ -537,14 +565,14 @@ export function BrandCheckoutView({ brand }: Props) {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <CheckoutInput
-                  label="Código postal"
+                  label="Postal code"
                   value={contact.postalCode}
                   onChange={(v) => setContact((p) => ({ ...p, postalCode: v }))}
                   placeholder="8001"
                   required
                 />
                 <div className="space-y-1">
-                  <label className="text-[11px] uppercase tracking-[0.22em] text-white/45">País</label>
+                  <label className="text-[11px] uppercase tracking-[0.22em] text-white/45">Country</label>
                   <div className="flex items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/60">
                     <span>{COUNTRY_FLAGS[selectedCountry as CountryCode] ?? "🌐"}</span>
                     <span>{countries.find(c => c.code === selectedCountry)?.name ?? selectedCountry}</span>
@@ -558,7 +586,7 @@ export function BrandCheckoutView({ brand }: Props) {
 
       {/* Right — order summary */}
       <GlassCard className="h-fit space-y-5">
-        <p className="text-[12px] uppercase tracking-[0.28em] text-white/45">Resumo do pedido</p>
+        <p className="text-[12px] uppercase tracking-[0.28em] text-white/45">Order summary</p>
 
         <div className="space-y-3">
           {cart.items.map((item) => (
@@ -575,16 +603,23 @@ export function BrandCheckoutView({ brand }: Props) {
           <div className="flex justify-between text-sm">
             <span className="text-white/55">Total</span>
             {simLoading ? (
-              <span className="text-white/30 text-xs">calculando…</span>
+              <span className="text-white/30 text-xs">calculating…</span>
             ) : (
               <PriceDisplay brl={displayTotalBRL} className="font-semibold text-white" />
             )}
           </div>
         </div>
 
+        {/* Checkout notice from country policy */}
+        {countryDetail?.policy?.checkoutNotice && (
+          <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-4 py-3 text-[12px] text-white/45">
+            {countryDetail.policy.checkoutNotice}
+          </div>
+        )}
+
         {appliedOffer && (
           <div className="rounded-[14px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Desconto <strong>{appliedOffer.discountPercent}%</strong> aplicado (código <strong>{appliedOffer.code}</strong>)
+            <strong>{appliedOffer.discountPercent}% discount</strong> applied (code <strong>{appliedOffer.code}</strong>)
           </div>
         )}
 
@@ -605,12 +640,19 @@ export function BrandCheckoutView({ brand }: Props) {
           disabled={checkoutBlocked}
           className="w-full"
         >
-          {submitting ? "Redirecionando..." : "Ir para pagamento"}
+          {submitting ? "Redirecting…" : "Proceed to payment"}
         </Button>
 
         <p className="text-center text-[11px] text-white/30">
-          Pagamento seguro via Stripe. Seus dados não são armazenados.
+          Secure payment via Stripe. Your card details are never stored.
         </p>
+
+        {/* Support contact from policy */}
+        {countryDetail?.policy?.supportEmail && (
+          <p className="text-center text-[11px] text-white/25">
+            Need help? <a href={`mailto:${countryDetail.policy.supportEmail}`} className="text-white/45 hover:text-white/70 transition">{countryDetail.policy.supportEmail}</a>
+          </p>
+        )}
       </GlassCard>
     </div>
   );
