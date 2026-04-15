@@ -509,21 +509,42 @@ export async function deductStockForOrder(orderId: string): Promise<void> {
 /**
  * Update payment status on both orders and payment_records.
  * Called by the webhook — idempotent (upserts on conflict).
+ *
+ * Order status transitions:
+ *   paid     → processing
+ *   failed   → cancelled  (checkout expired — no payment received)
+ *   refunded → unchanged  (was already processing, just mark refunded on payment)
  */
 export async function updatePaymentStatus(
   stripeSessionId: string,
   status: "paid" | "failed" | "refunded",
   stripePaymentIntentId?: string
 ): Promise<void> {
-  const newOrderStatus = status === "paid" ? "processing" : "created";
-
-  await db`
-    UPDATE orders SET
-      payment_status = ${status},
-      order_status = ${newOrderStatus},
-      updated_at = now()
-    WHERE stripe_session_id = ${stripeSessionId}
-  `;
+  if (status === "paid") {
+    await db`
+      UPDATE orders SET
+        payment_status = 'paid',
+        order_status = 'processing',
+        updated_at = now()
+      WHERE stripe_session_id = ${stripeSessionId}
+    `;
+  } else if (status === "failed") {
+    await db`
+      UPDATE orders SET
+        payment_status = 'failed',
+        order_status = 'cancelled',
+        updated_at = now()
+      WHERE stripe_session_id = ${stripeSessionId}
+    `;
+  } else {
+    // refunded — only update payment_status, leave order_status unchanged
+    await db`
+      UPDATE orders SET
+        payment_status = 'refunded',
+        updated_at = now()
+      WHERE stripe_session_id = ${stripeSessionId}
+    `;
+  }
 
   await db`
     UPDATE payment_records SET
@@ -531,4 +552,34 @@ export async function updatePaymentStatus(
       provider_payment_id = COALESCE(${stripePaymentIntentId ?? null}, provider_payment_id)
     WHERE provider_payment_id = ${stripeSessionId}
   `;
+}
+
+/**
+ * Transitions an order to 'awaiting_payment' once the Stripe session is created.
+ * Only transitions from 'created' to avoid clobbering a terminal state.
+ */
+export async function markOrderAwaitingPayment(orderId: string): Promise<void> {
+  await db`
+    UPDATE orders
+    SET order_status = 'awaiting_payment', updated_at = now()
+    WHERE id = ${orderId}
+      AND order_status = 'created'
+  `;
+}
+
+/**
+ * Cancels an order that failed before payment was initiated.
+ * Idempotent — only acts on non-terminal orders (not processing/shipped/delivered/cancelled).
+ */
+export async function cancelOrderAtCheckout(orderId: string, reason?: string): Promise<void> {
+  await db`
+    UPDATE orders
+    SET order_status = 'cancelled',
+        payment_status = 'failed',
+        notes = COALESCE(notes || E'\n', '') || ${`[checkout_cancel] ${reason ?? "checkout initiation failed"}`},
+        updated_at = now()
+    WHERE id = ${orderId}
+      AND order_status NOT IN ('processing', 'packing', 'shipped', 'delivered', 'cancelled')
+  `;
+  await logSystemEvent("checkout_cancelled", "order", orderId, { reason });
 }

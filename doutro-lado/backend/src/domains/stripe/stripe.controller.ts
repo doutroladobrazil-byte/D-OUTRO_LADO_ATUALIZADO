@@ -6,17 +6,21 @@ import { fail, ok } from "../../utils/http.js";
 import {
   attachStripeSession,
   buildOrder,
+  cancelOrderAtCheckout,
   deductStockForOrder,
+  markOrderAwaitingPayment,
   updatePaymentStatus,
 } from "../orders/orders.service.js";
 import {
   attachSessionToReservations,
   checkAndReserve,
   consumeReservations,
+  consumeReservationsByOrder,
+  releaseReservations,
+  releaseReservationsBySession,
 } from "../orders/reservation.service.js";
 import { logSystemEvent } from "../admin/system-log.service.js";
-import { clearCart } from "../cart/cart.service.js";
-import { getCartByProfile } from "../cart/cart.service.js";
+import { clearCart, getCartByProfile } from "../cart/cart.service.js";
 
 // =============================================================================
 // POST /stripe/checkout
@@ -24,24 +28,35 @@ import { getCartByProfile } from "../cart/cart.service.js";
 
 /**
  * Full checkout flow:
- * 1. Build + persist the order from cart items (or raw payload)
- * 2. Create Stripe checkout session
- * 3. Persist payment_records row + attach stripe_session_id to order
- * 4. Clear the cart so it resets for next purchase
- * 5. Return { sessionId, checkoutUrl }
+ * 1. Build + persist order
+ * 2. Reserve stock (throws → cancels order, no Stripe session created)
+ * 3a. Mock mode → consume reservations, mark order processing, return
+ * 3b. Stripe mode → create session (throws → release reservations, cancel order)
+ * 4. Attach session ID to order + reservations, mark awaiting_payment
+ * 5. Clear cart, return session URL
+ *
+ * Failure semantics:
+ *   - reservation failure: order cancelled, reservation never created
+ *   - Stripe session failure: order cancelled, reservations released
+ *   - Everything else (post-session): Stripe will eventually fire
+ *     checkout.session.expired which releases reservations + cancels order
  */
 export async function createCheckoutSession(req: Request, res: Response) {
+  // Stage 14: req.user is optional — guest checkout uses optionalAuth
+  const profileId = req.user?.profileId;
+  const role = req.user?.role ?? "customer";
+
+  // Track built order so the catch block can cancel it on pre-payment failure
+  let orderId: string | null = null;
+  let reservationCreated = false;
+
   try {
-    // Stage 14: req.user is optional — guest checkout uses optionalAuth.
-    const profileId = req.user?.profileId;
-    const role = req.user?.role ?? "customer";
-
-    // Build the order — persisted to DB
+    // ── 1. Build + persist the order ──────────────────────────────────────
     const orderPreview = await buildOrder(req.body, role, profileId);
+    orderId = orderPreview.orderId;
 
-    // Stage 15: Reserve stock for all items before creating the Stripe session.
-    // Throws if any item is out of stock — order is already persisted but will
-    // remain in 'created' status until payment is confirmed.
+    // ── 2. Reserve stock ──────────────────────────────────────────────────
+    // Throws with a human-readable message when any item is unavailable.
     await checkAndReserve(
       orderPreview.items.map((item) => ({
         productId: item.productId,
@@ -51,10 +66,13 @@ export async function createCheckoutSession(req: Request, res: Response) {
       })),
       orderPreview.orderId
     );
+    reservationCreated = true;
 
-    // ── Mock mode (no Stripe key) ───────────────────────────────────────────
+    // ── 3a. Mock mode — treat as payment confirmed immediately ─────────────
     if (!stripe || env.PAYMENTS_MODE !== "stripe") {
-      // Still clear cart on successful mock order
+      // Consume the reservations (stock hold is no longer needed — mock = paid)
+      await consumeReservationsByOrder(orderPreview.orderId);
+      // Clear cart
       if (profileId) {
         const cart = await getCartByProfile(profileId, orderPreview.brand).catch(() => null);
         if (cart?.id) await clearCart(cart.id);
@@ -67,21 +85,12 @@ export async function createCheckoutSession(req: Request, res: Response) {
       });
     }
 
-    // ── Real Stripe checkout session ────────────────────────────────────────
+    // ── 3b. Stripe mode — create checkout session ─────────────────────────
     //
     // All-in pricing: the total already embeds freight + tax + logistics + margin.
-    // We do NOT create a separate freight/tax line item.
-    //
-    // The all-in total is distributed proportionally across product line items
-    // so that sum(unit_amount × quantity) = totalBRL exactly.
-    //
-    // Algorithm:
-    //   1. For each item i < N-1: lineAmountCents[i] = round(lineTotalBRL[i] / subtotalBRL * totalCents)
-    //   2. Last item absorbs the remainder to guarantee exact sum.
-    //   3. unit_amount = 1 (quantity folded into name) — avoids non-integer cents per unit.
+    // Distributed proportionally across line items so sum = totalBRL exactly.
     const totalCents = Math.round(orderPreview.totalBRL * 100);
     const items = orderPreview.items;
-
     const lineAmountCents: number[] = [];
     let allocatedCents = 0;
     for (let i = 0; i < items.length - 1; i++) {
@@ -89,46 +98,56 @@ export async function createCheckoutSession(req: Request, res: Response) {
       lineAmountCents.push(cents);
       allocatedCents += cents;
     }
-    // Last item absorbs any rounding remainder
     lineAmountCents.push(totalCents - allocatedCents);
 
-    // Stage 14: pre-fill Stripe customer email from contact snapshot when available.
+    // Stage 14: pre-fill Stripe customer email from contact snapshot
     const contactEmail = (req.body as Record<string, unknown>)?.contact &&
       typeof (req.body as Record<string, { email?: string }>).contact.email === "string"
         ? (req.body as Record<string, { email?: string }>).contact.email
         : undefined;
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      success_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=cancelled`,
-      ...(contactEmail ? { customer_email: contactEmail } : {}),
-      metadata: {
-        orderId: orderPreview.orderId,
-        publicId: orderPreview.publicId,
-        brand: orderPreview.brand,
-        region: orderPreview.region,
-        pricingTier: orderPreview.pricingTier,
-      },
-      line_items: items.map((item, i) => ({
-        quantity: 1,
-        price_data: {
-          currency: "brl",
-          unit_amount: lineAmountCents[i],
-          product_data: {
-            name: item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name,
-            metadata: { sku: item.sku, slug: item.slug },
-          },
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        success_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${env.APP_URL}/brands/${orderPreview.brand}/checkout?status=cancelled`,
+        ...(contactEmail ? { customer_email: contactEmail } : {}),
+        metadata: {
+          orderId: orderPreview.orderId,
+          publicId: orderPreview.publicId,
+          brand: orderPreview.brand,
+          region: orderPreview.region,
+          pricingTier: orderPreview.pricingTier,
         },
-      })),
-    });
+        line_items: items.map((item, i) => ({
+          quantity: 1,
+          price_data: {
+            currency: "brl",
+            unit_amount: lineAmountCents[i],
+            product_data: {
+              name: item.quantity > 1 ? `${item.name} × ${item.quantity}` : item.name,
+              metadata: { sku: item.sku, slug: item.slug },
+            },
+          },
+        })),
+      });
+    } catch (stripeError) {
+      // Stripe session creation failed — release reservations, cancel order
+      await releaseReservations(orderPreview.orderId).catch(() => {});
+      await cancelOrderAtCheckout(
+        orderPreview.orderId,
+        `Stripe session creation failed: ${stripeError instanceof Error ? stripeError.message : "unknown"}`
+      ).catch(() => {});
+      throw stripeError;
+    }
 
-    // Persist payment record + attach session ID to order
+    // ── 4. Attach session + mark awaiting_payment ─────────────────────────
     await attachStripeSession(orderPreview.orderId, session.id);
-    // Stage 15: Link reservations to the Stripe session for webhook lookup
     await attachSessionToReservations(orderPreview.orderId, session.id);
+    await markOrderAwaitingPayment(orderPreview.orderId);
 
-    // Clear cart after successful order + session creation
+    // ── 5. Clear cart ─────────────────────────────────────────────────────
     if (profileId) {
       const cart = await getCartByProfile(profileId, orderPreview.brand).catch(() => null);
       if (cart?.id) await clearCart(cart.id);
@@ -140,7 +159,16 @@ export async function createCheckoutSession(req: Request, res: Response) {
       checkoutUrl: session.url,
       orderPreview,
     });
+
   } catch (error) {
+    // If order was persisted but we failed before or during reservation,
+    // cancel the order so it doesn't appear as a pending real order in admin.
+    if (orderId && !reservationCreated) {
+      await cancelOrderAtCheckout(
+        orderId,
+        error instanceof Error ? error.message : "reservation failed"
+      ).catch(() => {});
+    }
     return fail(res, error instanceof Error ? error.message : "Unable to create checkout session", 400);
   }
 }
@@ -183,7 +211,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const paymentIntentId =
           typeof session.payment_intent === "string" ? session.payment_intent : undefined;
         await updatePaymentStatus(session.id, "paid", paymentIntentId);
-        // Stage 15: Consume active reservations (idempotent — only transitions 'active')
+        // Consume active reservations (idempotent — only transitions 'active')
         await consumeReservations(session.id);
         // Deduct stock once — idempotent via stock_deducted_at
         const orderId = session.metadata?.orderId;
@@ -196,14 +224,26 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         }
         break;
       }
+
       case "checkout.session.expired": {
-        // User abandoned checkout
+        // User abandoned / session timed out — release stock hold
         await updatePaymentStatus(session.id, "failed");
+
+        // Release reservations — prefer orderId from metadata for direct FK lookup
+        const expiredOrderId = session.metadata?.orderId;
+        if (expiredOrderId) {
+          await releaseReservations(expiredOrderId);
+        } else {
+          // Fallback: release by stripe session ID
+          await releaseReservationsBySession(session.id);
+        }
+        await logSystemEvent("checkout_expired", "order", expiredOrderId ?? session.id, {
+          stripeSessionId: session.id,
+        });
         break;
       }
+
       case "charge.refunded": {
-        // Refund issued — session ID stored in charge metadata or payment record
-        // Handled separately; mark as refunded if we have the session ID
         const charge = event.data.object as Stripe.Charge;
         const checkoutSessionId =
           typeof charge.metadata?.checkout_session_id === "string"
@@ -214,8 +254,8 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         }
         break;
       }
+
       default:
-        // Unhandled event type — acknowledge safely
         break;
     }
   } catch (err) {

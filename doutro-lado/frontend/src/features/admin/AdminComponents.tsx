@@ -33,8 +33,9 @@ export function MetricCard({ label, value, sub, highlight = "default" }: MetricC
 const STATUS_COLORS: Record<string, string> = {
   // Order status
   created: "border-white/15 bg-white/5 text-white/55",
+  awaiting_payment: "border-amber-400/30 bg-amber-400/8 text-amber-300",
   processing: "border-blue-400/30 bg-blue-400/8 text-blue-300",
-  packing: "border-amber-400/30 bg-amber-400/8 text-amber-300",
+  packing: "border-cyan-400/30 bg-cyan-400/8 text-cyan-300",
   shipped: "border-purple-400/30 bg-purple-400/8 text-purple-300",
   delivered: "border-green-400/30 bg-green-400/8 text-green-300",
   cancelled: "border-red-400/30 bg-red-400/8 text-red-300",

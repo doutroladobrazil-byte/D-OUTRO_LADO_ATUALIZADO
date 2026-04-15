@@ -165,6 +165,56 @@ export async function attachSessionToReservations(
 // =============================================================================
 
 /**
+ * Marks all active reservations for an order as consumed.
+ * Idempotent — only transitions 'active' reservations.
+ * Used for mock mode checkout where payment is considered confirmed immediately.
+ */
+export async function consumeReservationsByOrder(orderId: string): Promise<number> {
+  const result = await db`
+    UPDATE inventory_reservations
+    SET    status = 'consumed', updated_at = NOW()
+    WHERE  order_id = ${orderId}::uuid
+      AND  status = 'active'
+    RETURNING id
+  `;
+
+  if (result.length > 0) {
+    await logSystemEvent("reservation_consumed", "order", orderId, {
+      source: "mock_checkout",
+      count: result.length,
+    });
+  }
+
+  return result.length;
+}
+
+/**
+ * Releases all active reservations associated with a Stripe session ID.
+ * Fallback for the webhook path when orderId is unavailable.
+ * Idempotent — only transitions 'active' reservations.
+ */
+export async function releaseReservationsBySession(stripeSessionId: string): Promise<number> {
+  const result = await db`
+    UPDATE inventory_reservations
+    SET    status = 'released', updated_at = NOW()
+    WHERE  stripe_checkout_session_id = ${stripeSessionId}
+      AND  status = 'active'
+    RETURNING id, order_id
+  `;
+
+  if (result.length > 0) {
+    const orderId = result[0].order_id as string | null;
+    await logSystemEvent("reservation_released", "order", orderId ?? stripeSessionId, {
+      stripeSessionId,
+      source: "session_expired_webhook",
+      count: result.length,
+    });
+  }
+
+  return result.length;
+}
+
+/**
  * Marks all active reservations for a Stripe session as consumed.
  * Idempotent — only transitions 'active' reservations.
  * Called from the checkout.session.completed webhook.
