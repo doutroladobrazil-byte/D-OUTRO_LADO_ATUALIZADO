@@ -39,6 +39,7 @@ import {
   deleteMedia,
   getUploadUrl,
   listMedia,
+  patchMedia,
   registerMedia,
   reorderMedia,
   setPrimary,
@@ -195,4 +196,5 @@ router.post("/admin/media/register", requireAuth, requireRole("admin"), register
 router.get("/admin/products/:productId/media", requireAuth, requireRole("admin"), listMedia);
 router.patch("/admin/products/:productId/media/reorder", requireAuth, requireRole("admin"), reorderMedia);
 router.patch("/admin/products/:productId/media/:pmId/primary", requireAuth, requireRole("admin"), setPrimary);
+router.patch("/admin/media/:assetId", requireAuth, requireRole("admin"), patchMedia);
 router.delete("/admin/media/:assetId", requireAuth, requireRole("admin"), deleteMedia);

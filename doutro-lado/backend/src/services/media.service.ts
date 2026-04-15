@@ -261,6 +261,41 @@ export async function setPrimaryMedia(productId: string, pmId: string): Promise<
 }
 
 // =============================================================================
+// Patch metadata — Bloco 10A
+// =============================================================================
+
+export type PatchMediaInput = {
+  altText?: string | null;
+  caption?: string | null;
+  posterUrl?: string | null;
+};
+
+/**
+ * Update editable metadata on a media_assets row.
+ * Returns the updated asset or null if not found.
+ */
+export async function patchMediaAsset(
+  assetId: string,
+  input: PatchMediaInput
+): Promise<MediaAsset | null> {
+  const rows = await db`
+    SELECT id FROM media_assets WHERE id = ${assetId} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+
+  const [updated] = await db`
+    UPDATE media_assets
+    SET
+      alt_text   = CASE WHEN ${input.altText   !== undefined}::boolean THEN ${input.altText   ?? null} ELSE alt_text   END,
+      caption    = CASE WHEN ${input.caption   !== undefined}::boolean THEN ${input.caption   ?? null} ELSE caption    END,
+      poster_url = CASE WHEN ${input.posterUrl !== undefined}::boolean THEN ${input.posterUrl ?? null} ELSE poster_url END
+    WHERE id = ${assetId}
+    RETURNING *
+  `;
+  return mapAsset(updated);
+}
+
+// =============================================================================
 // Signed upload URL
 // =============================================================================
 

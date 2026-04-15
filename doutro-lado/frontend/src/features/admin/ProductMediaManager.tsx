@@ -66,6 +66,10 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
   // Alt text editing
   const [editingAltId, setEditingAltId] = useState<string | null>(null);
   const [altDraft, setAltDraft] = useState("");
+  // Poster URL editing (video only)
+  const [editingPosterId, setEditingPosterId] = useState<string | null>(null);
+  const [posterDraft, setPosterDraft] = useState("");
+  const [savingMetaId, setSavingMetaId] = useState<string | null>(null);
 
   const loadMedia = useCallback(async () => {
     if (!token) return;
@@ -199,18 +203,52 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
 
   function startEditAlt(item: ProductMedia) {
     setEditingAltId(item.id);
+    setEditingPosterId(null);
     setAltDraft(item.asset.altText ?? "");
   }
 
   async function saveAlt(pmId: string) {
-    // Alt text is not yet a PATCH endpoint — update optimistically in UI only
-    // (backend patchProduct could be extended; for now persist as no-op and update local state)
+    if (!token) return;
+    const item = media.find((m) => m.id === pmId);
+    if (!item) return;
+    setSavingMetaId(pmId);
+    setActionError(null);
+    const result = await adminApi.patchMedia(token, item.asset.id, {
+      altText: altDraft.trim() || null,
+    });
+    setSavingMetaId(null);
+    if (!result.ok) { setActionError(result.message); return; }
     setMedia((prev) =>
       prev.map((m) =>
-        m.id === pmId ? { ...m, asset: { ...m.asset, altText: altDraft || undefined } } : m
+        m.id === pmId ? { ...m, asset: { ...m.asset, altText: result.data.altText } } : m
       )
     );
     setEditingAltId(null);
+  }
+
+  function startEditPoster(item: ProductMedia) {
+    setEditingPosterId(item.id);
+    setEditingAltId(null);
+    setPosterDraft(item.asset.posterUrl ?? "");
+  }
+
+  async function savePoster(pmId: string) {
+    if (!token) return;
+    const item = media.find((m) => m.id === pmId);
+    if (!item) return;
+    setSavingMetaId(pmId);
+    setActionError(null);
+    const result = await adminApi.patchMedia(token, item.asset.id, {
+      posterUrl: posterDraft.trim() || null,
+    });
+    setSavingMetaId(null);
+    if (!result.ok) { setActionError(result.message); return; }
+    setMedia((prev) =>
+      prev.map((m) =>
+        m.id === pmId ? { ...m, asset: { ...m.asset, posterUrl: result.data.posterUrl } } : m
+      )
+    );
+    setEditingPosterId(null);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -346,7 +384,13 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
                         autoFocus
                         onKeyDown={(e) => { if (e.key === "Enter") saveAlt(item.id); if (e.key === "Escape") setEditingAltId(null); }}
                       />
-                      <button onClick={() => saveAlt(item.id)} className="text-[11px] text-[#C6A96B] hover:text-[#C6A96B]/70">Salvar</button>
+                      <button
+                        onClick={() => saveAlt(item.id)}
+                        disabled={savingMetaId === item.id}
+                        className="text-[11px] text-[#C6A96B] hover:text-[#C6A96B]/70 disabled:opacity-40"
+                      >
+                        {savingMetaId === item.id ? "…" : "Salvar"}
+                      </button>
                       <button onClick={() => setEditingAltId(null)} className="text-[11px] text-white/30 hover:text-white/60">✕</button>
                     </div>
                   ) : (
@@ -357,6 +401,38 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
                     >
                       {item.asset.altText ? `Alt: ${item.asset.altText}` : "Adicionar alt text…"}
                     </button>
+                  )}
+                  {/* Poster URL (videos only) */}
+                  {item.asset.mediaType === "video" && (
+                    editingPosterId === item.id ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="url"
+                          value={posterDraft}
+                          onChange={(e) => setPosterDraft(e.target.value)}
+                          placeholder="https://… URL da imagem de capa do vídeo"
+                          className="flex-1 rounded-[8px] border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-white focus:border-white/30 focus:outline-none"
+                          autoFocus
+                          onKeyDown={(e) => { if (e.key === "Enter") savePoster(item.id); if (e.key === "Escape") setEditingPosterId(null); }}
+                        />
+                        <button
+                          onClick={() => savePoster(item.id)}
+                          disabled={savingMetaId === item.id}
+                          className="text-[11px] text-[#C6A96B] hover:text-[#C6A96B]/70 disabled:opacity-40"
+                        >
+                          {savingMetaId === item.id ? "…" : "Salvar"}
+                        </button>
+                        <button onClick={() => setEditingPosterId(null)} className="text-[11px] text-white/30 hover:text-white/60">✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEditPoster(item)}
+                        className="mt-0.5 text-[11px] text-white/25 hover:text-white/50 transition"
+                      >
+                        {item.asset.posterUrl ? "Capa: definida ✓" : "Definir capa do vídeo…"}
+                      </button>
+                    )
                   )}
                 </div>
 

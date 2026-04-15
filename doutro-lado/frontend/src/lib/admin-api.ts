@@ -360,6 +360,15 @@ export const adminApi = {
     );
   },
 
+  /** Bloco 10A — patch editable metadata on a media asset (altText, caption, posterUrl). */
+  patchMedia(
+    token: string,
+    assetId: string,
+    body: { altText?: string | null; caption?: string | null; posterUrl?: string | null }
+  ) {
+    return callApi<import("@/lib/types").MediaAsset>(`/admin/media/${assetId}`, "PATCH", token, body);
+  },
+
   /** Stage 17 — get country policy (client-side). */
   getCountryPolicy(token: string, code: string) {
     return callApi<CountryPolicy>(`/admin/countries/${code}/policy`, "GET", token);

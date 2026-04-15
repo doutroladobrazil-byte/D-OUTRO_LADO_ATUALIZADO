@@ -4,6 +4,7 @@ import {
   deleteProductMedia,
   generateUploadUrl,
   listProductMedia,
+  patchMediaAsset,
   registerMediaAsset,
   reorderProductMedia,
   setPrimaryMedia,
@@ -131,6 +132,32 @@ export async function setPrimary(req: Request, res: Response) {
   } catch (error) {
     return fail(res, error instanceof Error ? error.message : "Set primary failed", 500);
   }
+}
+
+const patchMediaSchema = z.object({
+  altText: z.string().max(300).nullish(),
+  caption: z.string().max(500).nullish(),
+  posterUrl: z.string().url().nullish(),
+}).strict();
+
+/**
+ * PATCH /admin/media/:assetId
+ * Update editable metadata: altText, caption, posterUrl.
+ */
+export async function patchMedia(req: Request, res: Response) {
+  const assetId = Array.isArray(req.params.assetId) ? req.params.assetId[0] : req.params.assetId;
+  if (!assetId) return fail(res, "assetId required", 400);
+
+  const parsed = patchMediaSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, parsed.error.issues[0]?.message ?? parsed.error.message, 400);
+
+  const updated = await patchMediaAsset(assetId, {
+    altText: parsed.data.altText ?? undefined,
+    caption: parsed.data.caption ?? undefined,
+    posterUrl: parsed.data.posterUrl ?? undefined,
+  });
+  if (!updated) return fail(res, "Media asset not found", 404);
+  return ok(res, updated);
 }
 
 /**
