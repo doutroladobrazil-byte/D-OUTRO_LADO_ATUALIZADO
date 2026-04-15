@@ -381,27 +381,42 @@ export function BrandCheckoutView({ brand }: Props) {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await fetch(`${apiBase}/stripe/checkout`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
+    try {
+      const res = await fetch(`${apiBase}/stripe/checkout`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
 
-    setSubmitting(false);
+      setSubmitting(false);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.message ?? "Failed to start payment. Please try again.");
-      return;
-    }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg: string = err.message ?? "Failed to start payment. Please try again.";
+        // Classify common backend errors into more specific UX messages
+        if (/stock|esgotado|unavailable|out of stock/i.test(msg)) {
+          setError("One or more items in your bag are no longer available. Please review your cart and try again.");
+        } else if (/guest checkout/i.test(msg)) {
+          setError("Guest checkout is not available for this destination. Please sign in to continue.");
+        } else if (/country|not available|not supported/i.test(msg)) {
+          setError("This destination is not currently available for checkout. Please select another country.");
+        } else {
+          setError(msg);
+        }
+        return;
+      }
 
-    const { data } = await res.json();
+      const { data } = await res.json();
 
-    if (data.mode === "stripe" && data.checkoutUrl) {
-      window.location.href = data.checkoutUrl;
-    } else {
-      clearCart(brand);
-      router.push(`/brands/${brand}/checkout?status=success`);
+      if (data.mode === "stripe" && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        clearCart(brand);
+        router.push(`/brands/${brand}/checkout?status=success`);
+      }
+    } catch {
+      setSubmitting(false);
+      setError("Network error — please check your connection and try again.");
     }
   }
 

@@ -15,6 +15,7 @@
  */
 
 import { db } from "../../lib/db.js";
+import { logger } from "../../utils/logger.js";
 
 export async function logSystemEvent(
   action: string,
@@ -28,7 +29,7 @@ export async function logSystemEvent(
       VALUES (NULL, ${action}, ${entityType}, ${entityId}, ${payload ? JSON.stringify(payload) : null})
     `;
   } catch (err) {
-    // Non-fatal — log to stderr but do not propagate
-    console.error("[system-log] Failed to write event:", action, entityType, entityId, err);
+    // Non-fatal — log but do not propagate
+    logger.error("system-log write failed", { action, entityType, entityId, err: err instanceof Error ? err.message : String(err) });
   }
 }

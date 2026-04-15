@@ -56,15 +56,75 @@ import { authRateLimit, checkoutRateLimit } from "../middlewares/rate-limit.js";
 import { getCurrencies, getLanguages, getRates } from "../domains/i18n/i18n.controller.js";
 import { getCountryHandler, listCountriesHandler } from "../domains/countries/countries.controller.js";
 import { db } from "../lib/db.js";
+import { env } from "../config/env.js";
 
 export const router = Router();
 
 // ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
-// Performs a live DB ping so Render's health check reflects real service
-// availability. Returns 503 if the database is unreachable so Render stops
-// routing traffic to this instance.
+
+/**
+ * /health/live — Is the process up? Used by load balancers / uptime monitors.
+ * Never touches external dependencies. Returns 200 as long as Node is running.
+ */
+router.get("/health/live", (_req: Request, res: Response) => {
+  return res.json({ ok: true, status: "live" });
+});
+
+/**
+ * /health/ready — Are all dependencies reachable and configured?
+ * Used by deployment pipelines and dashboards to distinguish "up" from "ready".
+ * Returns 503 with a checks breakdown if any dependency is unhealthy.
+ *
+ * Checks: database · Stripe config · Supabase storage · JWT secret
+ * Does NOT expose secret values — only reports presence/absence.
+ */
+router.get("/health/ready", async (_req: Request, res: Response) => {
+  const checks: Record<string, { ok: boolean; detail?: string }> = {};
+
+  // Database connectivity
+  try {
+    await db`SELECT 1 AS up`;
+    checks.database = { ok: true };
+  } catch (err) {
+    checks.database = { ok: false, detail: err instanceof Error ? err.message : "unreachable" };
+  }
+
+  // JWT auth config
+  checks.auth = env.SUPABASE_JWT_SECRET
+    ? { ok: true }
+    : { ok: false, detail: "SUPABASE_JWT_SECRET missing" };
+
+  // Stripe config
+  if (env.PAYMENTS_MODE === "stripe") {
+    const stripeReady = !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET);
+    checks.stripe = stripeReady
+      ? { ok: true }
+      : { ok: false, detail: "STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET missing" };
+  } else {
+    checks.stripe = { ok: true, detail: "mock mode — no real keys required" };
+  }
+
+  // Supabase storage config
+  const storageReady = !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+  checks.storage = storageReady
+    ? { ok: true }
+    : { ok: false, detail: "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing (media upload disabled)" };
+
+  const allOk = Object.values(checks).every((c) => c.ok);
+  return res.status(allOk ? 200 : 503).json({
+    ok: allOk,
+    name: "doutro-lado-api",
+    paymentsMode: env.PAYMENTS_MODE,
+    checks,
+  });
+});
+
+/**
+ * /health — backward-compatible alias (Render health-check URL).
+ * Performs a live DB ping and returns 503 if unreachable.
+ */
 router.get("/health", async (_req: Request, res: Response) => {
   try {
     await db`SELECT 1 AS up`;

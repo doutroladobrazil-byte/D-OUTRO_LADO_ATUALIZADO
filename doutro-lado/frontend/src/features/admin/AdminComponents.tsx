@@ -63,7 +63,7 @@ export function StatusBadge({ status }: { status: string }) {
   const cls = STATUS_COLORS[status] ?? "border-white/15 bg-white/5 text-white/55";
   return (
     <span className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${cls}`}>
-      {status.replace("_", " ")}
+      {status.replaceAll("_", " ")}
     </span>
   );
 }

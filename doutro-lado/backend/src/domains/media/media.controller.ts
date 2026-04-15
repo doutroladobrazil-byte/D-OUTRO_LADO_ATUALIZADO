@@ -10,6 +10,7 @@ import {
   setPrimaryMedia,
 } from "../../services/media.service.js";
 import { fail, ok } from "../../utils/http.js";
+import { logger } from "../../utils/logger.js";
 
 // =============================================================================
 // Validation schemas
@@ -60,6 +61,7 @@ export async function getUploadUrl(req: Request, res: Response) {
   const result = await generateUploadUrl(brand, productId, mediaType, filename);
 
   if (!result) {
+    logger.warn("upload_url_unavailable", { productId, brand, mediaType, filename });
     return fail(
       res,
       "Supabase Storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
@@ -80,8 +82,17 @@ export async function registerMedia(req: Request, res: Response) {
 
   try {
     const media = await registerMediaAsset(parsed.data);
+    logger.info("media_registered", {
+      assetId: media.asset.id,
+      productId: parsed.data.productId,
+      mediaType: parsed.data.mediaType,
+    });
     return ok(res, media, 201);
   } catch (error) {
+    logger.error("media_register_failed", {
+      productId: parsed.data.productId,
+      err: error instanceof Error ? error.message : String(error),
+    });
     return fail(res, error instanceof Error ? error.message : "Failed to register media", 500);
   }
 }

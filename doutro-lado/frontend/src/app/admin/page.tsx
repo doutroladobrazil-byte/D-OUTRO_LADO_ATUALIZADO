@@ -55,7 +55,7 @@ export default async function AdminDashboardPage() {
   const orderColumns = [
     { key: "id", label: "Pedido" },
     { key: "customer", label: "Cliente" },
-    { key: "region", label: "Regiao" },
+    { key: "region", label: "Região" },
     {
       key: "totalBRL",
       label: "Total",
@@ -115,7 +115,7 @@ export default async function AdminDashboardPage() {
     },
     {
       key: "netMarginBRL",
-      label: "Margem liquida*",
+      label: "Margem líquida*",
       align: "right" as const,
       render: (r: CountryBreakdownRow) =>
         r.netMarginBRL != null ? (
@@ -148,13 +148,13 @@ export default async function AdminDashboardPage() {
       <AdminPageHeader
         eyebrow="Painel administrativo"
         title="Dashboard operacional."
-        description="Visao consolidada de receita, margem e pedidos — D'OUTRO LADO Moda."
+        description="Visão consolidada de receita, margem e pedidos — D'OUTRO LADO Moda."
       />
 
       {overview?.alerts && <AlertBanner alerts={overview.alerts} />}
 
       {/* KPIs globais */}
-      <AdminSection title="Metricas globais" eyebrow="Resumo">
+      <AdminSection title="Métricas globais" eyebrow="Resumo">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Faturamento total"
@@ -163,7 +163,7 @@ export default async function AdminDashboardPage() {
           />
           <MetricCard label="Pedidos" value={overview?.orders ?? 0} />
           <MetricCard
-            label="Ticket medio"
+            label="Ticket médio"
             value={`R$ ${(overview?.averageTicketBRL ?? 0).toFixed(0)}`}
           />
           <MetricCard label="Novos clientes (30d)" value={overview?.newCustomers ?? 0} highlight="green" />

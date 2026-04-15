@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { stripe } from "../../lib/stripe.js";
 import { db } from "../../lib/db.js";
 import { fail, ok } from "../../utils/http.js";
+import { logger } from "../../utils/logger.js";
 import {
   attachStripeSession,
   buildOrder,
@@ -58,6 +59,15 @@ export async function createCheckoutSession(req: Request, res: Response) {
     // ── 1. Build + persist the order ──────────────────────────────────────
     const orderPreview = await buildOrder(req.body, role, profileId);
     orderId = orderPreview.orderId;
+    logger.info("checkout_initiated", {
+      orderId,
+      publicId: orderPreview.publicId,
+      brand: orderPreview.brand,
+      profileId: profileId ?? "guest",
+      itemCount: orderPreview.items.length,
+      totalBRL: orderPreview.totalBRL,
+      region: orderPreview.region,
+    });
 
     // ── 2. Reserve stock ──────────────────────────────────────────────────
     // Throws with a human-readable message when any item is unavailable.
@@ -71,6 +81,7 @@ export async function createCheckoutSession(req: Request, res: Response) {
       orderPreview.orderId
     );
     reservationCreated = true;
+    logger.info("reservation_created", { orderId, itemCount: orderPreview.items.length });
 
     // ── 3a. Mock mode — treat as payment confirmed immediately ─────────────
     if (!stripe || env.PAYMENTS_MODE !== "stripe") {
@@ -138,6 +149,10 @@ export async function createCheckoutSession(req: Request, res: Response) {
       });
     } catch (stripeError) {
       // Stripe session creation failed — release reservations, cancel order
+      logger.error("stripe_session_failed", {
+        orderId: orderPreview.orderId,
+        err: stripeError instanceof Error ? stripeError.message : String(stripeError),
+      });
       await releaseReservations(orderPreview.orderId).catch(() => {});
       await cancelOrderAtCheckout(
         orderPreview.orderId,
@@ -150,6 +165,11 @@ export async function createCheckoutSession(req: Request, res: Response) {
     await attachStripeSession(orderPreview.orderId, session.id);
     await attachSessionToReservations(orderPreview.orderId, session.id);
     await markOrderAwaitingPayment(orderPreview.orderId);
+    logger.info("stripe_session_created", {
+      orderId: orderPreview.orderId,
+      publicId: orderPreview.publicId,
+      stripeSessionId: session.id,
+    });
 
     // ── 5. Clear cart ─────────────────────────────────────────────────────
     if (profileId) {
@@ -173,6 +193,10 @@ export async function createCheckoutSession(req: Request, res: Response) {
         error instanceof Error ? error.message : "reservation failed"
       ).catch(() => {});
     }
+    logger.warn("checkout_failed", {
+      orderId: orderId ?? "unknown",
+      err: error instanceof Error ? error.message : String(error),
+    });
     return fail(res, error instanceof Error ? error.message : "Unable to create checkout session", 400);
   }
 }
@@ -207,6 +231,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+  logger.info("webhook_received", { eventType: event.type, stripeSessionId: session.id, publicId: session.metadata?.publicId ?? null });
 
   try {
     switch (event.type) {
@@ -225,12 +250,18 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             stripeSessionId: session.id,
             paymentIntentId,
           });
+          logger.info("payment_confirmed", {
+            orderId,
+            publicId: session.metadata?.publicId ?? null,
+            stripeSessionId: session.id,
+            paymentIntentId,
+          });
 
           // ── Send order confirmation email (fire-and-forget) ───────────────
           // Fetch the persisted order + items to build the email payload.
           // Failure must not break the webhook response.
           sendOrderConfirmationEmailForOrder(orderId).catch((err) => {
-            console.error("[webhook] Order confirmation email failed:", err);
+            logger.warn("confirmation_email_failed", { orderId, err: err instanceof Error ? err.message : String(err) });
           });
         }
         break;
@@ -251,6 +282,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         await logSystemEvent("checkout_expired", "order", expiredOrderId ?? session.id, {
           stripeSessionId: session.id,
         });
+        logger.info("checkout_expired", {
+          orderId: expiredOrderId ?? null,
+          stripeSessionId: session.id,
+        });
         break;
       }
 
@@ -262,6 +297,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
             : null;
         if (checkoutSessionId) {
           await updatePaymentStatus(checkoutSessionId, "refunded");
+          logger.info("charge_refunded", { checkoutSessionId });
         }
         break;
       }
@@ -271,7 +307,11 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     }
   } catch (err) {
     // Log but do not return 4xx — Stripe will retry on 4xx but not on 2xx
-    console.error("[webhook] Processing error:", err);
+    logger.error("webhook_processing_error", {
+      eventType: event.type,
+      stripeSessionId: session.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return ok(res, {
