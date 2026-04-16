@@ -265,28 +265,16 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
   const imageCount = media.filter((m) => m.asset.mediaType === "image").length;
   const videoCount = media.filter((m) => m.asset.mediaType === "video").length;
 
-  if (loading) {
-    return <div className="h-32 animate-pulse rounded-[18px] bg-white/[0.03]" />;
-  }
-
-  if (!token) {
-    return (
-      <p className="rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/40">
-        Não foi possível autenticar o gerenciador de mídia. Recarregue a página.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* Header — sempre visível */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.28em] text-white/38">Galeria</p>
           <h2 className="mt-1 font-display text-[22px] text-white">
             Fotos e vídeos do produto
           </h2>
-          {media.length > 0 && (
+          {!loading && media.length > 0 && (
             <p className="mt-0.5 text-[12px] text-white/35">
               {imageCount > 0 && `${imageCount} imagem${imageCount > 1 ? "ns" : ""}`}
               {imageCount > 0 && videoCount > 0 && " · "}
@@ -297,7 +285,7 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || !token}
+          disabled={uploading}
           className="rounded-[12px] border border-[#C6A96B]/40 bg-[#C6A96B]/8 px-5 py-2 text-sm text-[#C6A96B] transition hover:bg-[#C6A96B]/15 disabled:opacity-40"
         >
           {uploading ? "Enviando..." : "+ Adicionar mídia"}
@@ -340,7 +328,13 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
       )}
 
       {/* Media list */}
-      {media.length === 0 ? (
+      {loading ? (
+        <div className="h-24 animate-pulse rounded-[18px] bg-white/[0.03]" />
+      ) : !token ? (
+        <p className="rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/40">
+          Não foi possível autenticar o gerenciador de mídia. Recarregue a página.
+        </p>
+      ) : media.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.2" className="mb-3">
             <rect x="3" y="3" width="18" height="18" rx="2" />
