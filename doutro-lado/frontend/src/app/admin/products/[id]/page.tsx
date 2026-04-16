@@ -38,8 +38,8 @@ export default async function EditProductPage({ params }: Props) {
       <div className="border-t border-white/5" />
 
       {/* Media manager */}
-      <div className="max-w-4xl">
-        <ProductMediaManager productId={product.id} productBrand={product.brand} />
+      <div id="media" className="max-w-4xl">
+        <ProductMediaManager productId={product.id} productBrand={product.brand} adminToken={token} />
       </div>
 
       {/* Divider */}

@@ -8,6 +8,7 @@ import type { ProductMedia } from "@/lib/types";
 type Props = {
   productId: string;
   productBrand: string;
+  adminToken?: string | null;
 };
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -53,8 +54,9 @@ function MediaThumbnail({ item }: { item: ProductMedia }) {
   );
 }
 
-export function ProductMediaManager({ productId, productBrand }: Props) {
-  const token = useAdminToken();
+export function ProductMediaManager({ productId, productBrand, adminToken }: Props) {
+  const sessionToken = useAdminToken();
+  const token = adminToken ?? sessionToken;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [media, setMedia] = useState<ProductMedia[]>([]);
@@ -80,7 +82,11 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
   }, [token, productId]);
 
   useEffect(() => {
-    if (token) loadMedia();
+    if (token) {
+      loadMedia();
+    } else {
+      setLoading(false);
+    }
   }, [token, loadMedia]);
 
   // ── Upload single file ───────────────────────────────────────────────────────
@@ -258,6 +264,14 @@ export function ProductMediaManager({ productId, productBrand }: Props) {
 
   if (loading) {
     return <div className="h-32 animate-pulse rounded-[18px] bg-white/[0.03]" />;
+  }
+
+  if (!token) {
+    return (
+      <p className="rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/40">
+        Não foi possível autenticar o gerenciador de mídia. Recarregue a página.
+      </p>
+    );
   }
 
   return (

@@ -10,7 +10,7 @@ export default function NewProductPage() {
       <AdminPageHeader
         eyebrow="Catálogo / Novo produto"
         title="Cadastrar produto."
-        description="Preencha os campos abaixo. Após criar o produto, você poderá adicionar imagens na tela de edição."
+        description="Preencha os campos abaixo. Ao salvar, você será redirecionado para a tela de edição para adicionar fotos e vídeos."
       />
       <div className="max-w-4xl">
         <ProductForm mode="create" />
