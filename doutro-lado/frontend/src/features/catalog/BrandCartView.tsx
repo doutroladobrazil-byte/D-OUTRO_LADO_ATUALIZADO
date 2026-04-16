@@ -133,8 +133,8 @@ export function BrandCartView({ brand }: Props) {
           </svg>
         </div>
         <div>
-          <p className="text-base text-white/60">Your bag is empty.</p>
-          <p className="mt-1 text-sm text-white/30">Add pieces to continue.</p>
+          <p className="text-base text-white/60">Sua bolsa está vazia.</p>
+          <p className="mt-1 text-sm text-white/30">Adicione peças para continuar.</p>
         </div>
         <Link
           href="/brands/moda"
@@ -255,49 +255,56 @@ export function BrandCartView({ brand }: Props) {
 
       {/* Summary */}
       <GlassCard className="h-fit space-y-5">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">Resumo</p>
+
         {/* Applied offer badge */}
         {appliedOffer && (
           <div className="rounded-[14px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            Desconto <strong>{appliedOffer.discountPercent}%</strong> aplicado (código <strong>{appliedOffer.code}</strong>)
+            Desconto <strong>{appliedOffer.discountPercent}%</strong> aplicado — código <strong>{appliedOffer.code}</strong>
           </div>
         )}
 
-        {/* Blocking issues feedback */}
+        {/* Blocking issues */}
         {hasBlockingIssues && (
           <div className="rounded-[14px] border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
             {sim!.blockingIssues[0]}
           </div>
         )}
 
-        <div className="flex items-center justify-between text-sm text-white/55">
-          <span>{cart.items.reduce((s, i) => s + i.quantity, 0) + kitItems.reduce((s, k) => s + k.quantity, 0)} {(cart.items.reduce((s, i) => s + i.quantity, 0) + kitItems.reduce((s, k) => s + k.quantity, 0)) === 1 ? "item" : "itens"}</span>
-          {simLoading ? (
-            <span className="text-white/30 text-xs">calculando…</span>
-          ) : (
-            <PriceDisplay brl={finalTotalBRL} className="font-medium text-white" />
-          )}
-        </div>
+        {(() => {
+          const totalQty = cart.items.reduce((s, i) => s + i.quantity, 0) + kitItems.reduce((s, k) => s + k.quantity, 0);
+          return (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/50">{totalQty} {totalQty === 1 ? "item" : "itens"}</span>
+              {simLoading ? (
+                <span className="text-white/30 text-xs">calculando…</span>
+              ) : (
+                <PriceDisplay brl={finalTotalBRL} className="font-semibold text-white" />
+              )}
+            </div>
+          );
+        })()}
 
-        <div className="border-t border-white/10 pt-4">
-          <Link
-            href={getBrandCheckoutPath(brand) + (offerCode ? `?offerCode=${encodeURIComponent(offerCode)}` : "")}
-            className="block rounded-full border border-[#C6A96B] bg-[#C6A96B] px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5"
-          >
-            Finalizar compra
-          </Link>
-        </div>
+        <Link
+          href={getBrandCheckoutPath(brand) + (offerCode ? `?offerCode=${encodeURIComponent(offerCode)}` : "")}
+          className="block rounded-full border border-[#C6A96B] bg-[#C6A96B] py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5"
+        >
+          Finalizar compra →
+        </Link>
+
         {/* Trust signals */}
-        <div className="space-y-1.5 border-t border-white/8 pt-4">
+        <div className="space-y-1.5 border-t border-white/8 pt-3">
           {[
-            { icon: "🔒", text: "Secure checkout via Stripe" },
-            { icon: "🌍", text: "Ships to CH · IE · DE · IS · SG · US" },
+            { icon: "🔒", text: "Checkout seguro via Stripe" },
+            { icon: "🌍", text: "Envio para CH · IE · DE · IS · SG · US" },
           ].map((item) => (
-            <div key={item.text} className="flex items-center gap-2 text-[11px] text-white/30">
+            <div key={item.text} className="flex items-center gap-2 text-[11px] text-white/28">
               <span aria-hidden>{item.icon}</span>
               {item.text}
             </div>
           ))}
         </div>
+
         <Link
           href="/brands/moda"
           className="block text-center text-[12px] text-white/35 underline-offset-2 hover:text-white/60 hover:underline"

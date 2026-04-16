@@ -135,10 +135,10 @@ export function ProductPurchaseActions({
       {/* Trust signals */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
         {[
-          { icon: "🔒", text: "Secure checkout" },
-          { icon: "🌍", text: "International shipping" },
-          { icon: "↩", text: "Returns by policy" },
-          { icon: "✦", text: "Brazilian leather" },
+          { icon: "🔒", text: "Pagamento seguro" },
+          { icon: "🌍", text: "Envio internacional" },
+          { icon: "↩", text: "Devoluções aceitas" },
+          { icon: "✦", text: "Couro brasileiro" },
         ].map((item) => (
           <div key={item.text} className="flex items-center gap-1.5 text-[11px] text-black/45">
             <span className="text-[13px]" aria-hidden>{item.icon}</span>

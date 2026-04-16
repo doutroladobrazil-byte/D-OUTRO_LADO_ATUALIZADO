@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-black px-4 py-10 text-white/60 md:px-6 md:py-16">
       <div className="mx-auto max-w-luxe space-y-10">
         {/* Trust strip */}
-        <div className="grid grid-cols-2 gap-3 border-b border-white/8 pb-10 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 border-b border-white/8 pb-10 sm:grid-cols-2 md:grid-cols-4">
           {[
             { label: "Secure checkout", sub: "Stripe · end-to-end encrypted" },
             { label: "International shipping", sub: "CH · IE · DE · IS · SG · US" },
@@ -31,11 +31,11 @@ export function Footer() {
             <p className="text-sm uppercase tracking-[0.2em] text-white/35">Explorar</p>
             <Link href="/brands/moda" className="block hover:text-white transition">Coleções</Link>
             <Link href="/gift-builder" className="block hover:text-white transition">Kits premium</Link>
-            <Link href="/brands/moda" className="block hover:text-white transition">Busca</Link>
+            <Link href="/wholesale" className="block hover:text-white transition">Atacado</Link>
           </div>
           <div className="space-y-3">
             <p className="text-sm uppercase tracking-[0.2em] text-white/35">Operação</p>
-            <Link href="/brands/moda/checkout" className="block hover:text-white transition">Envio internacional</Link>
+            <Link href="/brands/moda/checkout" className="block hover:text-white transition">Checkout</Link>
             <Link href="/wholesale" className="block hover:text-white transition">Atacado</Link>
             <Link href="/admin" className="block hover:text-white transition">Admin</Link>
           </div>

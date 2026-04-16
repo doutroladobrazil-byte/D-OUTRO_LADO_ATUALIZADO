@@ -56,13 +56,13 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
 
             {/* Pricing card */}
             <GlassCard tone="warm" className="space-y-5">
-              <div className="flex items-center justify-between border-b border-black/10 pb-4">
-                <span className="text-sm text-black/52">Preço varejo</span>
-                <strong className="text-2xl font-semibold text-[#17120d]">
+              <div className="border-b border-black/10 pb-5">
+                <p className="mb-1.5 text-[11px] uppercase tracking-[0.22em] text-black/40">Preço varejo</p>
+                <strong className="text-[30px] font-semibold tracking-[-0.5px] text-[#17120d]">
                   R$ {product.retailPriceBRL.toFixed(2)}
                 </strong>
               </div>
-              <div className="grid gap-3 text-sm text-black/65 md:grid-cols-2">
+              <div className="grid gap-3 text-sm text-black/65 sm:grid-cols-2">
                 <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
                   <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Atacado</span>
                   A partir de {product.wholesaleMinQty} unidades

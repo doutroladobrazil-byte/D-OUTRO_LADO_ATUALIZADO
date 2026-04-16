@@ -62,7 +62,7 @@ export default async function HomePage() {
       {/* ── Trust strip ───────────────────────────────────────────────────── */}
       <section className="px-4 py-6 md:px-6">
         <div className="mx-auto max-w-luxe">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
             {[
               { label: "Envio mundial", sub: "CH · IE · DE · IS · SG · US" },
               { label: "Pagamento seguro", sub: "Stripe · criptografado" },

@@ -8,7 +8,6 @@ import { useCartStore } from "@/lib/cart-store";
 import { getActiveCountries, getBackendCart, getCountryDetail, simulateBag } from "@/lib/storefront";
 import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { Button } from "@/components/ui/Button";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 import { useLocale } from "@/contexts/LocaleContext";
 import { COUNTRY_DEFAULT_CURRENCY } from "@/lib/i18n";
@@ -286,8 +285,18 @@ export function BrandCheckoutView({ brand }: Props) {
   // ── Empty cart guard ───────────────────────────────────────────────────────
   if (cart.items.length === 0 && kitItems.length === 0) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
-        <p className="text-white/55">Your bag is empty.</p>
+      <div className="flex min-h-[45vh] flex-col items-center justify-center gap-6 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 01-8 0" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-base text-white/60">Your bag is empty.</p>
+          <p className="mt-1 text-sm text-white/30">Add pieces before checking out.</p>
+        </div>
         <button
           onClick={() => router.push("/brands/moda")}
           className="rounded-full border border-[#C6A96B]/60 px-6 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
@@ -422,11 +431,15 @@ export function BrandCheckoutView({ brand }: Props) {
 
   return (
     <div className="grid gap-8 xl:grid-cols-[1fr_0.45fr]">
-      {/* Left — destination + contact form */}
-      <div className="space-y-6">
+      {/* Left — destination + contact form (xl: col 1) */}
+      <div className="space-y-5 xl:order-1">
         {/* Country selection */}
-        <GlassCard className="space-y-6">
-          <h2 className="font-display text-[28px] tracking-[-0.4px] text-white">International delivery</h2>
+        <GlassCard className="space-y-5">
+          <div className="flex items-center gap-3">
+            <span className="shrink-0 text-[11px] uppercase tracking-[0.28em] text-white/30">01</span>
+            <div className="h-px flex-1 bg-white/8" />
+          </div>
+          <h2 className="font-display text-[24px] tracking-[-0.3px] text-white">Destination</h2>
           <div className="space-y-3">
             <label className="text-[12px] uppercase tracking-[0.24em] text-white/50">Destination country</label>
             {countries.length === 0 ? (
@@ -503,7 +516,11 @@ export function BrandCheckoutView({ brand }: Props) {
 
         {/* Contact + address form — shown when country is selected and guest is allowed (or auth) */}
         {showContactForm && !guestIsBlocked && (
-          <GlassCard className="space-y-6">
+          <GlassCard className="space-y-5">
+            <div className="flex items-center gap-3">
+              <span className="shrink-0 text-[11px] uppercase tracking-[0.28em] text-white/30">02</span>
+              <div className="h-px flex-1 bg-white/8" />
+            </div>
             <div className="flex items-center justify-between">
               <h3 className="font-display text-[22px] tracking-[-0.3px] text-white">Contact &amp; delivery</h3>
               {isAuthenticated ? (
@@ -599,8 +616,8 @@ export function BrandCheckoutView({ brand }: Props) {
         )}
       </div>
 
-      {/* Right — order summary */}
-      <GlassCard className="h-fit space-y-5">
+      {/* Right — order summary (appears first on mobile, sidebar on xl) */}
+      <GlassCard className="order-first xl:order-last h-fit space-y-5">
         <p className="text-[12px] uppercase tracking-[0.28em] text-white/45">Order summary</p>
 
         <div className="space-y-3">
@@ -650,17 +667,18 @@ export function BrandCheckoutView({ brand }: Props) {
           </div>
         )}
 
-        <Button
+        <button
           onClick={handleCheckout}
           disabled={checkoutBlocked}
-          className="w-full"
+          className="w-full rounded-full border border-[#C6A96B] bg-[#C6A96B] py-4 text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
-          {submitting ? "Redirecting…" : "Proceed to payment"}
-        </Button>
+          {submitting ? "Processing payment…" : "Proceed to payment →"}
+        </button>
 
-        <p className="text-center text-[11px] text-white/30">
-          Secure payment via Stripe. Your card details are never stored.
-        </p>
+        <div className="flex items-center justify-center gap-1.5 text-center text-[11px] text-white/30">
+          <span aria-hidden>🔒</span>
+          <span>Secure payment via Stripe. Card details are never stored.</span>
+        </div>
 
         {/* Support contact from policy */}
         {countryDetail?.policy?.supportEmail && (
