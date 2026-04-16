@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { useAdminToken } from "@/hooks/useAdminToken";
+import { ProductMediaManager } from "@/features/admin/ProductMediaManager";
 import type { AdminProductDetail, AdminCategory } from "@/lib/admin-api";
 
 // =============================================================================
@@ -223,6 +224,7 @@ export function ProductForm({ mode, product }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
 
   // Taxonomy
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -271,7 +273,7 @@ export function ProductForm({ mode, product }: Props) {
       const result = await adminApi.createProduct(token, payload);
       setSaving(false);
       if (!result.ok) { setError(result.message); return; }
-      window.location.href = `/admin/products/${result.data.id}#media`;
+      setCreatedProductId(result.data.id);
     } else {
       if (!product) return;
       const result = await adminApi.patchProduct(token, product.id, payload);
@@ -292,6 +294,7 @@ export function ProductForm({ mode, product }: Props) {
   }
 
   return (
+    <div className="space-y-1">
     <form onSubmit={handleSubmit} className="space-y-1">
       {/* ── Identificação ──────────────────────────────────────────── */}
       <SectionTitle>Identificação</SectionTitle>
@@ -639,5 +642,54 @@ export function ProductForm({ mode, product }: Props) {
         )}
       </div>
     </form>
+
+    {/* ── Mídia ─────────────────────────────────────────────────── */}
+    {mode === "create" && (
+      <>
+        <div className="border-t border-white/5 mt-8" />
+        {createdProductId ? (
+          <div className="mt-8">
+            <div className="mb-4 rounded-[14px] border border-green-400/25 bg-green-400/5 px-5 py-3">
+              <p className="text-sm text-green-400">✓ Produto criado. Adicione fotos e vídeos abaixo.</p>
+            </div>
+            <ProductMediaManager productId={createdProductId} productBrand="moda" />
+            <div className="mt-6 flex items-center gap-4">
+              <a
+                href={`/admin/products/${createdProductId}`}
+                className="rounded-[14px] bg-[#C6A96B] px-8 py-2.5 text-sm font-medium text-black transition hover:bg-[#d4b87a]"
+              >
+                Concluir e editar produto
+              </a>
+              <a href="/admin/products" className="text-sm text-white/35 underline underline-offset-2 hover:text-white/60">
+                Voltar ao catálogo
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-white/38">Galeria</p>
+              <h2 className="mt-1 font-display text-[22px] text-white">Fotos e vídeos do produto</h2>
+            </div>
+            <div className="flex flex-col items-center justify-center rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.2" className="mb-3">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              <p className="text-sm text-white/30">Crie o produto acima para adicionar fotos e vídeos.</p>
+              <button
+                type="button"
+                disabled
+                className="mt-4 rounded-[12px] border border-[#C6A96B]/20 bg-[#C6A96B]/5 px-5 py-2 text-sm text-[#C6A96B]/40 cursor-not-allowed"
+              >
+                + Adicionar mídia
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    )}
+    </div>
   );
 }
