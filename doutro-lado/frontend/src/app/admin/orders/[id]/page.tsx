@@ -107,15 +107,15 @@ export default async function AdminOrderDetailPage({
               />
             </div>
             <p className="mt-3 text-[11px] text-white/30">
-              Fee de gateway e estimativa (~3.5% Stripe BR) — nao e registro preciso da gateway.
-              Snapshot capturado no momento da criacao do pedido.
+              Fee de gateway é estimativa (~3.5% Stripe BR) — não é registro preciso da gateway.
+              Snapshot capturado no momento da criação do pedido.
             </p>
           </>
         ) : (() => {
           const hasKitItem = order.items.some((i) => i.isKitItem);
           const reason = hasKitItem
-            ? "Pedido contém kit — custo de componentes nao consolidado (politica MVP: snapshot nulo para pedidos com kit)."
-            : "Custo de produto nao configurado para um ou mais itens, ou pedido criado antes do Stage 16.";
+            ? "Pedido contém kit — custo de componentes não consolidado (política MVP: snapshot nulo para pedidos com kit)."
+            : "Custo de produto não configurado para um ou mais itens, ou pedido criado antes do Stage 16.";
           return (
             <div className="rounded-[14px] border border-white/8 bg-white/[0.02] px-5 py-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-white/30 mb-2">N/D — sem snapshot financeiro</p>

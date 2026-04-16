@@ -70,7 +70,7 @@ export default async function AdminDashboardPage() {
   const countryColumns = [
     {
       key: "countryCode",
-      label: "Pais",
+      label: "País",
       render: (r: CountryBreakdownRow) => (
         <span>
           {r.countryName ?? r.countryCode}{" "}
@@ -231,30 +231,30 @@ export default async function AdminDashboardPage() {
           <MetricCard
             label="Fee gateway (est.)"
             value="~3.5%"
-            sub="Estimativa Stripe BR — nao precisa"
+            sub="Estimativa Stripe BR — não precisa"
             highlight="default"
           />
         </div>
 
         <p className="mt-3 text-[11px] text-white/30">
           * Margem calculada apenas sobre pedidos com custo de produto preenchido e sem kit.
-          Percentuais usam receita coberta como denominador, nao receita total.
-          Fee de gateway e estimativa — nao e registro preciso da gateway.
+          Percentuais usam receita coberta como denominador, não a receita total.
+          Fee de gateway é estimativa — não é registro preciso da gateway.
         </p>
       </AdminSection>
 
       {/* Country breakdown */}
       {(overview?.countryBreakdown ?? []).length > 0 && (
-        <AdminSection title="Por pais de destino" eyebrow="Pedidos pagos">
+        <AdminSection title="Por país de destino" eyebrow="Pedidos pagos">
           <AdminTable
             columns={countryColumns}
             rows={(overview?.countryBreakdown ?? []) as CountryBreakdownRow[]}
             rowKey={(r) => r.countryCode}
-            emptyMessage="Nenhum pedido pago com pais de destino."
+            emptyMessage="Nenhum pedido pago com país de destino."
           />
           <p className="mt-2 text-[11px] text-white/30">
             * Margens e percentuais calculados apenas sobre receita coberta por snapshot financeiro.
-            N/D indica ausencia de snapshot (custo nao configurado ou pedido com kit).
+            N/D indica ausência de snapshot (custo não configurado ou pedido com kit).
           </p>
         </AdminSection>
       )}
