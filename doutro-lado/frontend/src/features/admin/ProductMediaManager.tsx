@@ -76,9 +76,12 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
   const loadMedia = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    const result = await adminApi.listMedia(token, productId);
-    if (result.ok) setMedia(result.data);
-    setLoading(false);
+    try {
+      const result = await adminApi.listMedia(token, productId);
+      if (result.ok) setMedia(result.data);
+    } finally {
+      setLoading(false);
+    }
   }, [token, productId]);
 
   useEffect(() => {
