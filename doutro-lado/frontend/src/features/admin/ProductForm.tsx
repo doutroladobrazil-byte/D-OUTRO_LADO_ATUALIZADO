@@ -271,7 +271,7 @@ export function ProductForm({ mode, product }: Props) {
       const result = await adminApi.createProduct(token, payload);
       setSaving(false);
       if (!result.ok) { setError(result.message); return; }
-      router.push(`/admin/products/${result.data.id}#media`);
+      window.location.href = `/admin/products/${result.data.id}#media`;
     } else {
       if (!product) return;
       const result = await adminApi.patchProduct(token, product.id, payload);
