@@ -289,7 +289,7 @@ export function BrandCheckoutView({ brand }: Props) {
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 text-center">
         <p className="text-white/55">Your bag is empty.</p>
         <button
-          onClick={() => router.push(`/categories/${brand}`)}
+          onClick={() => router.push("/brands/moda")}
           className="rounded-full border border-[#C6A96B]/60 px-6 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition"
         >
           Browse the collection

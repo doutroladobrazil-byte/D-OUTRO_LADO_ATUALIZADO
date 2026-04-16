@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
 import { ButtonLink } from "@/components/ui/Button";
@@ -12,7 +11,7 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
   const { brand } = await params;
   if (!isBrand(brand)) notFound();
 
-  // Casa foi descontinuado como universo publico — redireciona para moda
+  // Casa foi descontinuado como universo público — redireciona para moda
   if (brand === "casa") {
     redirect("/brands/moda");
   }
@@ -31,27 +30,30 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
             <div className="relative grid gap-12 xl:grid-cols-[1fr_0.7fr] xl:items-end">
               <div className="space-y-8">
                 <p className="text-[11px] uppercase tracking-[0.42em] text-white/35">
-                  Moda / Couro / Acessorios
+                  Moda / Couro / Acessórios
                 </p>
                 <h1 className="max-w-3xl font-display text-[36px] leading-[1.02] tracking-[-1px] text-white sm:text-[48px] md:text-[72px]">
-                  Couro legitimo
+                  Couro legítimo
                   <br />
-                  com presenca.
+                  com presença.
                 </h1>
                 <p className="max-w-xl text-base leading-[1.88] text-white/55 md:text-[17px]">
-                  Bolsas, cintos, sapatos e acessorios em couro premium brasileiro. Um wardrobe de presenca para o mercado internacional com curadoria e materialidade exclusiva.
+                  Bolsas, cintos, sapatos e acessórios em couro premium brasileiro. Um wardrobe de presença para o mercado internacional — curadoria, materialidade e identidade em cada peça.
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <ButtonLink href="/categories/moda" variant="secondary">
-                    Ver colecoes
-                  </ButtonLink>
-                  <ButtonLink href="/gift-builder" variant="ghost">
+                  <ButtonLink href="/brands/moda">Ver coleções</ButtonLink>
+                  <ButtonLink href="/gift-builder" variant="secondary">
                     Montar presente
                   </ButtonLink>
                 </div>
               </div>
               <div className="hidden xl:grid xl:gap-3">
-                {["Couro bovino premium", "Curtimento natural", "Series limitadas", "Exportacao certificada"].map((item) => (
+                {[
+                  "Couro bovino premium",
+                  "Curtimento natural",
+                  "Séries limitadas",
+                  "Exportação certificada",
+                ].map((item) => (
                   <div
                     key={item}
                     className="rounded-[16px] border border-[#C6A96B]/20 bg-[rgba(198,169,107,0.06)] px-5 py-3"
@@ -69,10 +71,27 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="grid gap-6">
-              {["Qualidade", "Exclusividade", "Presenca", "Narrativa"].map((label, i) => (
+            <div className="grid gap-4">
+              {[
+                {
+                  label: "Qualidade",
+                  desc: "Couro bovino selecionado, curtido sem atalhos.",
+                },
+                {
+                  label: "Exclusividade",
+                  desc: "Séries limitadas com número de controle.",
+                },
+                {
+                  label: "Presença",
+                  desc: "Peças que existem antes de serem usadas.",
+                },
+                {
+                  label: "Narrativa",
+                  desc: "Cada coleção com editorial próprio e contexto.",
+                },
+              ].map((item, i) => (
                 <div
-                  key={label}
+                  key={item.label}
                   className={`flex items-center gap-4 rounded-[20px] border px-6 py-5 ${
                     i % 2 === 0
                       ? "border-[#C6A96B]/20 bg-[rgba(198,169,107,0.06)]"
@@ -81,13 +100,8 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
                 >
                   <div className="size-2 shrink-0 rounded-full bg-[#C6A96B]/60" />
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">{label}</p>
-                    <p className="mt-1 text-sm text-white/60">
-                      {label === "Qualidade" && "Couro bovino selecionado, curtido sem atalhos."}
-                      {label === "Exclusividade" && "Series limitadas com numero de controle."}
-                      {label === "Presenca" && "Pecas que existem antes de serem usadas."}
-                      {label === "Narrativa" && "Cada colecao com editorial proprio e contexto."}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">{item.label}</p>
+                    <p className="mt-1 text-sm text-white/60">{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -95,15 +109,15 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
             <GlassCard className="flex flex-col justify-between p-8 md:p-12">
               <SectionHeading
                 eyebrow="Editorial"
-                title="Um wardrobe que nao precisa explicacao."
-                description="Couro legitimo brasileiro exportado com precisao, cuidado e identidade. Para quem reconhece materialidade sem que ninguem precise nomear."
+                title="Um wardrobe que não precisa de explicação."
+                description="Couro legítimo brasileiro exportado com precisão, cuidado e identidade. Para quem reconhece materialidade sem que ninguém precise nomear."
               />
               <ButtonLink
-                href="/categories/moda"
+                href="/brands/moda"
                 variant="ghost"
                 className="mt-8 w-fit"
               >
-                Explorar colecoes <ArrowRight className="ml-2 size-4" />
+                Explorar coleções <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
             </GlassCard>
           </div>
@@ -115,11 +129,11 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
         <div className="mx-auto max-w-luxe">
           <div className="flex items-end justify-between gap-6">
             <SectionHeading
-              eyebrow="Selecao"
-              title="Couro e acessorios com acabamento internacional."
+              eyebrow="Seleção"
+              title="Couro e acessórios com acabamento internacional."
             />
             <ButtonLink
-              href="/categories/moda"
+              href="/brands/moda"
               variant="ghost"
               className="hidden shrink-0 md:inline-flex"
             >
@@ -127,9 +141,20 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
             </ButtonLink>
           </div>
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {displayProducts.map((product) => (
-              <ProductCard key={product.id} product={product} brandMode="moda" />
-            ))}
+            {displayProducts.length > 0 ? (
+              displayProducts.map((product) => (
+                <ProductCard key={product.id} product={product} brandMode="moda" />
+              ))
+            ) : (
+              <div className="col-span-full rounded-[22px] border border-dashed border-white/10 py-16 text-center">
+                <p className="text-sm text-white/35">Produtos em breve.</p>
+              </div>
+            )}
+          </div>
+          <div className="mt-8 text-center md:hidden">
+            <ButtonLink href="/brands/moda" variant="ghost">
+              Ver tudo <ArrowRight className="ml-2 size-4" />
+            </ButtonLink>
           </div>
         </div>
       </section>
@@ -140,12 +165,12 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
           <GlassCard tone="warm" className="overflow-hidden p-8 md:p-10">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="space-y-3">
-                <p className="text-[11px] uppercase tracking-[0.38em] text-black/32">Composicao de presente</p>
+                <p className="text-[11px] uppercase tracking-[0.38em] text-black/32">Composição de presente</p>
                 <h3 className="font-display text-[24px] leading-[1.08] tracking-[-0.5px] text-[#17120d] md:text-[34px]">
-                  Monte um presente editorial com nossas pecas.
+                  Monte um presente editorial com nossas peças.
                 </h3>
                 <p className="max-w-lg text-sm leading-7 text-black/55">
-                  Selecione itens, escolha a embalagem e adicione uma mensagem. Uma composicao sofisticada entregue com cuidado.
+                  Selecione itens, escolha a embalagem e adicione uma mensagem. Uma composição sofisticada entregue com cuidado.
                 </p>
               </div>
               <ButtonLink href="/gift-builder" variant="light" className="w-fit shrink-0">

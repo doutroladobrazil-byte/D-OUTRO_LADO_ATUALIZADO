@@ -124,10 +124,20 @@ export function BrandCartView({ brand }: Props) {
 
   if (cart.items.length === 0 && kitItems.length === 0) {
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 px-4 py-20 text-center">
-        <p className={`text-[14px] ${subtleClass}`}>Sua bag está vazia.</p>
+      <div className="flex min-h-[45vh] flex-col items-center justify-center gap-6 px-4 py-20 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 01-8 0" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-base text-white/60">Your bag is empty.</p>
+          <p className="mt-1 text-sm text-white/30">Add pieces to continue.</p>
+        </div>
         <Link
-          href={`/categories/${brand}`}
+          href="/brands/moda"
           className="rounded-full border border-[#C6A96B]/60 px-6 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] transition hover:-translate-y-0.5"
         >
           Explorar coleção
@@ -157,7 +167,12 @@ export function BrandCartView({ brand }: Props) {
               className="flex flex-col gap-3 rounded-[22px] border border-white/10 bg-white/[0.03] p-4 md:flex-row md:items-center md:justify-between md:gap-5 md:p-5"
             >
               <div className="flex items-center gap-4">
-                <div className="h-16 w-12 shrink-0 rounded-[14px] bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(0,0,0,0.7))] md:h-20 md:w-16 md:rounded-[16px]" />
+                {/* Product thumbnail — monogram placeholder styled with brand gold */}
+                <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-[14px] bg-[linear-gradient(135deg,rgba(198,169,107,0.12),rgba(0,0,0,0.75))] md:h-20 md:w-16 md:rounded-[16px] flex items-center justify-center">
+                  <span className="font-display text-[22px] leading-none text-white/20 select-none">
+                    {item.productName.charAt(0)}
+                  </span>
+                </div>
                 <div className="min-w-0">
                   <p className={`truncate font-medium ${textClass}`}>{item.productName}</p>
                   <p className={`mt-1 text-[12px] uppercase tracking-wider ${subtleClass}`}>{item.sku}</p>
@@ -271,8 +286,20 @@ export function BrandCartView({ brand }: Props) {
             Finalizar compra
           </Link>
         </div>
+        {/* Trust signals */}
+        <div className="space-y-1.5 border-t border-white/8 pt-4">
+          {[
+            { icon: "🔒", text: "Secure checkout via Stripe" },
+            { icon: "🌍", text: "Ships to CH · IE · DE · IS · SG · US" },
+          ].map((item) => (
+            <div key={item.text} className="flex items-center gap-2 text-[11px] text-white/30">
+              <span aria-hidden>{item.icon}</span>
+              {item.text}
+            </div>
+          ))}
+        </div>
         <Link
-          href={`/categories/${brand}`}
+          href="/brands/moda"
           className="block text-center text-[12px] text-white/35 underline-offset-2 hover:text-white/60 hover:underline"
         >
           Continuar comprando

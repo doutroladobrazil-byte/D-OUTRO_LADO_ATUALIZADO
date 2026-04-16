@@ -16,22 +16,22 @@ export function GiftCompositionFeature() {
         </div>
 
         <div className="flex flex-col justify-center p-8 md:p-12">
-          <p className="text-[13px] uppercase tracking-[0.28em] text-black/42">Composicao de presente</p>
+          <p className="text-[13px] uppercase tracking-[0.28em] text-black/42">Composição de presente</p>
           <h3 className="mt-5 font-display text-[28px] leading-[1.04] tracking-[-0.5px] text-[#17120d] md:text-[40px] lg:text-[52px]">
-            Uma composicao elegante, sensorial e personalizada.
+            Uma composição elegante, sensorial e personalizada.
           </h3>
           <p className="mt-6 max-w-xl text-base leading-8 text-black/62">
-            Mais do que um kit, a experiencia foi desenhada para construir uma composicao de presente com objetos, couro, texturas e narrativa visual coerente para cada ocasiao.
+            Mais do que um kit, a experiência foi desenhada para construir uma composição de presente com objetos, couro, texturas e narrativa visual coerente para cada ocasião.
           </p>
           <div className="mt-8 grid gap-3 text-sm text-black/65 md:grid-cols-2">
-            <div className="rounded-[20px] border border-black/8 bg-white/45 px-5 py-4">Selecao intuitiva por categoria e atmosfera.</div>
+            <div className="rounded-[20px] border border-black/8 bg-white/45 px-5 py-4">Seleção intuitiva por categoria e atmosfera.</div>
             <div className="rounded-[20px] border border-black/8 bg-white/45 px-5 py-4">Preview sofisticado com leitura imediata de valor.</div>
           </div>
           <Link
             href="/gift-builder"
             className="mt-8 inline-flex w-fit items-center gap-3 rounded-full border border-gold bg-gold px-5 py-4 text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5"
           >
-            Montar composicao
+            Montar composição
             <ArrowRight className="size-4" />
           </Link>
         </div>

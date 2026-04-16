@@ -110,13 +110,13 @@ export function ProductPurchaseActions({
   const unavailable = availableForCountry === false;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {unavailable && (
         <div className="rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-300">
-          Este produto não está disponível para entrega no país selecionado.
+          Not available for delivery to your selected country.
         </div>
       )}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <button
           onClick={handleAddToCart}
           disabled={unavailable}
@@ -127,13 +127,24 @@ export function ProductPurchaseActions({
         <button
           onClick={handleBuyNow}
           disabled={unavailable}
-          className="rounded-full border border-black/10 bg-black/5 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          className="rounded-full border border-black/15 bg-black/8 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/14 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           Comprar agora
         </button>
-        <button className="rounded-full border border-black/10 bg-transparent px-5 py-4 text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/5">
-          Favoritar
-        </button>
+      </div>
+      {/* Trust signals */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
+        {[
+          { icon: "🔒", text: "Secure checkout" },
+          { icon: "🌍", text: "International shipping" },
+          { icon: "↩", text: "Returns by policy" },
+          { icon: "✦", text: "Brazilian leather" },
+        ].map((item) => (
+          <div key={item.text} className="flex items-center gap-1.5 text-[11px] text-black/45">
+            <span className="text-[13px]" aria-hidden>{item.icon}</span>
+            {item.text}
+          </div>
+        ))}
       </div>
     </div>
   );

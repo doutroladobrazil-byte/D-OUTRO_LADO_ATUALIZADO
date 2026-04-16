@@ -25,34 +25,60 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
 
   const [related, freightRates] = await Promise.all([getProducts(product.brand), getFreightRates()]);
   const previewRates = freightRates.filter((rate) => rate.weightRange === product.weightRange).slice(0, 3);
+  const relatedProducts = related.filter((item) => item.id !== product.id).slice(0, 3);
+
+  // Dynamic badge: category / subcategory / material
+  const badgeLabel = [product.category, product.subcategory].filter(Boolean).join(" / ") || "Moda / Couro";
 
   return (
     <main className="px-4 py-8 md:px-6 md:py-10">
       <div className="mx-auto max-w-luxe space-y-16">
         <section className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-          {/* ── Gallery — Stage 2 (replaces static GlassCard placeholders) ── */}
+          {/* ── Gallery ───────────────────────────────────────────────────── */}
           <ProductGallery media={product.media} name={product.name} />
 
           {/* ── Product info ──────────────────────────────────────────────── */}
-          <div className="space-y-6">
+          <div className="space-y-5">
+            {/* Header */}
             <div className="space-y-4">
-              <p className="text-[13px] uppercase tracking-[0.28em] text-white/45">{product.category} / {product.subcategory}</p>
-              <h1 className="font-display text-[32px] leading-[1.05] tracking-[-0.5px] text-white md:text-[48px]">{product.name}</h1>
+              <p className="text-[13px] uppercase tracking-[0.28em] text-white/45">
+                {product.category}
+                {product.subcategory ? ` / ${product.subcategory}` : ""}
+              </p>
+              <h1 className="font-display text-[32px] leading-[1.05] tracking-[-0.5px] text-white md:text-[48px]">
+                {product.name}
+              </h1>
               <p className="max-w-xl text-base leading-8 text-white/60">{product.longDescription}</p>
               <div className="inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white">
-                Moda / Couro / Acessorios
+                {badgeLabel}
               </div>
             </div>
+
+            {/* Pricing card */}
             <GlassCard tone="warm" className="space-y-5">
-              <div className="flex items-center justify-between border-b border-white/8 pb-4">
-                <span className="text-black/52">Preco varejo</span>
-                <strong className="text-2xl text-[#17120d]">R$ {product.retailPriceBRL.toFixed(2)}</strong>
+              <div className="flex items-center justify-between border-b border-black/10 pb-4">
+                <span className="text-sm text-black/52">Preço varejo</span>
+                <strong className="text-2xl font-semibold text-[#17120d]">
+                  R$ {product.retailPriceBRL.toFixed(2)}
+                </strong>
               </div>
-              <div className="grid gap-4 text-sm text-black/65 md:grid-cols-2">
-                <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">Atacado a partir de {product.wholesaleMinQty} unidades</div>
-                <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">Peso {product.weightRange} para frete automatico</div>
-                <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">Material {product.material}</div>
-                <div className="rounded-[18px] border border-black/8 bg-white/55 p-4">SKU {product.sku}</div>
+              <div className="grid gap-3 text-sm text-black/65 md:grid-cols-2">
+                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Atacado</span>
+                  A partir de {product.wholesaleMinQty} unidades
+                </div>
+                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Peso</span>
+                  {product.weightRange} — frete automático
+                </div>
+                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Material</span>
+                  {product.material}
+                </div>
+                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">SKU</span>
+                  {product.sku}
+                </div>
               </div>
               <ProductPurchaseActions
                 product={product}
@@ -61,32 +87,41 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
                 checkoutHref={checkoutHref}
               />
             </GlassCard>
-            <GlassCard>
-              <SectionHeading eyebrow="Frete internacional" title="Calculo automatico por peso e regiao." />
-              <div className="mt-6 space-y-3">
-                {previewRates.map((rate) => (
-                  <div key={`${rate.region}-${rate.weightRange}`} className="flex items-center justify-between rounded-[18px] border border-white/8 bg-black/20 px-4 py-4 text-sm">
-                    <span className="text-white/55">{rate.region}</span>
-                    <span className="text-white">R$ {rate.amountBRL.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
+
+            {/* Freight rates */}
+            {previewRates.length > 0 && (
+              <GlassCard>
+                <SectionHeading eyebrow="Frete internacional" title="Cálculo automático por peso e região." />
+                <div className="mt-5 space-y-2">
+                  {previewRates.map((rate) => (
+                    <div
+                      key={`${rate.region}-${rate.weightRange}`}
+                      className="flex items-center justify-between rounded-[16px] border border-white/8 bg-black/20 px-4 py-3 text-sm"
+                    >
+                      <span className="text-white/55">{rate.region}</span>
+                      <span className="text-white">R$ {rate.amountBRL.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            )}
           </div>
         </section>
 
-        <section className="space-y-8">
-          <SectionHeading
-            eyebrow="Relacionados"
-            title="Recomendacoes elegantes para continuar a narrativa."
-            description="Base pronta para personalizacao inteligente, comportamento do usuario e mix premium por contexto."
-          />
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {related.filter((item) => item.id !== product.id).slice(0, 3).map((item) => (
-              <ProductCard key={item.id} product={item} brandMode={product.brand} />
-            ))}
-          </div>
-        </section>
+        {/* ── Related products ──────────────────────────────────────────── */}
+        {relatedProducts.length > 0 && (
+          <section className="space-y-8">
+            <SectionHeading
+              eyebrow="Relacionados"
+              title="Continue explorando a coleção."
+            />
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {relatedProducts.map((item) => (
+                <ProductCard key={item.id} product={item} brandMode={product.brand} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
