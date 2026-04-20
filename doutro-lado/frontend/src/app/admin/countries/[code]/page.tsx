@@ -46,7 +46,7 @@ export default async function AdminCountryDetailPage({
       />
 
       {/* Commerce rule — read-only summary */}
-      {country.commerceRule && (
+      {country.commerceRule ? (
         <AdminSection title="Commerce rule" eyebrow="Pricing & rules">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-sm">
             <div className="rounded-[14px] border border-white/8 bg-white/[0.02] p-4 space-y-1">
@@ -69,6 +69,13 @@ export default async function AdminCountryDetailPage({
             </div>
           </div>
         </AdminSection>
+      ) : (
+        <div className="rounded-[14px] border border-amber-400/25 bg-amber-400/5 px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-amber-400/70 mb-1">Sem commerce rule</p>
+          <p className="text-sm text-amber-300/80">
+            Este país não tem regra comercial configurada. O checkout não funcionará corretamente sem moeda, impostos e estimativa de entrega definidos.
+          </p>
+        </div>
       )}
 
       {/* Policy editor — client component */}
@@ -76,6 +83,7 @@ export default async function AdminCountryDetailPage({
         <CountryPolicyEditor
           countryCode={country.code}
           initialPolicy={country.policy}
+          adminToken={token}
         />
       </AdminSection>
     </div>

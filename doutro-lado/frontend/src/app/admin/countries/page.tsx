@@ -33,6 +33,19 @@ export default async function AdminCountriesPage() {
   const active = countries.filter((c) => c.isActive).length;
   const checkoutEnabled = countries.filter((c) => c.checkoutEnabled).length;
   const regions = [...new Set(countries.map((c) => c.regionGroup))];
+  const incoherent = countries.filter(
+    (c) => c.isActive && (!c.checkoutEnabled || !c.catalogEnabled)
+  ).length;
+
+  function getCountryStatus(c: SupportedCountry): { label: string; className: string; hint: string } {
+    if (!c.isActive)
+      return { label: "Inativo", className: "text-white/30", hint: "" };
+    if (!c.checkoutEnabled)
+      return { label: "Sem checkout", className: "text-amber-400", hint: "Visível no catálogo mas não aceita pedidos" };
+    if (!c.catalogEnabled)
+      return { label: "Sem catálogo", className: "text-amber-400", hint: "Checkout ativo mas catálogo desabilitado" };
+    return { label: "Operacional", className: "text-emerald-400", hint: "" };
+  }
 
   const columns = [
     {
@@ -69,6 +82,18 @@ export default async function AdminCountriesPage() {
       ),
     },
     {
+      key: "operacao",
+      label: "Operação",
+      render: (r: SupportedCountry) => {
+        const s = getCountryStatus(r);
+        return (
+          <span className={`text-[11px] font-medium ${s.className}`} title={s.hint || undefined}>
+            {s.label}
+          </span>
+        );
+      },
+    },
+    {
       key: "actions",
       label: "",
       render: (r: SupportedCountry) => (
@@ -94,7 +119,7 @@ export default async function AdminCountriesPage() {
         <MetricCard label="Total" value={countries.length} />
         <MetricCard label="Ativos" value={active} highlight="green" />
         <MetricCard label="Com checkout" value={checkoutEnabled} highlight="green" />
-        <MetricCard label="Regiões" value={regions.length} />
+        <MetricCard label="Incoerências" value={incoherent} highlight={incoherent > 0 ? "red" : "default"} />
       </div>
 
       <AdminSection title="Configuração por país" eyebrow={`${countries.length} países`}>

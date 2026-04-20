@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
+import { useAdminToken } from "@/hooks/useAdminToken";
 import type { CountryPolicy } from "@/lib/types";
 
 type Props = {
   countryCode: string;
   initialPolicy: CountryPolicy | null;
+  adminToken?: string | null;
 };
 
 function PolicyTextarea({
@@ -64,7 +66,11 @@ function PolicyInput({
   );
 }
 
-export function CountryPolicyEditor({ countryCode, initialPolicy }: Props) {
+export function CountryPolicyEditor({ countryCode, initialPolicy, adminToken }: Props) {
+  const router = useRouter();
+  const sessionToken = useAdminToken();
+  const token = adminToken ?? sessionToken;
+
   const [policy, setPolicy] = useState<CountryPolicy>(
     initialPolicy ?? {
       deliveryNote: null,
@@ -89,23 +95,22 @@ export function CountryPolicyEditor({ countryCode, initialPolicy }: Props) {
   }
 
   async function handleSave() {
+    if (!token) { setError("Sessão expirada. Recarregue a página."); return; }
     setSaving(true);
     setError(null);
     setSaved(false);
-    try {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Not authenticated");
 
-      const result = await adminApi.patchCountryPolicy(token, countryCode, policy);
-      if (!result.ok) throw new Error(result.message);
-      setSaved(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
+    const result = await adminApi.patchCountryPolicy(token, countryCode, policy);
+    setSaving(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
     }
+
+    setSaved(true);
+    router.refresh();
+    setTimeout(() => setSaved(false), 3000);
   }
 
   return (
@@ -215,7 +220,7 @@ export function CountryPolicyEditor({ countryCode, initialPolicy }: Props) {
       <div className="flex items-center gap-4 pt-2">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !token}
           className="rounded-full border border-[#C6A96B]/60 bg-[rgba(198,169,107,0.1)] px-8 py-3 text-sm uppercase tracking-[0.18em] text-[#C6A96B] hover:-translate-y-0.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? "Saving…" : "Save policy"}
