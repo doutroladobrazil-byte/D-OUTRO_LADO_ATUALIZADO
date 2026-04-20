@@ -653,8 +653,25 @@ export function ProductForm({ mode, product, adminToken }: Props) {
         <div className="border-t border-white/5 mt-8" />
         {createdProductId ? (
           <div className="mt-8">
-            <div className="mb-4 rounded-[14px] border border-green-400/25 bg-green-400/5 px-5 py-3">
-              <p className="text-sm text-green-400">✓ Produto criado. Adicione fotos e vídeos abaixo.</p>
+            <div className="mb-6 rounded-[14px] border border-green-400/20 bg-green-400/5 px-5 py-4 space-y-2">
+              <p className="text-sm font-semibold text-green-400">✓ Produto criado com sucesso.</p>
+              <p className="text-[12px] text-white/45">Para publicar o SKU, complete as etapas abaixo:</p>
+              <ol className="space-y-1.5 pt-1">
+                <li className="flex items-center gap-2.5 text-[12px]">
+                  <span className="text-green-400 font-medium">✓</span>
+                  <span className="text-white/40">Dados básicos salvos</span>
+                </li>
+                <li className="flex items-center gap-2.5 text-[12px]">
+                  <span className="text-white/20 font-medium">○</span>
+                  <span className="text-white/70">Adicionar fotos e vídeos</span>
+                  <span className="text-white/25 ml-1">↓ seção Galeria</span>
+                </li>
+                <li className="flex items-center gap-2.5 text-[12px]">
+                  <span className="text-white/20 font-medium">○</span>
+                  <span className="text-white/70">Habilitar países de venda</span>
+                  <span className="text-white/25 ml-1">↓ seção Disponibilidade por país</span>
+                </li>
+              </ol>
             </div>
             <ProductMediaManager
                   productId={createdProductId}

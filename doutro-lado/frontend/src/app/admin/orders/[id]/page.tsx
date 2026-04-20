@@ -67,6 +67,7 @@ export default async function AdminOrderDetailPage({
         currentOrderStatus={order.orderStatus}
         currentPaymentStatus={order.paymentStatus}
         currentFiscalStatus={order.fiscalStatus}
+        adminToken={token}
       />
 
       {/* Financial summary */}

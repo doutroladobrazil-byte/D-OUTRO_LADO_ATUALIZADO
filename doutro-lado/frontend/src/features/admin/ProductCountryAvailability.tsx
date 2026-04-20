@@ -79,10 +79,50 @@ export function ProductCountryAvailability({ productId, token }: Props) {
     });
   };
 
+  const enabledCount = availability
+    ? Object.values(availability).filter(Boolean).length
+    : 0;
+
+  const handleEnableAll = () => {
+    if (!availability) return;
+    const all: ProductAvailabilityMap = {};
+    MVP_COUNTRIES.forEach(({ code }) => { all[code] = true; });
+    setAvailability(all);
+    startTransition(() => {
+      adminApi.patchProductAvailability(token, productId, all).then((result) => {
+        if (result.ok) {
+          setAvailability(result.data);
+        } else {
+          setAvailability(availability);
+          setError(result.message);
+        }
+      });
+    });
+  };
+
   return (
     <section>
-      <h2 className="text-lg font-semibold text-white mb-1">Disponibilidade por país</h2>
-      <p className="text-sm text-white/50 mb-6">
+      <div className="flex items-start justify-between gap-4 mb-1">
+        <h2 className="text-lg font-semibold text-white">
+          Disponibilidade por país
+          {!loading && availability && (
+            <span className={`ml-3 text-sm font-normal ${enabledCount === 0 ? "text-red-400" : "text-white/40"}`}>
+              {enabledCount === 0 ? "nenhum país habilitado" : `${enabledCount} de ${MVP_COUNTRIES.length} habilitados`}
+            </span>
+          )}
+        </h2>
+        {!loading && availability && enabledCount === 0 && (
+          <button
+            type="button"
+            onClick={handleEnableAll}
+            disabled={isPending}
+            className="shrink-0 rounded-[10px] border border-[#C6A96B]/40 bg-[#C6A96B]/10 px-4 py-1.5 text-xs font-medium text-[#C6A96B] transition hover:bg-[#C6A96B]/20 disabled:opacity-50"
+          >
+            Habilitar todos
+          </button>
+        )}
+      </div>
+      <p className="text-sm text-white/50 mb-4">
         Controla se o produto aparece no catálogo e pode ser comprado por destino.
       </p>
 
@@ -92,6 +132,16 @@ export function ProductCountryAvailability({ productId, token }: Props) {
 
       {error && (
         <p className="text-sm text-red-400 mb-4">{error}</p>
+      )}
+
+      {!loading && availability && enabledCount === 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-[12px] border border-red-400/30 bg-red-400/8 px-4 py-3">
+          <span className="text-base">⚠</span>
+          <p className="text-sm text-red-300">
+            <strong className="font-semibold">Produto invisível comercialmente.</strong>{" "}
+            Habilite pelo menos um país para que o SKU apareça no catálogo e possa ser comprado.
+          </p>
+        </div>
       )}
 
       {!loading && availability && (

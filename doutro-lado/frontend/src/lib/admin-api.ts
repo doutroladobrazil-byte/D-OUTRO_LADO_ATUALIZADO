@@ -35,6 +35,8 @@ export type AdminProduct = {
   isActive: boolean;
   collection: string | null;
   createdAt: string;
+  mediaCount: number;
+  countriesEnabled: number;
 };
 
 /** Full product detail — used by the edit form. */
@@ -367,6 +369,20 @@ export const adminApi = {
     body: { altText?: string | null; caption?: string | null; posterUrl?: string | null }
   ) {
     return callApi<import("@/lib/types").MediaAsset>(`/admin/media/${assetId}`, "PATCH", token, body);
+  },
+
+  /** Patch order status trinity (orderStatus / paymentStatus / fiscalStatus). */
+  patchOrder(
+    token: string,
+    publicId: string,
+    body: { orderStatus?: string; paymentStatus?: string; fiscalStatus?: string }
+  ) {
+    return callApi<{ id: string; orderStatus: string; paymentStatus: string; fiscalStatus: string }>(
+      `/admin/orders/${publicId}`,
+      "PATCH",
+      token,
+      body
+    );
   },
 
   /** Stage 17 — get country policy (client-side). */

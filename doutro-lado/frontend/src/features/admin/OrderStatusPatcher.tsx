@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { adminApi } from "@/lib/admin-api";
+import { useAdminToken } from "@/hooks/useAdminToken";
 import type { OrderStatus, PaymentStatus, FiscalStatus } from "@/lib/types";
 
 type Props = {
@@ -8,7 +11,7 @@ type Props = {
   currentOrderStatus: string;
   currentPaymentStatus: string;
   currentFiscalStatus: string;
-  onSuccess?: () => void;
+  adminToken?: string | null;
 };
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -17,11 +20,17 @@ const ORDER_STATUSES: OrderStatus[] = [
 const PAYMENT_STATUSES: PaymentStatus[] = ["pending", "paid", "failed", "refunded"];
 const FISCAL_STATUSES: FiscalStatus[] = ["pending", "in_review", "issued", "rejected"];
 
-/**
- * Client component for updating order status trinity (order/payment/fiscal).
- * Calls PATCH /admin/orders/:publicId.
- */
-export function OrderStatusPatcher({ orderId, currentOrderStatus, currentPaymentStatus, currentFiscalStatus, onSuccess }: Props) {
+export function OrderStatusPatcher({
+  orderId,
+  currentOrderStatus,
+  currentPaymentStatus,
+  currentFiscalStatus,
+  adminToken,
+}: Props) {
+  const router = useRouter();
+  const sessionToken = useAdminToken();
+  const token = adminToken ?? sessionToken;
+
   const [orderStatus, setOrderStatus] = useState(currentOrderStatus);
   const [paymentStatus, setPaymentStatus] = useState(currentPaymentStatus);
   const [fiscalStatus, setFiscalStatus] = useState(currentFiscalStatus);
@@ -30,24 +39,21 @@ export function OrderStatusPatcher({ orderId, currentOrderStatus, currentPayment
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
+    if (!token) { setError("Sessão expirada. Recarregue a página."); return; }
     setSaving(true);
     setError(null);
     setSaved(false);
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/api";
-    const res = await fetch(`${apiBase}/admin/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ orderStatus, paymentStatus, fiscalStatus }),
-    });
+
+    const result = await adminApi.patchOrder(token, orderId, { orderStatus, paymentStatus, fiscalStatus });
     setSaving(false);
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      setError(d.message ?? "Erro ao salvar");
+
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
+
     setSaved(true);
-    onSuccess?.();
+    router.refresh();
     setTimeout(() => setSaved(false), 3000);
   }
 
@@ -79,7 +85,7 @@ export function OrderStatusPatcher({ orderId, currentOrderStatus, currentPayment
       <div className="flex items-center gap-4">
         <button
           onClick={save}
-          disabled={saving}
+          disabled={saving || !token}
           className="rounded-full border border-[#C6A96B]/50 bg-[#C6A96B]/10 px-5 py-2 text-sm text-[#C6A96B] transition hover:-translate-y-0.5 disabled:opacity-40"
         >
           {saving ? "Salvando..." : "Salvar status"}

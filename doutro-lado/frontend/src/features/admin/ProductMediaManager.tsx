@@ -65,6 +65,7 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // Alt text editing
   const [editingAltId, setEditingAltId] = useState<string | null>(null);
   const [altDraft, setAltDraft] = useState("");
@@ -76,9 +77,14 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
   const loadMedia = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await adminApi.listMedia(token, productId);
-      if (result.ok) setMedia(result.data);
+      if (result.ok) {
+        setMedia(result.data);
+      } else {
+        setLoadError(result.message ?? "Erro ao carregar mídia.");
+      }
     } finally {
       setLoading(false);
     }
@@ -284,8 +290,8 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
         </div>
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          onClick={() => { if (loading || uploading) return; fileInputRef.current?.click(); }}
+          disabled={uploading || loading}
           className="rounded-[12px] border border-[#C6A96B]/40 bg-[#C6A96B]/8 px-5 py-2 text-sm text-[#C6A96B] transition hover:bg-[#C6A96B]/15 disabled:opacity-40"
         >
           {uploading ? "Enviando..." : "+ Adicionar mídia"}
@@ -316,6 +322,14 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
           {actionError}
         </p>
       )}
+      {loadError && media.length > 0 && (
+        <div className="rounded-[12px] border border-red-400/25 bg-red-400/5 px-4 py-3 text-sm text-red-400 flex items-center justify-between gap-4">
+          <span>{loadError}</span>
+          <button type="button" onClick={loadMedia} className="shrink-0 underline underline-offset-2 hover:text-red-300 transition">
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {/* Upload progress */}
       {uploading && uploadProgress && (
@@ -334,6 +348,13 @@ export function ProductMediaManager({ productId, productBrand, adminToken }: Pro
         <p className="rounded-[12px] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/40">
           Não foi possível autenticar o gerenciador de mídia. Recarregue a página.
         </p>
+      ) : loadError && media.length === 0 ? (
+        <div className="rounded-[12px] border border-red-400/25 bg-red-400/5 px-4 py-3 text-sm text-red-400 flex items-center justify-between gap-4">
+          <span>{loadError}</span>
+          <button type="button" onClick={loadMedia} className="shrink-0 underline underline-offset-2 hover:text-red-300 transition">
+            Tentar novamente
+          </button>
+        </div>
       ) : media.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[18px] border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.2" className="mb-3">

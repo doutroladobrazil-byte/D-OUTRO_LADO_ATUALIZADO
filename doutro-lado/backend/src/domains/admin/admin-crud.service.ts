@@ -119,7 +119,18 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
       p.retail_price_brl, p.wholesale_price_brl, p.wholesale_min_qty,
       p.stock, p.cost_price_brl, p.weight_range, p.badge, p.is_featured, p.is_active,
       p.collection, p.created_at,
-      c.name AS category_name
+      c.name AS category_name,
+      (
+        SELECT COUNT(*)::int
+        FROM product_media pm
+        JOIN media_assets ma ON ma.id = pm.media_asset_id
+        WHERE pm.product_id = p.id AND ma.is_active = true
+      ) AS media_count,
+      (
+        SELECT COUNT(*)::int
+        FROM product_country_availability pca
+        WHERE pca.product_id = p.id AND pca.is_active = true
+      ) AS countries_enabled
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
     WHERE true
@@ -147,6 +158,8 @@ export async function listAdminProducts(options: { brand?: Brand; search?: strin
     isActive: row.is_active as boolean,
     collection: (row.collection as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
+    mediaCount: row.media_count as number,
+    countriesEnabled: row.countries_enabled as number,
   }));
 }
 

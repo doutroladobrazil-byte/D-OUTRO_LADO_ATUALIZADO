@@ -9,6 +9,7 @@ import {
   StatusBadge,
   StockIndicator,
 } from "@/features/admin/AdminComponents";
+import { getSkuReadiness } from "@/features/admin/skuReadiness";
 
 type Props = {
   products: AdminProduct[];
@@ -53,6 +54,18 @@ export function AdminProductsList({ products }: Props) {
       key: "isActive",
       label: "Status",
       render: (r: AdminProduct) => <StatusBadge status={r.isActive ? "active" : "inactive"} />,
+    },
+    {
+      key: "operacao",
+      label: "Operação",
+      render: (r: AdminProduct) => {
+        const s = getSkuReadiness(r);
+        return (
+          <span className={`text-[11px] font-medium ${s.className}`} title={s.hint || undefined}>
+            {s.label}
+          </span>
+        );
+      },
     },
     {
       key: "isFeatured",
