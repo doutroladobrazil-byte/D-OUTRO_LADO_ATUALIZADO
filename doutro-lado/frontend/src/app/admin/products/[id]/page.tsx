@@ -31,7 +31,7 @@ export default async function EditProductPage({ params }: Props) {
 
       {/* Form */}
       <div className="max-w-4xl">
-        <ProductForm mode="edit" product={product} />
+        <ProductForm mode="edit" product={product} adminToken={token} />
       </div>
 
       {/* Divider */}

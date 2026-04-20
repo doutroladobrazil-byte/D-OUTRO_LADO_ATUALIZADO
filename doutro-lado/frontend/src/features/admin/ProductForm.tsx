@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { adminApi } from "@/lib/admin-api";
 import { useAdminToken } from "@/hooks/useAdminToken";
 import { ProductMediaManager } from "@/features/admin/ProductMediaManager";
+import { ProductCountryAvailability } from "@/features/admin/ProductCountryAvailability";
 import type { AdminProductDetail, AdminCategory } from "@/lib/admin-api";
 
 // =============================================================================
@@ -210,15 +211,17 @@ function buildPayload(form: FormData): Record<string, unknown> {
 type Props = {
   mode: "create" | "edit";
   product?: AdminProductDetail;
+  adminToken?: string | null;
 };
 
 // =============================================================================
 // Component
 // =============================================================================
 
-export function ProductForm({ mode, product }: Props) {
+export function ProductForm({ mode, product, adminToken }: Props) {
   const router = useRouter();
-  const token = useAdminToken();
+  const sessionToken = useAdminToken();
+  const token = adminToken ?? sessionToken;
   const [form, setForm] = useState<FormData>(() => initForm(product));
   const [slugManual, setSlugManual] = useState(mode === "edit");
   const [saving, setSaving] = useState(false);
@@ -280,6 +283,7 @@ export function ProductForm({ mode, product }: Props) {
       setSaving(false);
       if (!result.ok) { setError(result.message); return; }
       setSuccess(true);
+      router.refresh();
       setTimeout(() => setSuccess(false), 3000);
     }
   }
@@ -652,7 +656,16 @@ export function ProductForm({ mode, product }: Props) {
             <div className="mb-4 rounded-[14px] border border-green-400/25 bg-green-400/5 px-5 py-3">
               <p className="text-sm text-green-400">✓ Produto criado. Adicione fotos e vídeos abaixo.</p>
             </div>
-            <ProductMediaManager productId={createdProductId} productBrand="moda" />
+            <ProductMediaManager
+                  productId={createdProductId}
+                  productBrand="moda"
+                  adminToken={token}
+                />
+            {token && (
+              <div className="mt-8">
+                <ProductCountryAvailability productId={createdProductId} token={token} />
+              </div>
+            )}
             <div className="mt-6 flex items-center gap-4">
               <a
                 href={`/admin/products/${createdProductId}`}
