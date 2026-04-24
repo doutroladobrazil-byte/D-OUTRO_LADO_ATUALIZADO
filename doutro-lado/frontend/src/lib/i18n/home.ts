@@ -51,6 +51,7 @@ export interface HomeDictionary {
     description: string;
     cta: string;
     empty: string;
+    emptySubtitle: string;
     emptyCta: string;
   };
   international: {
@@ -137,8 +138,9 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       description:
         "A focused selection of Brazilian leather, accessories and statement pieces for selected destinations.",
       cta: "View all products",
-      empty: "Collection coming soon.",
-      emptyCta: "View catalogue",
+      empty: "Private international drop coming soon.",
+      emptySubtitle: "Join the list to receive availability updates.",
+      emptyCta: "Join the list for early access",
     },
     international: {
       eyebrow: "International shopping",
@@ -243,8 +245,9 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       description:
         "Eine fokussierte Auswahl brasilianischer Lederprodukte, Accessoires und Statement-Stücke für ausgewählte Destinationen.",
       cta: "Alle Produkte anzeigen",
-      empty: "Kollektion in Kürze verfügbar.",
-      emptyCta: "Katalog ansehen",
+      empty: "Privater internationaler Drop in Kürze.",
+      emptySubtitle: "Melden Sie sich an, um Verfügbarkeitsupdates zu erhalten.",
+      emptyCta: "Für frühen Zugang anmelden",
     },
     international: {
       eyebrow: "Internationales Einkaufen",
@@ -365,8 +368,9 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       description:
         "Une sélection ciblée de cuir brésilien, d'accessoires et de pièces phares pour les destinations sélectionnées.",
       cta: "Voir tous les produits",
-      empty: "Collection bientôt disponible.",
-      emptyCta: "Voir le catalogue",
+      empty: "Drop international privé bientôt disponible.",
+      emptySubtitle: "Rejoignez la liste pour recevoir les mises à jour de disponibilité.",
+      emptyCta: "Rejoindre la liste pour un accès anticipé",
     },
     international: {
       eyebrow: "Shopping international",
@@ -489,8 +493,9 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       description:
         "Uma seleção focada de couro, acessórios e peças de destaque do Brasil para destinos selecionados.",
       cta: "Ver todos os produtos",
-      empty: "Coleção em breve.",
-      emptyCta: "Ver catálogo",
+      empty: "Drop internacional privado em breve.",
+      emptySubtitle: "Entre na lista para receber atualizações de disponibilidade.",
+      emptyCta: "Entrar na lista para acesso antecipado",
     },
     international: {
       eyebrow: "Compras internacionais",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { HomeAnalytics } from "@/lib/analytics";
 import type { HomeDictionary } from "@/lib/i18n/home";
 
 const REGIONS = [
@@ -9,6 +10,8 @@ const REGIONS = [
   "United Kingdom",
   "North America",
   "Brazil",
+  "Middle East",
+  "Asia-Pacific",
   "Other",
 ] as const;
 
@@ -19,9 +22,10 @@ type Interest = (typeof INTERESTS)[number];
 
 interface Props {
   dict: HomeDictionary["lead"];
+  locale?: string;
 }
 
-export function LeadCaptureBlock({ dict }: Props) {
+export function LeadCaptureBlock({ dict, locale = "en" }: Props) {
   const [email, setEmail] = useState("");
   const [region, setRegion] = useState<Region | "">("");
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -36,6 +40,8 @@ export function LeadCaptureBlock({ dict }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     // TODO: connect lead form to newsletter/CRM endpoint
+    // Payload: { email, region, interests, locale, source: "homepage", utm: ... }
+    HomeAnalytics.leadSubmit({ region: region || "unknown", interests: [...interests], locale });
     setSubmitted(true);
   }
 

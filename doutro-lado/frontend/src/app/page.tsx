@@ -1,6 +1,19 @@
+import type { Metadata } from "next";
 import { headers, cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "D'OUTRO LADO — Brazilian Premium Fashion Delivered Internationally",
+  description:
+    "Brazilian leather, fashion and accessories curated for international customers. Tracked delivery, secure checkout and destination-aware policies for selected destinations.",
+  openGraph: {
+    title: "D'OUTRO LADO — Brazilian Premium Fashion Delivered Internationally",
+    description:
+      "Brazilian leather, fashion and accessories curated for international customers. Tracked delivery, secure checkout and destination-aware policies for selected destinations.",
+    type: "website",
+  },
+};
 import { ProductCard } from "@/components/ProductCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -148,9 +161,15 @@ export default async function HomePage() {
                 <ProductCard key={product.id} product={product} />
               ))
             ) : (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-white/10 py-16 text-center">
-                <p className="text-sm text-white/35">{dict.products.empty}</p>
-                <ButtonLink href="/brands/moda" variant="ghost" className="mt-4">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-gold/20 bg-gold/[0.02] py-20 text-center">
+                <div className="mb-4 h-1 w-10 rounded-full bg-gold/30" />
+                <p className="text-[13px] uppercase tracking-[0.28em] text-gold/70">
+                  {dict.products.empty}
+                </p>
+                <p className="mt-3 max-w-xs text-sm text-white/35">
+                  {dict.products.emptySubtitle}
+                </p>
+                <ButtonLink href="#drop-list" variant="ghost" className="mt-6">
                   {dict.products.emptyCta}
                 </ButtonLink>
               </div>
@@ -280,7 +299,7 @@ export default async function HomePage() {
       {/* ── Lead capture ──────────────────────────────────────────────────── */}
       <section id="drop-list" className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
-          <LeadCaptureBlock dict={dict.lead} />
+          <LeadCaptureBlock dict={dict.lead} locale={locale} />
         </div>
       </section>
 
