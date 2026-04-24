@@ -15,7 +15,7 @@ import { useCountryPreference } from "@/hooks/useCountryPreference";
 
 type Props = { brand: Brand };
 
-/** Country flag emojis for the 6 MVP destinations. */
+/** Country flag emojis for MVP destinations. */
 const COUNTRY_FLAGS: Record<CountryCode, string> = {
   US: "🇺🇸",
   CH: "🇨🇭",
@@ -23,6 +23,8 @@ const COUNTRY_FLAGS: Record<CountryCode, string> = {
   DE: "🇩🇪",
   IS: "🇮🇸",
   SG: "🇸🇬",
+  FR: "🇫🇷",
+  BR: "🇧🇷",
 };
 
 type ContactForm = {

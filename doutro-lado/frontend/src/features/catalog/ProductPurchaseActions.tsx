@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { syncCartItemToBackend } from "@/lib/storefront";
 import { useCountryPreference } from "@/hooks/useCountryPreference";
 import type { Brand, WeightRange } from "@/lib/types";
+import type { ProductDictionary } from "@/lib/i18n/product";
 
 type ProductForCart = {
   id: string;
@@ -23,6 +24,7 @@ type Props = {
   activeBrand: Brand;
   cartHref: string;
   checkoutHref: string;
+  dict?: ProductDictionary;
 };
 
 /**
@@ -44,6 +46,7 @@ export function ProductPurchaseActions({
   activeBrand,
   cartHref,
   checkoutHref,
+  dict,
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const setCart = useCartStore((s) => s.setCart);
@@ -113,7 +116,7 @@ export function ProductPurchaseActions({
     <div className="space-y-4">
       {unavailable && (
         <div className="rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-300">
-          Not available for delivery to your selected country.
+          {dict?.notAvailable ?? "Not available for delivery to your selected destination."}
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -122,23 +125,23 @@ export function ProductPurchaseActions({
           disabled={unavailable}
           className="rounded-full border border-gold bg-gold px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
-          Adicionar ao carrinho
+          {dict?.addToCart ?? "Add to cart"}
         </button>
         <button
           onClick={handleBuyNow}
           disabled={unavailable}
           className="rounded-full border border-black/15 bg-black/8 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/14 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
-          Comprar agora
+          {dict?.buyNow ?? "Buy now"}
         </button>
       </div>
       {/* Trust signals */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1">
         {[
-          { icon: "🔒", text: "Pagamento seguro" },
-          { icon: "🌍", text: "Envio internacional" },
-          { icon: "↩", text: "Devoluções aceitas" },
-          { icon: "✦", text: "Couro brasileiro" },
+          { icon: "🔒", text: dict?.secure ?? "Secure payment" },
+          { icon: "🌍", text: dict?.delivery ?? "International delivery" },
+          { icon: "↩", text: dict?.returns ?? "Returns by destination" },
+          { icon: "✦", text: dict?.leather ?? "Brazilian leather" },
         ].map((item) => (
           <div key={item.text} className="flex items-center gap-1.5 text-[11px] text-black/45">
             <span className="text-[13px]" aria-hidden>{item.icon}</span>

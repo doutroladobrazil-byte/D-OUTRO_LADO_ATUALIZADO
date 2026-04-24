@@ -7,7 +7,17 @@ import type { Product } from "@/lib/types";
 import { getBrandCartPath } from "@/lib/brand";
 import { PriceDisplay } from "@/components/ui/PriceDisplay";
 
-export function ProductCard({ product, brandMode = product.brand }: { product: Product; brandMode?: Product["brand"] }) {
+type ProductCardDict = { from: string; viewProduct: string };
+
+export function ProductCard({
+  product,
+  brandMode = product.brand,
+  dict,
+}: {
+  product: Product;
+  brandMode?: Product["brand"];
+  dict?: ProductCardDict;
+}) {
   const primaryMedia = product.media?.[0] ?? null;
   // Use image URL directly; for videos, prefer poster_url as card thumbnail
   const cardImageUrl = primaryMedia
@@ -61,14 +71,14 @@ export function ProductCard({ product, brandMode = product.brand }: { product: P
         </div>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">Desde</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">{dict?.from ?? "From"}</p>
             <PriceDisplay brl={product.retailPriceBRL} className="text-lg text-white" />
           </div>
           <Link
             href={`/products/${product.slug}?site=${brandMode}&next=${encodeURIComponent(getBrandCartPath(brandMode))}`}
             className="rounded-full border border-white/12 px-4 py-3 text-sm uppercase tracking-[0.18em] text-white transition duration-300 hover:-translate-y-0.5 hover:border-gold/60 hover:text-gold"
           >
-            Ver produto
+            {dict?.viewProduct ?? "View product"}
           </Link>
         </div>
       </div>

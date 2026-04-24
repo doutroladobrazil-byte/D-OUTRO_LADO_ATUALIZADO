@@ -9,7 +9,9 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { GiftCompositionFeature } from "@/features/home/GiftCompositionFeature";
 import { LeadCaptureBlock } from "@/features/home/LeadCaptureBlock";
 import { UniverseSlider } from "@/features/home/UniverseSlider";
-import { getDictionary, resolveLocale } from "@/lib/i18n/home";
+import { getDictionary } from "@/lib/i18n/home";
+import { resolveLocale } from "@/lib/i18n/common";
+import { getProductDictionary } from "@/lib/i18n/product";
 import { getCampaigns, getProducts } from "@/lib/storefront";
 
 // Ensure locale is resolved per-request — never serve a cached locale to wrong visitor.
@@ -40,6 +42,7 @@ export default async function HomePage() {
     cookieStore.get("dl_locale")?.value,
   );
   const dict = getDictionary(locale);
+  const productDict = getProductDictionary(locale);
 
   const featured = allProducts.filter((p) => p.featured);
   const displayProducts = featured.length >= 4 ? featured.slice(0, 4) : allProducts.slice(0, 4);
@@ -170,7 +173,7 @@ export default async function HomePage() {
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {displayProducts.length > 0 ? (
               displayProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} dict={productDict} />
               ))
             ) : (
               <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-gold/20 bg-gold/[0.02] py-20 text-center">

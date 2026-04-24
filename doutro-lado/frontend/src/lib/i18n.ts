@@ -25,8 +25,8 @@ export type SupportedLocale = "pt-BR" | "en-US" | "en-GB" | "ar-AE" | "de-CH" | 
 /** Two-letter ISO 639-1 language codes. */
 export type SupportedLanguage = "pt" | "en" | "ar" | "de";
 
-/** ISO 3166-1 alpha-2 codes for the 6 MVP destination countries (Stage 12). */
-export type CountryCode = "US" | "CH" | "IE" | "DE" | "IS" | "SG";
+/** ISO 3166-1 alpha-2 codes for the MVP destination countries. */
+export type CountryCode = "US" | "CH" | "IE" | "DE" | "IS" | "SG" | "FR" | "BR";
 
 // =============================================================================
 // Constants
@@ -40,9 +40,9 @@ export const SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
   "pt", "en", "ar", "de",
 ] as const;
 
-/** The 6 MVP destination countries. */
+/** MVP destination countries. */
 export const COUNTRY_CODES: readonly CountryCode[] = [
-  "US", "CH", "IE", "DE", "IS", "SG",
+  "US", "CH", "IE", "DE", "IS", "SG", "FR", "BR",
 ] as const;
 
 /** Map: currency → associated display locale. */
@@ -76,6 +76,8 @@ export const COUNTRY_DEFAULT_CURRENCY: Record<CountryCode, SupportedCurrency> = 
   DE: "EUR",
   IS: "EUR",
   SG: "SGD",
+  FR: "EUR",
+  BR: "BRL",
 };
 
 /** Map: language code → display label. */

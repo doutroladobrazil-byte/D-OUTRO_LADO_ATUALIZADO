@@ -3,28 +3,10 @@
 // Cookie key: dl_locale  |  Fallback: "en"
 // =============================================================================
 
-export type HomeLocale = "en" | "de" | "fr" | "pt";
-
-const HOME_LOCALES: readonly HomeLocale[] = ["en", "de", "fr", "pt"];
-
-export function isHomeLocale(value: unknown): value is HomeLocale {
-  return typeof value === "string" && (HOME_LOCALES as string[]).includes(value);
-}
-
-/** Resolve display locale from Accept-Language header and dl_locale cookie. */
-export function resolveLocale(
-  acceptLanguage: string | null,
-  cookieLocale: string | null | undefined,
-): HomeLocale {
-  if (cookieLocale && isHomeLocale(cookieLocale)) return cookieLocale;
-  const primary = (acceptLanguage ?? "")
-    .split(",")[0]
-    .split("-")[0]
-    .toLowerCase()
-    .trim();
-  if (isHomeLocale(primary)) return primary as HomeLocale;
-  return "en";
-}
+import type { AppLocale } from "./common";
+export type { AppLocale as HomeLocale } from "./common";
+export { resolveLocale } from "./common";
+type HomeLocale = AppLocale;
 
 // =============================================================================
 // Dictionary shape

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers, cookies } from "next/headers";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductGallery } from "@/components/ProductGallery";
 import { getBrandCartPath, getBrandCheckoutPath, isBrand } from "@/lib/brand";
@@ -6,6 +7,10 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { getFreightRates, getProductBySlug, getProducts } from "@/lib/storefront";
 import { ProductPurchaseActions } from "@/features/catalog/ProductPurchaseActions";
+import { resolveLocale } from "@/lib/i18n/common";
+import { getProductDictionary } from "@/lib/i18n/product";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -13,10 +18,20 @@ type PageProps = {
 };
 
 export default async function ProductPage({ params, searchParams }: PageProps) {
-  const { slug } = await params;
+  const [{ slug }, cookieStore, headerStore] = await Promise.all([
+    params,
+    cookies(),
+    headers(),
+  ]);
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
+
+  const locale = resolveLocale(
+    headerStore.get("accept-language"),
+    cookieStore.get("dl_locale")?.value,
+  );
+  const dict = getProductDictionary(locale);
 
   const siteParam = resolvedSearchParams?.site;
   const activeBrand = typeof siteParam === "string" && isBrand(siteParam) ? siteParam : product.brand;
@@ -57,26 +72,26 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
             {/* Pricing card */}
             <GlassCard tone="warm" className="space-y-5">
               <div className="border-b border-black/10 pb-5">
-                <p className="mb-1.5 text-[11px] uppercase tracking-[0.22em] text-black/40">Preço varejo</p>
+                <p className="mb-1.5 text-[11px] uppercase tracking-[0.22em] text-black/40">{dict.retailPrice}</p>
                 <strong className="text-[30px] font-semibold tracking-[-0.5px] text-[#17120d]">
                   R$ {product.retailPriceBRL.toFixed(2)}
                 </strong>
               </div>
               <div className="grid gap-3 text-sm text-black/65 sm:grid-cols-2">
                 <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Atacado</span>
-                  A partir de {product.wholesaleMinQty} unidades
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.wholesale}</span>
+                  {dict.wholesalePrefix} {product.wholesaleMinQty} {dict.wholesaleSuffix}
                 </div>
                 <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Peso</span>
-                  {product.weightRange} — frete automático
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.weight}</span>
+                  {product.weightRange} — {dict.weightSuffix}
                 </div>
                 <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">Material</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.material}</span>
                   {product.material}
                 </div>
                 <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">SKU</span>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.sku}</span>
                   {product.sku}
                 </div>
               </div>
@@ -85,13 +100,14 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
                 activeBrand={activeBrand}
                 cartHref={cartHref}
                 checkoutHref={checkoutHref}
+                dict={dict}
               />
             </GlassCard>
 
             {/* Freight rates */}
             {previewRates.length > 0 && (
               <GlassCard>
-                <SectionHeading eyebrow="Frete internacional" title="Cálculo automático por peso e região." />
+                <SectionHeading eyebrow={dict.shipping} title={dict.shippingTitle} />
                 <div className="mt-5 space-y-2">
                   {previewRates.map((rate) => (
                     <div
@@ -112,12 +128,12 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
         {relatedProducts.length > 0 && (
           <section className="space-y-8">
             <SectionHeading
-              eyebrow="Relacionados"
-              title="Continue explorando a coleção."
+              eyebrow={dict.related}
+              title={dict.relatedTitle}
             />
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {relatedProducts.map((item) => (
-                <ProductCard key={item.id} product={item} brandMode={product.brand} />
+                <ProductCard key={item.id} product={item} brandMode={product.brand} dict={dict} />
               ))}
             </div>
           </section>
