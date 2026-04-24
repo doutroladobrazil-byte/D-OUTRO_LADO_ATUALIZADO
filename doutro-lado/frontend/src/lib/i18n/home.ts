@@ -89,6 +89,8 @@ export interface HomeDictionary {
     microcopy: string;
     successTitle: string;
     successBody: string;
+    error: string;
+    errorRetry: string;
   };
   trust: {
     eyebrow: string;
@@ -195,6 +197,8 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       microcopy: "No spam. Product drops and availability updates only.",
       successTitle: "You're on the list",
       successBody: "We'll reach out when new drops are available for your destination.",
+      error: "Something went wrong. Please try again.",
+      errorRetry: "Try again",
     },
     trust: {
       eyebrow: "Why shop with us",
@@ -306,6 +310,8 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       successTitle: "Sie sind auf der Liste",
       successBody:
         "Wir melden uns, wenn neue Drops für Ihre Destination verfügbar sind.",
+      error: "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      errorRetry: "Erneut versuchen",
     },
     trust: {
       eyebrow: "Warum bei uns kaufen",
@@ -431,6 +437,8 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       successTitle: "Vous êtes sur la liste",
       successBody:
         "Nous vous contacterons lorsque de nouveaux drops seront disponibles pour votre destination.",
+      error: "Une erreur s'est produite. Veuillez réessayer.",
+      errorRetry: "Réessayer",
     },
     trust: {
       eyebrow: "Pourquoi acheter chez nous",
@@ -551,6 +559,8 @@ const DICT: Record<HomeLocale, HomeDictionary> = {
       successTitle: "Você está na lista",
       successBody:
         "Entraremos em contato quando novos drops estiverem disponíveis para o seu destino.",
+      error: "Algo deu errado. Por favor, tente novamente.",
+      errorRetry: "Tentar novamente",
     },
     trust: {
       eyebrow: "Por que comprar conosco",

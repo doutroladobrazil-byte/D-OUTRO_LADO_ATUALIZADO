@@ -2,6 +2,18 @@ import type { Metadata } from "next";
 import { headers, cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { ProductCard } from "@/components/ProductCard";
+import { ButtonLink } from "@/components/ui/Button";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { SectionHeading } from "@/components/ui/SectionHeading";
+import { GiftCompositionFeature } from "@/features/home/GiftCompositionFeature";
+import { LeadCaptureBlock } from "@/features/home/LeadCaptureBlock";
+import { UniverseSlider } from "@/features/home/UniverseSlider";
+import { getDictionary, resolveLocale } from "@/lib/i18n/home";
+import { getCampaigns, getProducts } from "@/lib/storefront";
+
+// Ensure locale is resolved per-request — never serve a cached locale to wrong visitor.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "D'OUTRO LADO — Brazilian Premium Fashion Delivered Internationally",
@@ -14,15 +26,6 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
-import { ProductCard } from "@/components/ProductCard";
-import { ButtonLink } from "@/components/ui/Button";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { SectionHeading } from "@/components/ui/SectionHeading";
-import { GiftCompositionFeature } from "@/features/home/GiftCompositionFeature";
-import { LeadCaptureBlock } from "@/features/home/LeadCaptureBlock";
-import { UniverseSlider } from "@/features/home/UniverseSlider";
-import { getDictionary, resolveLocale } from "@/lib/i18n/home";
-import { getCampaigns, getProducts } from "@/lib/storefront";
 
 export default async function HomePage() {
   const [cookieStore, headerStore, campaigns, allProducts] = await Promise.all([
@@ -114,9 +117,18 @@ export default async function HomePage() {
             align="center"
           />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {/* TODO: brands/[brand]/page.tsx needs to read searchParams and pass to getProducts()
+                Once wired, the sort/category params below will activate live filtering. */}
             {dict.categories.items.map((cat, i) => {
-              const href = i === 4 ? "/gift-builder" : "/brands/moda";
-              // TODO: add category filter params once backend supports filtering by slug
+              const HREFS = [
+                "/brands/moda?sort=new",              // New In
+                "/brands/moda?category=leather-bags", // Leather Bags
+                "/brands/moda?category=shoes",        // Shoes
+                "/brands/moda?category=accessories",  // Accessories
+                "/gift-builder",                      // Gift Sets
+                "/brands/moda?sort=best-sellers",     // Best Sellers
+              ];
+              const href = HREFS[i] ?? "/brands/moda";
               return (
                 <Link
                   key={cat.label}
