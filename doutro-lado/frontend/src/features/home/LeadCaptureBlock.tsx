@@ -2,16 +2,28 @@
 
 import { useState } from "react";
 import { GlassCard } from "@/components/ui/GlassCard";
+import type { HomeDictionary } from "@/lib/i18n/home";
 
-const COUNTRIES = ["Germany", "Switzerland", "Ireland", "France", "Other"] as const;
+const REGIONS = [
+  "Europe",
+  "United Kingdom",
+  "North America",
+  "Brazil",
+  "Other",
+] as const;
+
 const INTERESTS = ["Leather Bags", "Shoes", "Accessories", "Gifts", "New Drops"] as const;
 
-type Country = (typeof COUNTRIES)[number];
+type Region = (typeof REGIONS)[number];
 type Interest = (typeof INTERESTS)[number];
 
-export function LeadCaptureBlock() {
+interface Props {
+  dict: HomeDictionary["lead"];
+}
+
+export function LeadCaptureBlock({ dict }: Props) {
   const [email, setEmail] = useState("");
-  const [country, setCountry] = useState<Country | "">("");
+  const [region, setRegion] = useState<Region | "">("");
   const [interests, setInterests] = useState<Interest[]>([]);
   const [submitted, setSubmitted] = useState(false);
 
@@ -30,10 +42,8 @@ export function LeadCaptureBlock() {
   if (submitted) {
     return (
       <GlassCard className="p-10 text-center">
-        <p className="text-[13px] uppercase tracking-[0.28em] text-gold">You&apos;re on the list</p>
-        <p className="mt-3 text-sm text-white/50">
-          We&apos;ll reach out when new drops are available for your destination.
-        </p>
+        <p className="text-[13px] uppercase tracking-[0.28em] text-gold">{dict.successTitle}</p>
+        <p className="mt-3 text-sm text-white/50">{dict.successBody}</p>
       </GlassCard>
     );
   }
@@ -41,40 +51,42 @@ export function LeadCaptureBlock() {
   return (
     <GlassCard className="p-8 md:p-12">
       <div className="mx-auto max-w-2xl">
-        <p className="text-[11px] uppercase tracking-[0.42em] text-gold/70">Private drop list</p>
+        <p className="text-[11px] uppercase tracking-[0.42em] text-gold/70">{dict.eyebrow}</p>
         <h2 className="mt-4 font-display text-[32px] leading-[1.08] tracking-[-0.5px] text-white md:text-[40px]">
-          Get early access to limited drops.
+          {dict.title}
         </h2>
-        <p className="mt-4 text-sm leading-7 text-white/50">
-          Join the private list for new arrivals, limited leather pieces and international shipping
-          updates.
-        </p>
+        <p className="mt-4 text-sm leading-7 text-white/50">{dict.body}</p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <input
             type="email"
             required
-            placeholder="your@email.com"
+            placeholder={dict.emailPlaceholder}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-[14px] border border-white/10 bg-white/[0.04] px-5 py-4 text-sm text-white placeholder:text-white/25 focus:border-gold/40 focus:outline-none"
           />
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value as Country)}
-            className="w-full rounded-[14px] border border-white/10 bg-[#0e0e0e] px-5 py-4 text-sm text-white focus:border-gold/40 focus:outline-none"
-          >
-            <option value="" disabled>
-              Select your country
-            </option>
-            {COUNTRIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
+          <div>
+            <p className="mb-2 text-[11px] uppercase tracking-[0.28em] text-white/35">
+              {dict.regionLabel}
+            </p>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value as Region)}
+              className="w-full rounded-[14px] border border-white/10 bg-[#0e0e0e] px-5 py-4 text-sm text-white focus:border-gold/40 focus:outline-none"
+            >
+              <option value="" disabled>
+                {dict.regionDefault}
               </option>
-            ))}
-          </select>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <p className="mb-3 text-[11px] uppercase tracking-[0.28em] text-white/35">
-              I&apos;m interested in
+              {dict.interestLabel}
             </p>
             <div className="flex flex-wrap gap-2">
               {INTERESTS.map((i) => (
@@ -97,11 +109,9 @@ export function LeadCaptureBlock() {
             type="submit"
             className="w-full rounded-[14px] bg-gold px-6 py-4 text-[13px] uppercase tracking-[0.22em] text-[#0a0a0a] transition-all hover:-translate-y-0.5 hover:bg-gold/90"
           >
-            Join the list
+            {dict.cta}
           </button>
-          <p className="text-center text-[11px] text-white/25">
-            No spam. Product drops and availability updates only.
-          </p>
+          <p className="text-center text-[11px] text-white/25">{dict.microcopy}</p>
         </form>
       </div>
     </GlassCard>
