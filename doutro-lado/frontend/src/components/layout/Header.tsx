@@ -28,7 +28,9 @@ export function Header() {
         </Suspense>
       </header>
       <SearchOverlay />
-      <MobileMenu />
+      <Suspense fallback={null}>
+        <MobileMenu />
+      </Suspense>
     </>
   );
 }
