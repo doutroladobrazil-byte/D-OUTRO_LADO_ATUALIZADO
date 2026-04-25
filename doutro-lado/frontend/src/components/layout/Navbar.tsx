@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { useUiStore } from "@/features/navigation/ui-store";
 import { getBrandCartPath, getBrandFromPath, isBrand } from "@/lib/brand";
 import { CurrencySwitcher } from "@/components/ui/PriceDisplay";
+import { MobileMenuAnalytics } from "@/lib/analytics";
 
 function IconControl({
   href,
@@ -49,23 +50,23 @@ export function Navbar() {
         <div className="flex items-center justify-start gap-3">
           <motion.button
             whileHover={{ y: -2 }}
-            onClick={toggleMobileMenu}
-            aria-label="Abrir menu"
+            onClick={() => { MobileMenuAnalytics.open(); toggleMobileMenu(); }}
+            aria-label="Open menu"
             className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/75 transition duration-300 hover:bg-white/[0.08] hover:text-white"
           >
             <Menu className="size-4" />
           </motion.button>
-          <IconControl href="/" label="Inicio" active={pathname === "/"}>
+          <IconControl href="/" label="Home" active={pathname === "/"}>
             <Home className="size-4" />
           </IconControl>
         </div>
 
         <div className="flex items-center justify-end gap-3">
           <CurrencySwitcher className="hidden md:flex" />
-          <IconControl href="/login" label="Conta" active={pathname.startsWith("/login") || pathname.startsWith("/account")}>
+          <IconControl href="/login" label="Account" active={pathname.startsWith("/login") || pathname.startsWith("/account")}>
             <UserRound className="size-4" />
           </IconControl>
-          <IconControl href={cartHref} label="Carrinho" active={pathname.includes("/cart") || pathname.includes("/checkout")}>
+          <IconControl href={cartHref} label="Cart" active={pathname.includes("/cart") || pathname.includes("/checkout")}>
             <ShoppingBag className="size-4" />
           </IconControl>
         </div>

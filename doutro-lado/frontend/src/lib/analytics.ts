@@ -56,3 +56,33 @@ export const HomeAnalytics = {
     trackEvent("home_gift_click");
   },
 };
+
+// =============================================================================
+// Mobile menu events
+// =============================================================================
+
+export const MobileMenuAnalytics = {
+  open(): void {
+    trackEvent("mobile_menu_open");
+  },
+
+  close(): void {
+    trackEvent("mobile_menu_close");
+  },
+
+  linkClick(label: string): void {
+    trackEvent("mobile_menu_link_click", { label });
+  },
+
+  searchClick(): void {
+    trackEvent("mobile_menu_search_click");
+  },
+
+  dropListClick(): void {
+    trackEvent("mobile_menu_drop_list_click");
+  },
+
+  cartClick(): void {
+    trackEvent("mobile_menu_cart_click");
+  },
+};

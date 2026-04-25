@@ -1,9 +1,40 @@
+/** Legacy flat nav — kept for backward compatibility. */
 export const navLinks = [
   { href: "/brands/moda", label: "Colecoes" },
   { href: "/gift-builder", label: "Montar kit" },
   { href: "/wholesale", label: "Atacado" },
   { href: "/international-shipping", label: "Envio internacional" }
 ] as const;
+
+/** Grouped public navigation — used by MobileMenu. Keys map to NavDictionary. */
+export const publicNavGroups = [
+  {
+    key: "shop" as const,
+    items: [
+      { key: "newArrivals" as const, href: "/brands/moda?sort=new" },
+      { key: "bestSellers" as const, href: "/brands/moda?sort=best-sellers" },
+      { key: "leatherBags" as const, href: "/brands/moda?category=leather-bags" },
+      { key: "smallLeatherGoods" as const, href: "/brands/moda?category=small-leather-goods" },
+      { key: "shoes" as const, href: "/brands/moda?category=shoes" },
+      { key: "accessories" as const, href: "/brands/moda?category=accessories" },
+    ],
+  },
+  {
+    key: "services" as const,
+    items: [
+      { key: "giftBuilder" as const, href: "/gift-builder" },
+      { key: "internationalShipping" as const, href: "/international-shipping" },
+      { key: "wholesale" as const, href: "/wholesale" },
+    ],
+  },
+  {
+    key: "account" as const,
+    items: [
+      { key: "account" as const, href: "/login" },
+      { key: "cart" as const, href: "/brands/moda/cart" },
+    ],
+  },
+];
 
 export const adminLinks = [
   { href: "/admin", label: "Dashboard" },
