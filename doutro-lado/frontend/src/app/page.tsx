@@ -3,6 +3,7 @@ import { headers, cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "@/components/ProductCard";
+import { CreativeSlot } from "@/components/CreativeSlot";
 import { ButtonLink } from "@/components/ui/Button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
@@ -13,6 +14,7 @@ import { getDictionary } from "@/lib/i18n/home";
 import { resolveLocale } from "@/lib/i18n/common";
 import { getProductDictionary } from "@/lib/i18n/product";
 import { getCampaigns, getProducts } from "@/lib/storefront";
+import { getCreativeSlots } from "@/lib/creative-slots";
 
 // Ensure locale is resolved per-request — never serve a cached locale to wrong visitor.
 export const dynamic = "force-dynamic";
@@ -40,6 +42,23 @@ const CATEGORY_HREFS = [
   "/brands/moda?sort=best-sellers",
 ] as const;
 
+// Creative slot keys fetched at render time
+const CREATIVE_SLOT_KEYS = [
+  "home.hero",
+  "home.category.bags",
+  "home.category.wallets",
+  "home.category.accessories",
+  "home.category.belts",
+  "home.category.small-leather-goods",
+  "home.category.jewelry",
+  "home.category.new",
+  "home.style.everyday",
+  "home.style.evening",
+  "home.style.gift",
+  "home.style.travel",
+  "home.style.minimal",
+] as const;
+
 // Shop-by-style hrefs — order must match dict.shopByStyle.items (5 items)
 const STYLE_HREFS = [
   "/brands/moda?category=leather-bags",
@@ -59,11 +78,12 @@ const STYLE_GRADIENTS = [
 ] as const;
 
 export default async function HomePage() {
-  const [cookieStore, headerStore, campaigns, allProducts] = await Promise.all([
+  const [cookieStore, headerStore, campaigns, allProducts, creatives] = await Promise.all([
     cookies(),
     headers(),
     getCampaigns(),
     getProducts("moda"),
+    getCreativeSlots([...CREATIVE_SLOT_KEYS]),
   ]);
 
   const locale = resolveLocale(
@@ -123,14 +143,21 @@ export default async function HomePage() {
 
               {/* Right: hero creative slot */}
               <div className="hidden xl:block">
-                <div className="relative flex aspect-[3/4] items-end overflow-hidden rounded-[22px] border border-white/8 bg-gradient-to-br from-white/[0.05] to-black/70">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(198,169,107,0.13),transparent_55%)]" />
-                  <div className="relative w-full border-t border-white/6 p-6">
-                    <p className="text-[10px] uppercase tracking-[0.38em] text-white/25">
-                      New collection
-                    </p>
-                    <p className="mt-1 font-display text-[20px] text-white/40">Leather &amp; fashion</p>
-                  </div>
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] border border-white/8">
+                  <CreativeSlot
+                    creative={creatives.get("home.hero")}
+                    priority
+                    sizes="(min-width: 1280px) 35vw, 0vw"
+                    fallback={
+                      <div className="flex h-full w-full items-end bg-gradient-to-br from-white/[0.05] to-black/70">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(198,169,107,0.13),transparent_55%)]" />
+                        <div className="relative w-full border-t border-white/6 p-6">
+                          <p className="text-[10px] uppercase tracking-[0.38em] text-white/25">New collection</p>
+                          <p className="mt-1 font-display text-[20px] text-white/40">Leather &amp; fashion</p>
+                        </div>
+                      </div>
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -194,13 +221,21 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
             {dict.categories.items.map((cat, i) => {
               const href = CATEGORY_HREFS[i] ?? "/brands/moda";
+              const slotKey = CREATIVE_SLOT_KEYS[i + 1] as string | undefined;
+              const creative = slotKey ? creatives.get(slotKey) : undefined;
               return (
                 <Link
                   key={cat.label}
                   href={href}
                   className="group flex flex-col gap-3 rounded-[18px] border border-white/8 bg-white/[0.02] p-5 transition-colors hover:border-gold/30 hover:bg-white/[0.04]"
                 >
-                  <div className="aspect-square rounded-[12px] border border-white/6 bg-gradient-to-br from-white/[0.05] to-transparent" />
+                  <div className="relative aspect-square overflow-hidden rounded-[12px] border border-white/6">
+                    <CreativeSlot
+                      creative={creative}
+                      sizes="(min-width: 1280px) 12vw, (min-width: 640px) 20vw, 40vw"
+                      fallback={<div className="h-full w-full bg-gradient-to-br from-white/[0.05] to-transparent" />}
+                    />
+                  </div>
                   <div>
                     <p className="text-[13px] font-medium text-white/80 group-hover:text-white">
                       {cat.label}
@@ -225,13 +260,21 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             {dict.shopByStyle.items.map((item, i) => {
               const href = STYLE_HREFS[i] ?? "/brands/moda";
+              const styleKeys = ["home.style.everyday","home.style.evening","home.style.gift","home.style.travel","home.style.minimal"] as const;
+              const creative = creatives.get(styleKeys[i] ?? "");
               return (
                 <Link
                   key={item.label}
                   href={href}
                   className="group flex flex-col overflow-hidden rounded-[20px] border border-white/8 bg-white/[0.02] transition-all duration-300 hover:border-gold/25 hover:shadow-luxe"
                 >
-                  <div className={`aspect-[3/4] w-full ${STYLE_GRADIENTS[i]}`} />
+                  <div className="relative aspect-[3/4] w-full overflow-hidden">
+                    <CreativeSlot
+                      creative={creative}
+                      sizes="(min-width: 1024px) 18vw, 45vw"
+                      fallback={<div className={`h-full w-full ${STYLE_GRADIENTS[i]}`} />}
+                    />
+                  </div>
                   <div className="flex flex-col gap-2 p-4">
                     <p className="text-[13px] font-medium text-white/85 group-hover:text-white">
                       {item.label}

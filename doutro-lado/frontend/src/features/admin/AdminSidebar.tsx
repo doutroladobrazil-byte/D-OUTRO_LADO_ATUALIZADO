@@ -15,6 +15,7 @@ import {
   Settings,
   Layers,
   Globe,
+  Image,
   Menu,
   X,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/admin/countries", label: "Países", icon: Globe },
   { href: "/admin/fiscal", label: "Fiscal", icon: FileText },
   { href: "/admin/content", label: "Conteúdo", icon: Layers },
+  { href: "/admin/creatives", label: "Criativos", icon: Image },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/admin/settings", label: "Configurações", icon: Settings },
 ];

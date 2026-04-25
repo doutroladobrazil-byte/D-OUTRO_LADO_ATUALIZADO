@@ -811,3 +811,40 @@ model BagAbandonmentEvent {
 
   @@map("bag_abandonment_events")
 }
+
+// =============================================================================
+// Creative Slots — ETAPA 11
+// =============================================================================
+
+model CreativeSlot {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slotKey             String    @map("slot_key")
+  title               String
+  mediaType           String    @map("media_type")
+  storageBucket       String?   @map("storage_bucket")
+  storagePath         String    @map("storage_path")
+  publicUrl           String    @map("public_url")
+  mobileStoragePath   String?   @map("mobile_storage_path")
+  mobilePublicUrl     String?   @map("mobile_public_url")
+  posterStoragePath   String?   @map("poster_storage_path")
+  posterPublicUrl     String?   @map("poster_public_url")
+  altText             String?   @map("alt_text")
+  linkHref            String?   @map("link_href")
+  locale              String?
+  marketCode          String?   @map("market_code")
+  displayOrder        Int       @default(0) @map("display_order")
+  isActive            Boolean   @default(true) @map("is_active")
+  startAt             DateTime? @map("start_at") @db.Timestamptz(6)
+  endAt               DateTime? @map("end_at") @db.Timestamptz(6)
+  fileSizeBytes       Int?      @map("file_size_bytes")
+  mimeType            String?   @map("mime_type")
+  width               Int?
+  height              Int?
+  durationSeconds     Float?    @map("duration_seconds")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([slotKey, isActive], map: "idx_cs_slot_key_active")
+  @@index([isActive, startAt, endAt], map: "idx_cs_active_schedule")
+  @@map("creative_slots")
+}
