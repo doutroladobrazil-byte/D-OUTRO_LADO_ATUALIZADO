@@ -41,13 +41,15 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
 
   let products = await getProducts("moda");
 
-  // Category filter — fuzzy: "leather-bags" matches category containing "bag"
+  // Category filter — multi-keyword: "small-leather-goods" → tries each word
   if (categoryParam) {
-    const slug = categoryParam.toLowerCase();
-    const keyword = slug.replace(/-/g, " ").split(" ")[0];
+    const keywords = categoryParam.toLowerCase().replace(/-/g, " ").split(" ").filter(Boolean);
     const filtered = products.filter((p) =>
-      p.category?.toLowerCase().includes(keyword) ||
-      p.subcategory?.toLowerCase().includes(keyword),
+      keywords.some(
+        (kw) =>
+          p.category?.toLowerCase().includes(kw) ||
+          p.subcategory?.toLowerCase().includes(kw),
+      ),
     );
     if (filtered.length > 0) products = filtered;
   }

@@ -18,16 +18,45 @@ import { getCampaigns, getProducts } from "@/lib/storefront";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "D'OUTRO LADO — Brazilian Premium Fashion Delivered Internationally",
+  title: "D'OUTRO LADO — Brazilian Leather Goods & Premium Accessories",
   description:
-    "Brazilian leather, fashion and accessories curated for international customers. Tracked delivery, secure checkout and destination-aware policies for selected destinations.",
+    "Brazilian leather goods, fashion accessories and curated premium pieces for international customers. Secure checkout, tracked delivery and destination-aware policies for selected destinations.",
   openGraph: {
-    title: "D'OUTRO LADO — Brazilian Premium Fashion Delivered Internationally",
+    title: "D'OUTRO LADO — Brazilian Leather Goods & Premium Accessories",
     description:
-      "Brazilian leather, fashion and accessories curated for international customers. Tracked delivery, secure checkout and destination-aware policies for selected destinations.",
+      "Brazilian leather goods, fashion accessories and curated premium pieces for international customers. Secure checkout, tracked delivery and destination-aware policies for selected destinations.",
     type: "website",
   },
 };
+
+// Category hrefs — order must match dict.categories.items (7 items)
+const CATEGORY_HREFS = [
+  "/brands/moda?sort=new",
+  "/brands/moda?category=leather-bags",
+  "/brands/moda?category=small-leather-goods",
+  "/brands/moda?category=shoes",
+  "/brands/moda?category=accessories",
+  "/gift-builder",
+  "/brands/moda?sort=best-sellers",
+] as const;
+
+// Shop-by-style hrefs — order must match dict.shopByStyle.items (5 items)
+const STYLE_HREFS = [
+  "/brands/moda?category=leather-bags",
+  "/brands/moda?category=accessories",
+  "/gift-builder",
+  "/brands/moda?category=leather-bags",
+  "/brands/moda?category=accessories",
+] as const;
+
+// Style card gradients — one per style item
+const STYLE_GRADIENTS = [
+  "bg-[radial-gradient(circle_at_top_left,rgba(198,169,107,0.18),transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.88))]",
+  "bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.22),transparent_48%),linear-gradient(150deg,rgba(255,255,255,0.04),rgba(0,0,0,0.90))]",
+  "bg-[radial-gradient(circle_at_bottom_left,rgba(198,169,107,0.14),transparent_52%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.84))]",
+  "bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.16),transparent_46%),linear-gradient(155deg,rgba(255,255,255,0.05),rgba(0,0,0,0.92))]",
+  "bg-[radial-gradient(circle_at_bottom_right,rgba(198,169,107,0.20),transparent_50%),linear-gradient(140deg,rgba(255,255,255,0.06),rgba(0,0,0,0.86))]",
+] as const;
 
 export default async function HomePage() {
   const [cookieStore, headerStore, campaigns, allProducts] = await Promise.all([
@@ -49,14 +78,14 @@ export default async function HomePage() {
 
   return (
     <main>
-      {/* ── Announcement strip ────────────────────────────────────────────── */}
+      {/* ── 1. Announcement strip ─────────────────────────────────────────── */}
       <div className="border-b border-white/8 bg-white/[0.02] px-4 py-3 text-center">
         <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">
           {dict.announcement}
         </p>
       </div>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── 2. Hero ───────────────────────────────────────────────────────── */}
       <section className="px-4 pb-8 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-luxe">
           <GlassCard className="relative overflow-hidden p-8 md:p-14">
@@ -64,7 +93,6 @@ export default async function HomePage() {
             <div className="relative grid gap-12 xl:grid-cols-[1fr_0.75fr] xl:items-center">
               {/* Left: copy */}
               <div className="space-y-7">
-                {/* TODO: replace with final logo asset */}
                 <p className="font-display text-[15px] tracking-[0.18em] text-white/55">
                   D&apos;OUTRO LADO
                 </p>
@@ -78,7 +106,7 @@ export default async function HomePage() {
                   {dict.hero.subheadline}
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <ButtonLink href="/brands/moda">{dict.hero.ctaPrimary}</ButtonLink>
+                  <ButtonLink href="/brands/moda?sort=new">{dict.hero.ctaPrimary}</ButtonLink>
                   <ButtonLink href="#drop-list" variant="secondary">
                     {dict.hero.ctaSecondary}
                   </ButtonLink>
@@ -93,16 +121,15 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* Right: hero creative slot — visible on xl screens */}
+              {/* Right: hero creative slot */}
               <div className="hidden xl:block">
-                {/* CREATIVE SLOT: hero video/image */}
                 <div className="relative flex aspect-[3/4] items-end overflow-hidden rounded-[22px] border border-white/8 bg-gradient-to-br from-white/[0.05] to-black/70">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(198,169,107,0.13),transparent_55%)]" />
                   <div className="relative w-full border-t border-white/6 p-6">
                     <p className="text-[10px] uppercase tracking-[0.38em] text-white/25">
                       New collection
                     </p>
-                    <p className="mt-1 font-display text-[20px] text-white/40">Leather & fashion</p>
+                    <p className="mt-1 font-display text-[20px] text-white/40">Leather &amp; fashion</p>
                   </div>
                 </div>
               </div>
@@ -111,49 +138,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Shop by intent / category shortcuts ───────────────────────────── */}
-      <section className="px-4 py-10 md:px-6">
-        <div className="mx-auto max-w-luxe space-y-8">
-          <SectionHeading
-            eyebrow={dict.categories.eyebrow}
-            title={dict.categories.title}
-            align="center"
-          />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {/* TODO: brands/[brand]/page.tsx needs to read searchParams and pass to getProducts()
-                Once wired, the sort/category params below will activate live filtering. */}
-            {dict.categories.items.map((cat, i) => {
-              const HREFS = [
-                "/brands/moda?sort=new",              // New In
-                "/brands/moda?category=leather-bags", // Leather Bags
-                "/brands/moda?category=shoes",        // Shoes
-                "/brands/moda?category=accessories",  // Accessories
-                "/gift-builder",                      // Gift Sets
-                "/brands/moda?sort=best-sellers",     // Best Sellers
-              ];
-              const href = HREFS[i] ?? "/brands/moda";
-              return (
-                <Link
-                  key={cat.label}
-                  href={href}
-                  className="group flex flex-col gap-3 rounded-[18px] border border-white/8 bg-white/[0.02] p-5 transition-colors hover:border-gold/30 hover:bg-white/[0.04]"
-                >
-                  {/* CREATIVE SLOT: category thumbnail image */}
-                  <div className="aspect-square rounded-[12px] border border-white/6 bg-gradient-to-br from-white/[0.05] to-transparent" />
-                  <div>
-                    <p className="text-[13px] font-medium text-white/80 group-hover:text-white">
-                      {cat.label}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-white/35">{cat.description}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Featured products ─────────────────────────────────────────────── */}
+      {/* ── 3. Featured products (product-led — above the fold) ───────────── */}
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="flex items-end justify-between gap-6">
@@ -198,22 +183,86 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── International shopping / localized by destination ─────────────── */}
+      {/* ── 4. Shop by category ───────────────────────────────────────────── */}
+      <section className="px-4 py-10 md:px-6">
+        <div className="mx-auto max-w-luxe space-y-8">
+          <SectionHeading
+            eyebrow={dict.categories.eyebrow}
+            title={dict.categories.title}
+            align="center"
+          />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+            {dict.categories.items.map((cat, i) => {
+              const href = CATEGORY_HREFS[i] ?? "/brands/moda";
+              return (
+                <Link
+                  key={cat.label}
+                  href={href}
+                  className="group flex flex-col gap-3 rounded-[18px] border border-white/8 bg-white/[0.02] p-5 transition-colors hover:border-gold/30 hover:bg-white/[0.04]"
+                >
+                  <div className="aspect-square rounded-[12px] border border-white/6 bg-gradient-to-br from-white/[0.05] to-transparent" />
+                  <div>
+                    <p className="text-[13px] font-medium text-white/80 group-hover:text-white">
+                      {cat.label}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-white/35">{cat.description}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 5. Shop by style / purpose ────────────────────────────────────── */}
+      <section className="px-4 py-12 md:px-6 md:py-16">
+        <div className="mx-auto max-w-luxe space-y-8">
+          <SectionHeading
+            eyebrow={dict.shopByStyle.eyebrow}
+            title={dict.shopByStyle.title}
+            align="center"
+          />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            {dict.shopByStyle.items.map((item, i) => {
+              const href = STYLE_HREFS[i] ?? "/brands/moda";
+              return (
+                <Link
+                  key={item.label}
+                  href={href}
+                  className="group flex flex-col overflow-hidden rounded-[20px] border border-white/8 bg-white/[0.02] transition-all duration-300 hover:border-gold/25 hover:shadow-luxe"
+                >
+                  <div className={`aspect-[3/4] w-full ${STYLE_GRADIENTS[i]}`} />
+                  <div className="flex flex-col gap-2 p-4">
+                    <p className="text-[13px] font-medium text-white/85 group-hover:text-white">
+                      {item.label}
+                    </p>
+                    <p className="text-[11px] leading-5 text-white/38">{item.description}</p>
+                    <span className="mt-1 text-[11px] uppercase tracking-[0.18em] text-gold/60 group-hover:text-gold/80">
+                      {item.cta} →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 6. International service block ────────────────────────────────── */}
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe space-y-10">
           <SectionHeading
-            eyebrow={dict.international.eyebrow}
-            title={dict.international.title}
-            description={dict.international.description}
+            eyebrow={dict.services.eyebrow}
+            title={dict.services.title}
             align="center"
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {dict.international.cards.map((card) => (
-              <GlassCard key={card.label} className="flex flex-col gap-4 p-6">
-                <div className="h-10 w-10 rounded-[12px] border border-gold/20 bg-gold/8" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dict.services.items.map((item) => (
+              <GlassCard key={item.label} className="flex flex-col gap-4 p-6">
+                <div className="h-10 w-10 rounded-[12px] border border-gold/20 bg-gold/[0.08]" />
                 <div>
-                  <p className="text-[13px] font-medium text-white">{card.label}</p>
-                  <p className="mt-2 text-[12px] leading-5 text-white/45">{card.description}</p>
+                  <p className="text-[13px] font-medium text-white">{item.label}</p>
+                  <p className="mt-2 text-[12px] leading-5 text-white/45">{item.description}</p>
                 </div>
               </GlassCard>
             ))}
@@ -221,7 +270,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Editorial slider ──────────────────────────────────────────────── */}
+      {/* ── 7. Editorial slider ───────────────────────────────────────────── */}
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe space-y-10">
           <SectionHeading
@@ -233,7 +282,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Campaigns ─────────────────────────────────────────────────────── */}
+      {/* ── 8. Campaigns ──────────────────────────────────────────────────── */}
       {campaigns.length > 0 && (
         <section className="px-4 py-12 md:px-6 md:py-16">
           <div className="mx-auto max-w-luxe space-y-10">
@@ -250,7 +299,6 @@ export default async function HomePage() {
                       index % 2 === 0 ? "" : "md:[&>*:first-child]:order-2"
                     }`}
                   >
-                    {/* CREATIVE SLOT: lifestyle campaign image */}
                     <div
                       className={
                         index % 2 === 0
@@ -304,21 +352,21 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ── Gift composition ──────────────────────────────────────────────── */}
+      {/* ── 9. Gift composition ───────────────────────────────────────────── */}
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <GiftCompositionFeature dict={dict.gift} />
         </div>
       </section>
 
-      {/* ── Lead capture ──────────────────────────────────────────────────── */}
+      {/* ── 10. Lead capture ──────────────────────────────────────────────── */}
       <section id="drop-list" className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <LeadCaptureBlock dict={dict.lead} locale={locale} />
         </div>
       </section>
 
-      {/* ── Trust and policy strip ────────────────────────────────────────── */}
+      {/* ── 11. Trust strip ───────────────────────────────────────────────── */}
       <section className="px-4 py-10 md:px-6">
         <div className="mx-auto max-w-luxe">
           <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-8 md:p-10">

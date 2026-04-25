@@ -41,7 +41,18 @@ export const HomeAnalytics = {
   },
 
   productClick(productId: string): void {
-    // TODO: fire home_product_click with productId
     trackEvent("home_product_click", { productId });
+  },
+
+  styleClick(label: string): void {
+    trackEvent("home_style_click", { label });
+  },
+
+  serviceClick(label: string): void {
+    trackEvent("home_service_click", { label });
+  },
+
+  giftClick(): void {
+    trackEvent("home_gift_click");
   },
 };
