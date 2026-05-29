@@ -29,7 +29,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
       <div className="mx-auto grid max-w-luxe gap-8 lg:grid-cols-[260px_1fr]">
         <div className="hidden lg:block relative">
-          <ProductFilterSidebar brandMode="moda" />
+          <ProductFilterSidebar />
         </div>
 
         {/* Mobile Filters (Simplified) */}

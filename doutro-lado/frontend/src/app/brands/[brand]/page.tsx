@@ -10,6 +10,7 @@ import { getProducts } from "@/lib/storefront";
 import { resolveLocale } from "@/lib/i18n/common";
 import { getCatalogDictionary } from "@/lib/i18n/catalog";
 import { getProductDictionary } from "@/lib/i18n/product";
+import { matchesCategory } from "@/lib/catalog/category-aliases";
 
 export const dynamic = "force-dynamic";
 
@@ -41,24 +42,30 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
 
   let products = await getProducts("moda");
 
-  // Category filter — multi-keyword: "small-leather-goods" → tries each word
+  // Category filter — uses alias map for robust matching
   if (categoryParam) {
-    const keywords = categoryParam.toLowerCase().replace(/-/g, " ").split(" ").filter(Boolean);
     const filtered = products.filter((p) =>
-      keywords.some(
-        (kw) =>
-          p.category?.toLowerCase().includes(kw) ||
-          p.subcategory?.toLowerCase().includes(kw),
+      matchesCategory(
+        categoryParam,
+        p.category,
+        p.subcategory,
+        p.badge,
+        p.name,
       ),
     );
+    // Keep full list when no product matches (avoid empty state on bad slug)
     if (filtered.length > 0) products = filtered;
   }
 
-  // Sort — "new" uses position ascending (lower = featured first), "best-sellers" filters featured
+  // Sort
   if (sortParam === "new") {
     products = [...products].sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
   } else if (sortParam === "best-sellers") {
     products = products.filter((p) => p.featured);
+  } else if (sortParam === "price_asc") {
+    products = [...products].sort((a, b) => (a.retailPriceBRL ?? 0) - (b.retailPriceBRL ?? 0));
+  } else if (sortParam === "price_desc") {
+    products = [...products].sort((a, b) => (b.retailPriceBRL ?? 0) - (a.retailPriceBRL ?? 0));
   }
 
   const filterKey = categoryParam || (sortParam ? sortParam : "");

@@ -8,7 +8,12 @@ type EventProps = Record<string, unknown>;
 
 function trackEvent(name: string, props?: EventProps): void {
   if (typeof window === "undefined") return;
-  // TODO: replace with provider call, e.g. analytics.track(name, props)
+  // Push to dataLayer when available (GTM / GA4)
+  const win = window as unknown as { dataLayer?: unknown[] };
+  if (Array.isArray(win.dataLayer)) {
+    win.dataLayer.push({ event: name, ...props });
+  }
+  // TODO: replace / augment with provider call, e.g. analytics.track(name, props)
   if (process.env.NODE_ENV === "development") {
     // eslint-disable-next-line no-console
     console.debug("[analytics]", name, props ?? {});
@@ -20,32 +25,28 @@ function trackEvent(name: string, props?: EventProps): void {
 // =============================================================================
 
 export const HomeAnalytics = {
+  viewHome(): void {
+    trackEvent("view_home");
+  },
+
   heroShopClick(): void {
-    // TODO: fire home_hero_shop_click
     trackEvent("home_hero_shop_click");
   },
 
   dropListClick(): void {
-    // TODO: fire home_drop_list_click
     trackEvent("home_drop_list_click");
   },
 
   categoryClick(label: string): void {
-    // TODO: fire home_category_click with label
     trackEvent("home_category_click", { label });
-  },
-
-  leadSubmit(payload: { region: string; interests: string[]; locale: string }): void {
-    // TODO: fire home_lead_submit with payload
-    trackEvent("home_lead_submit", payload);
-  },
-
-  productClick(productId: string): void {
-    trackEvent("home_product_click", { productId });
   },
 
   styleClick(label: string): void {
     trackEvent("home_style_click", { label });
+  },
+
+  productClick(productId: string): void {
+    trackEvent("home_product_click", { productId });
   },
 
   serviceClick(label: string): void {
@@ -54,6 +55,18 @@ export const HomeAnalytics = {
 
   giftClick(): void {
     trackEvent("home_gift_click");
+  },
+
+  leadSubmit(payload: { region: string; interests: string[]; locale: string }): void {
+    trackEvent("lead_submit", payload);
+  },
+
+  leadSubmitSuccess(payload: { region: string; interests: string[]; locale: string }): void {
+    trackEvent("lead_submit_success", payload);
+  },
+
+  leadSubmitError(reason: string): void {
+    trackEvent("lead_submit_error", { reason });
   },
 };
 
@@ -84,5 +97,75 @@ export const MobileMenuAnalytics = {
 
   cartClick(): void {
     trackEvent("mobile_menu_cart_click");
+  },
+};
+
+// =============================================================================
+// Product events
+// =============================================================================
+
+export const ProductAnalytics = {
+  view(productId: string, name: string): void {
+    trackEvent("product_view", { productId, name });
+  },
+
+  addToCart(productId: string, name: string, price?: number): void {
+    trackEvent("product_add_to_cart", { productId, name, price });
+  },
+
+  buyNow(productId: string, name: string, price?: number): void {
+    trackEvent("product_buy_now", { productId, name, price });
+  },
+};
+
+// =============================================================================
+// Cart & Checkout events
+// =============================================================================
+
+export const CheckoutAnalytics = {
+  cartView(itemCount: number): void {
+    trackEvent("cart_view", { itemCount });
+  },
+
+  beginCheckout(itemCount: number, value?: number): void {
+    trackEvent("begin_checkout", { itemCount, value });
+  },
+
+  countrySelected(countryCode: string): void {
+    trackEvent("checkout_country_selected", { countryCode });
+  },
+
+  paymentStarted(countryCode: string, value?: number): void {
+    trackEvent("checkout_payment_started", { countryCode, value });
+  },
+
+  purchase(orderId: string, value: number, currency: string): void {
+    trackEvent("purchase", { orderId, value, currency });
+  },
+};
+
+// =============================================================================
+// Admin — Creative events
+// =============================================================================
+
+export const CreativeAnalytics = {
+  uploadStarted(slotKey: string): void {
+    trackEvent("creative_upload_started", { slotKey });
+  },
+
+  uploadSuccess(slotKey: string): void {
+    trackEvent("creative_upload_success", { slotKey });
+  },
+
+  uploadError(slotKey: string, reason: string): void {
+    trackEvent("creative_upload_error", { slotKey, reason });
+  },
+
+  activated(slotKey: string): void {
+    trackEvent("creative_activated", { slotKey });
+  },
+
+  deactivated(slotKey: string): void {
+    trackEvent("creative_deactivated", { slotKey });
   },
 };

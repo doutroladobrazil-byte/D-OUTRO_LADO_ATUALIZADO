@@ -76,17 +76,18 @@ export function LeadCaptureBlock({ dict, locale = "en" }: Props) {
 
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? dict.error);
+        const msg = data.error ?? dict.error;
+        HomeAnalytics.leadSubmitError(msg);
+        setError(msg);
         return;
       }
 
-      HomeAnalytics.leadSubmit({
-        region: region || "unknown",
-        interests: [...interests],
-        locale,
-      });
+      const payload = { region: region || "unknown", interests: [...interests], locale };
+      HomeAnalytics.leadSubmit(payload);
+      HomeAnalytics.leadSubmitSuccess(payload);
       setSubmitted(true);
     } catch {
+      HomeAnalytics.leadSubmitError("network_error");
       setError(dict.error);
     } finally {
       setLoading(false);

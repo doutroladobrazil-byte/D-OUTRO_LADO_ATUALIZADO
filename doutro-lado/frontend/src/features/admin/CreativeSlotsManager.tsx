@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Trash2, ToggleLeft, ToggleRight, Plus, Upload, Loader2, X } from "lucide-react";
+import { CREATIVE_SLOT_REGISTRY } from "@/lib/creative-slot-registry";
+import { CreativeAnalytics } from "@/lib/analytics";
 
 type SlotRow = {
   id: string;
@@ -22,20 +24,7 @@ type SlotRow = {
   created_at: string;
 };
 
-const SLOT_KEY_SUGGESTIONS = [
-  "home.hero",
-  "home.category.bags",
-  "home.category.wallets",
-  "home.category.accessories",
-  "home.category.belts",
-  "home.category.small-leather-goods",
-  "home.category.jewelry",
-  "home.style.everyday",
-  "home.style.evening",
-  "home.style.gift",
-  "home.style.travel",
-  "home.style.minimal",
-];
+const SLOT_KEY_SUGGESTIONS = CREATIVE_SLOT_REGISTRY.map((s) => s.key);
 
 type CreateForm = {
   slotKey: string;
@@ -86,6 +75,11 @@ export function CreativeSlotsManager({ token }: { token: string }) {
       method: "POST",
       headers: authHeader,
     });
+    if (row.is_active) {
+      CreativeAnalytics.deactivated(row.slot_key);
+    } else {
+      CreativeAnalytics.activated(row.slot_key);
+    }
     fetchRows();
   }
 
@@ -105,6 +99,7 @@ export function CreativeSlotsManager({ token }: { token: string }) {
 
     setUploading(true);
     setError(null);
+    CreativeAnalytics.uploadStarted(form.slotKey);
 
     try {
       // 1. Get signed upload URL
@@ -154,13 +149,19 @@ export function CreativeSlotsManager({ token }: { token: string }) {
           mimeType: file.type,
         }),
       });
-      if (!createRes.ok) { setError("Falha ao registrar metadados."); return; }
+      if (!createRes.ok) {
+        CreativeAnalytics.uploadError(form.slotKey, "metadata_failed");
+        setError("Falha ao registrar metadados.");
+        return;
+      }
 
+      CreativeAnalytics.uploadSuccess(form.slotKey);
       setForm(EMPTY_FORM);
       setFile(null);
       setShowCreate(false);
       fetchRows();
     } catch {
+      CreativeAnalytics.uploadError(form.slotKey, "unexpected_error");
       setError("Erro inesperado.");
     } finally {
       setUploading(false);

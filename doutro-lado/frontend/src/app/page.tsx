@@ -42,21 +42,24 @@ const CATEGORY_HREFS = [
   "/brands/moda?sort=best-sellers",
 ] as const;
 
-// Creative slot keys fetched at render time
+// Creative slot keys fetched at render time — must match creative-slot-registry.ts
+// Index 0 = home.hero (hero section)
+// Indices 1–7 = category cards (order matches CATEGORY_HREFS)
+// Indices 8–12 = style cards (order matches STYLE_HREFS)
 const CREATIVE_SLOT_KEYS = [
   "home.hero",
-  "home.category.bags",
-  "home.category.wallets",
-  "home.category.accessories",
-  "home.category.belts",
+  "home.category.new-in",
+  "home.category.leather-bags",
   "home.category.small-leather-goods",
-  "home.category.jewelry",
-  "home.category.new",
-  "home.style.everyday",
-  "home.style.evening",
-  "home.style.gift",
-  "home.style.travel",
-  "home.style.minimal",
+  "home.category.shoes",
+  "home.category.accessories",
+  "home.category.gift-sets",
+  "home.category.best-sellers",
+  "home.style.everyday-carry",
+  "home.style.evening-presence",
+  "home.style.gift-ready",
+  "home.style.travel-work",
+  "home.style.minimal-essentials",
 ] as const;
 
 // Shop-by-style hrefs — order must match dict.shopByStyle.items (5 items)
@@ -260,7 +263,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             {dict.shopByStyle.items.map((item, i) => {
               const href = STYLE_HREFS[i] ?? "/brands/moda";
-              const styleKeys = ["home.style.everyday","home.style.evening","home.style.gift","home.style.travel","home.style.minimal"] as const;
+              const styleKeys = ["home.style.everyday-carry","home.style.evening-presence","home.style.gift-ready","home.style.travel-work","home.style.minimal-essentials"] as const;
               const creative = creatives.get(styleKeys[i] ?? "");
               return (
                 <Link
