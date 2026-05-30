@@ -16,7 +16,6 @@ import { getProductDictionary } from "@/lib/i18n/product";
 import { getCampaigns, getProducts } from "@/lib/storefront";
 import { getCreativeSlots } from "@/lib/creative-slots";
 
-// Ensure locale is resolved per-request — never serve a cached locale to wrong visitor.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -31,7 +30,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Category hrefs — order must match dict.categories.items (7 items)
 const CATEGORY_HREFS = [
   "/brands/moda?sort=new",
   "/brands/moda?category=leather-bags",
@@ -42,10 +40,6 @@ const CATEGORY_HREFS = [
   "/brands/moda?sort=best-sellers",
 ] as const;
 
-// Creative slot keys fetched at render time — must match creative-slot-registry.ts
-// Index 0 = home.hero (hero section)
-// Indices 1–7 = category cards (order matches CATEGORY_HREFS)
-// Indices 8–12 = style cards (order matches STYLE_HREFS)
 const CREATIVE_SLOT_KEYS = [
   "home.hero",
   "home.category.new-in",
@@ -62,7 +56,6 @@ const CREATIVE_SLOT_KEYS = [
   "home.style.minimal-essentials",
 ] as const;
 
-// Shop-by-style hrefs — order must match dict.shopByStyle.items (5 items)
 const STYLE_HREFS = [
   "/brands/moda?category=leather-bags",
   "/brands/moda?category=accessories",
@@ -71,13 +64,13 @@ const STYLE_HREFS = [
   "/brands/moda?category=accessories",
 ] as const;
 
-// Style card gradients — one per style item
+// Warm editorial gradients — light off-white to linen with subtle leather tint
 const STYLE_GRADIENTS = [
-  "bg-[radial-gradient(circle_at_top_left,rgba(198,169,107,0.18),transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.88))]",
-  "bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.22),transparent_48%),linear-gradient(150deg,rgba(255,255,255,0.04),rgba(0,0,0,0.90))]",
-  "bg-[radial-gradient(circle_at_bottom_left,rgba(198,169,107,0.14),transparent_52%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.84))]",
-  "bg-[radial-gradient(circle_at_top,rgba(198,169,107,0.16),transparent_46%),linear-gradient(155deg,rgba(255,255,255,0.05),rgba(0,0,0,0.92))]",
-  "bg-[radial-gradient(circle_at_bottom_right,rgba(198,169,107,0.20),transparent_50%),linear-gradient(140deg,rgba(255,255,255,0.06),rgba(0,0,0,0.86))]",
+  "bg-[radial-gradient(circle_at_top_left,rgba(122,92,62,0.10),transparent_50%),linear-gradient(145deg,rgba(250,248,245,0.95),rgba(240,233,224,0.80))]",
+  "bg-[radial-gradient(circle_at_top_right,rgba(122,92,62,0.12),transparent_48%),linear-gradient(150deg,rgba(250,248,245,0.92),rgba(237,232,223,0.85))]",
+  "bg-[radial-gradient(circle_at_bottom_left,rgba(122,92,62,0.08),transparent_52%),linear-gradient(135deg,rgba(250,248,245,0.96),rgba(242,237,228,0.78))]",
+  "bg-[radial-gradient(circle_at_top,rgba(122,92,62,0.10),transparent_46%),linear-gradient(155deg,rgba(250,248,245,0.94),rgba(238,233,224,0.82))]",
+  "bg-[radial-gradient(circle_at_bottom_right,rgba(122,92,62,0.11),transparent_50%),linear-gradient(140deg,rgba(250,248,245,0.93),rgba(240,235,226,0.80))]",
 ] as const;
 
 export default async function HomePage() {
@@ -102,8 +95,8 @@ export default async function HomePage() {
   return (
     <main>
       {/* ── 1. Announcement strip ─────────────────────────────────────────── */}
-      <div className="border-b border-white/8 bg-white/[0.02] px-4 py-3 text-center">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-white/40">
+      <div className="border-b border-ink-ghost/20 bg-ink/[0.02] px-4 py-3 text-center">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft">
           {dict.announcement}
         </p>
       </div>
@@ -111,33 +104,33 @@ export default async function HomePage() {
       {/* ── 2. Hero ───────────────────────────────────────────────────────── */}
       <section className="px-4 pb-8 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-luxe">
-          <GlassCard className="relative overflow-hidden p-8 md:p-14">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.09),transparent_40%),linear-gradient(160deg,rgba(255,255,255,0.05),rgba(0,0,0,0.9))]" />
+          <GlassCard tone="contrast" className="relative overflow-hidden p-8 md:p-14">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(122,92,62,0.14),transparent_40%),linear-gradient(160deg,rgba(255,255,255,0.03),rgba(0,0,0,0.6))]" />
             <div className="relative grid gap-12 xl:grid-cols-[1fr_0.75fr] xl:items-center">
               {/* Left: copy */}
               <div className="space-y-7">
-                <p className="font-display text-[15px] tracking-[0.18em] text-white/55">
+                <p className="font-display text-[15px] tracking-[0.18em] text-canvas/55">
                   D&apos;OUTRO LADO
                 </p>
-                <p className="text-[11px] uppercase tracking-[0.42em] text-gold/70">
+                <p className="text-[11px] uppercase tracking-[0.42em] text-leather/70">
                   {dict.hero.eyebrow}
                 </p>
-                <h1 className="max-w-2xl font-display text-[34px] leading-[1.02] tracking-[-1px] text-white sm:text-[46px] md:text-[60px]">
+                <h1 className="max-w-2xl font-display text-[34px] leading-[1.02] tracking-[-1px] text-canvas sm:text-[46px] md:text-[60px]">
                   {dict.hero.h1}
                 </h1>
-                <p className="max-w-xl text-base leading-[1.88] text-white/55 md:text-[17px]">
+                <p className="max-w-xl text-base leading-[1.88] text-canvas/55 md:text-[17px]">
                   {dict.hero.subheadline}
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
                   <ButtonLink href="/brands/moda?sort=new">{dict.hero.ctaPrimary}</ButtonLink>
-                  <ButtonLink href="#drop-list" variant="secondary">
+                  <ButtonLink href="#drop-list" variant="outline">
                     {dict.hero.ctaSecondary}
                   </ButtonLink>
                 </div>
                 {/* Mini trust row */}
                 <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
                   {dict.hero.trust.map((t) => (
-                    <p key={t} className="text-[11px] text-white/35">
+                    <p key={t} className="text-[11px] text-canvas/35">
                       ✓ {t}
                     </p>
                   ))}
@@ -146,17 +139,17 @@ export default async function HomePage() {
 
               {/* Right: hero creative slot */}
               <div className="hidden xl:block">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] border border-white/8">
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] border border-canvas/8">
                   <CreativeSlot
                     creative={creatives.get("home.hero")}
                     priority
                     sizes="(min-width: 1280px) 35vw, 0vw"
                     fallback={
-                      <div className="flex h-full w-full items-end bg-gradient-to-br from-white/[0.05] to-black/70">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(198,169,107,0.13),transparent_55%)]" />
-                        <div className="relative w-full border-t border-white/6 p-6">
-                          <p className="text-[10px] uppercase tracking-[0.38em] text-white/25">New collection</p>
-                          <p className="mt-1 font-display text-[20px] text-white/40">Leather &amp; fashion</p>
+                      <div className="flex h-full w-full items-end bg-gradient-to-br from-canvas/[0.05] to-noir/70">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(122,92,62,0.13),transparent_55%)]" />
+                        <div className="relative w-full border-t border-canvas/6 p-6">
+                          <p className="text-[10px] uppercase tracking-[0.38em] text-canvas/25">New collection</p>
+                          <p className="mt-1 font-display text-[20px] text-canvas/40">Leather &amp; fashion</p>
                         </div>
                       </div>
                     }
@@ -168,7 +161,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── 3. Featured products (product-led — above the fold) ───────────── */}
+      {/* ── 3. Featured products ──────────────────────────────────────────── */}
       <section className="px-4 py-12 md:px-6 md:py-16">
         <div className="mx-auto max-w-luxe">
           <div className="flex items-end justify-between gap-6">
@@ -191,12 +184,12 @@ export default async function HomePage() {
                 <ProductCard key={product.id} product={product} dict={productDict} />
               ))
             ) : (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-gold/20 bg-gold/[0.02] py-20 text-center">
-                <div className="mb-4 h-1 w-10 rounded-full bg-gold/30" />
-                <p className="text-[13px] uppercase tracking-[0.28em] text-gold/70">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-leather/20 bg-leather/[0.02] py-20 text-center">
+                <div className="mb-4 h-1 w-10 rounded-full bg-leather/30" />
+                <p className="text-[13px] uppercase tracking-[0.28em] text-leather/70">
                   {dict.products.empty}
                 </p>
-                <p className="mt-3 max-w-xs text-sm text-white/35">
+                <p className="mt-3 max-w-xs text-sm text-ink-soft">
                   {dict.products.emptySubtitle}
                 </p>
                 <ButtonLink href="#drop-list" variant="ghost" className="mt-6">
@@ -230,20 +223,20 @@ export default async function HomePage() {
                 <Link
                   key={cat.label}
                   href={href}
-                  className="group flex flex-col gap-3 rounded-[18px] border border-white/8 bg-white/[0.02] p-5 transition-colors hover:border-gold/30 hover:bg-white/[0.04]"
+                  className="group flex flex-col gap-3 rounded-[18px] border border-ink-ghost/25 bg-surface/60 p-5 transition-colors hover:border-leather/30 hover:bg-surface"
                 >
-                  <div className="relative aspect-square overflow-hidden rounded-[12px] border border-white/6">
+                  <div className="relative aspect-square overflow-hidden rounded-[12px] border border-ink-ghost/20">
                     <CreativeSlot
                       creative={creative}
                       sizes="(min-width: 1280px) 12vw, (min-width: 640px) 20vw, 40vw"
-                      fallback={<div className="h-full w-full bg-gradient-to-br from-white/[0.05] to-transparent" />}
+                      fallback={<div className="h-full w-full bg-gradient-to-br from-ink/[0.04] to-transparent" />}
                     />
                   </div>
                   <div>
-                    <p className="text-[13px] font-medium text-white/80 group-hover:text-white">
+                    <p className="text-[13px] font-medium text-ink/80 group-hover:text-ink">
                       {cat.label}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-white/35">{cat.description}</p>
+                    <p className="mt-0.5 text-[11px] text-ink-soft">{cat.description}</p>
                   </div>
                 </Link>
               );
@@ -269,7 +262,7 @@ export default async function HomePage() {
                 <Link
                   key={item.label}
                   href={href}
-                  className="group flex flex-col overflow-hidden rounded-[20px] border border-white/8 bg-white/[0.02] transition-all duration-300 hover:border-gold/25 hover:shadow-luxe"
+                  className="group flex flex-col overflow-hidden rounded-[20px] border border-ink-ghost/25 bg-surface/60 transition-all duration-300 hover:border-leather/25 hover:shadow-luxe-light"
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden">
                     <CreativeSlot
@@ -279,11 +272,11 @@ export default async function HomePage() {
                     />
                   </div>
                   <div className="flex flex-col gap-2 p-4">
-                    <p className="text-[13px] font-medium text-white/85 group-hover:text-white">
+                    <p className="text-[13px] font-medium text-ink/85 group-hover:text-ink">
                       {item.label}
                     </p>
-                    <p className="text-[11px] leading-5 text-white/38">{item.description}</p>
-                    <span className="mt-1 text-[11px] uppercase tracking-[0.18em] text-gold/60 group-hover:text-gold/80">
+                    <p className="text-[11px] leading-5 text-ink-mid">{item.description}</p>
+                    <span className="mt-1 text-[11px] uppercase tracking-[0.18em] text-leather/60 group-hover:text-leather/80">
                       {item.cta} →
                     </span>
                   </div>
@@ -305,10 +298,10 @@ export default async function HomePage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {dict.services.items.map((item) => (
               <GlassCard key={item.label} className="flex flex-col gap-4 p-6">
-                <div className="h-10 w-10 rounded-[12px] border border-gold/20 bg-gold/[0.08]" />
+                <div className="h-10 w-10 rounded-[12px] border border-leather/20 bg-leather/[0.08]" />
                 <div>
-                  <p className="text-[13px] font-medium text-white">{item.label}</p>
-                  <p className="mt-2 text-[12px] leading-5 text-white/45">{item.description}</p>
+                  <p className="text-[13px] font-medium text-ink">{item.label}</p>
+                  <p className="mt-2 text-[12px] leading-5 text-ink-mid">{item.description}</p>
                 </div>
               </GlassCard>
             ))}
@@ -348,7 +341,7 @@ export default async function HomePage() {
                     <div
                       className={
                         index % 2 === 0
-                          ? "bg-[radial-gradient(circle_at_top,rgba(245,245,245,0.15),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.82))]"
+                          ? "bg-[radial-gradient(circle_at_top,rgba(122,92,62,0.06),transparent_40%),linear-gradient(135deg,rgba(250,248,245,0.95),rgba(230,220,210,0.70))]"
                           : "bg-[radial-gradient(circle_at_top_left,rgba(245,245,245,0.22),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.34),rgba(236,236,236,0.96))]"
                       }
                     />
@@ -357,7 +350,7 @@ export default async function HomePage() {
                         <p
                           className={
                             index % 2 === 0
-                              ? "text-[12px] uppercase tracking-[0.28em] text-white/38"
+                              ? "text-[12px] uppercase tracking-[0.28em] text-ink-soft"
                               : "text-[12px] uppercase tracking-[0.28em] text-black/38"
                           }
                         >
@@ -366,7 +359,7 @@ export default async function HomePage() {
                         <h3
                           className={
                             index % 2 === 0
-                              ? "mt-4 font-display text-[30px] leading-[1.1] tracking-[-0.5px] text-white"
+                              ? "mt-4 font-display text-[30px] leading-[1.1] tracking-[-0.5px] text-ink"
                               : "mt-4 font-display text-[30px] leading-[1.1] tracking-[-0.5px] text-[#17120d]"
                           }
                         >
@@ -375,7 +368,7 @@ export default async function HomePage() {
                         <p
                           className={
                             index % 2 === 0
-                              ? "mt-4 text-sm leading-7 text-white/55"
+                              ? "mt-4 text-sm leading-7 text-ink-mid"
                               : "mt-4 text-sm leading-7 text-black/58"
                           }
                         >
@@ -415,21 +408,21 @@ export default async function HomePage() {
       {/* ── 11. Trust strip ───────────────────────────────────────────────── */}
       <section className="px-4 py-10 md:px-6">
         <div className="mx-auto max-w-luxe">
-          <div className="rounded-[22px] border border-white/8 bg-white/[0.02] p-8 md:p-10">
-            <p className="mb-8 text-center text-[11px] uppercase tracking-[0.32em] text-white/28">
+          <div className="rounded-[22px] border border-ink-ghost/20 bg-surface/50 p-8 md:p-10">
+            <p className="mb-8 text-center text-[11px] uppercase tracking-[0.32em] text-ink-soft">
               {dict.trust.eyebrow}
             </p>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {dict.trust.items.map((item) => (
                 <div key={item.label} className="text-center">
-                  <p className="text-[12px] uppercase tracking-[0.22em] text-white/55">
+                  <p className="text-[12px] uppercase tracking-[0.22em] text-ink-mid">
                     {item.label}
                   </p>
-                  <p className="mt-1.5 text-[11px] text-white/28">{item.sub}</p>
+                  <p className="mt-1.5 text-[11px] text-ink-ghost">{item.sub}</p>
                 </div>
               ))}
             </div>
-            <p className="mt-8 text-center text-[11px] leading-6 text-white/20">
+            <p className="mt-8 text-center text-[11px] leading-6 text-ink-ghost">
               {dict.trust.footer}
             </p>
           </div>

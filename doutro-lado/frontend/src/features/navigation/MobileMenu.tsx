@@ -11,7 +11,6 @@ import { useLocale } from "@/contexts/LocaleContext";
 import { MobileMenuAnalytics } from "@/lib/analytics";
 import type { AppLocale } from "@/lib/i18n/common";
 
-// Map SupportedLanguage → AppLocale (ar not in AppLocale → fallback en)
 function toAppLocale(lang: string): AppLocale {
   if (lang === "pt" || lang === "de" || lang === "fr") return lang;
   return "en";
@@ -48,15 +47,15 @@ export function MobileMenu() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
-          className="fixed inset-0 z-[75] bg-black/90 px-4 py-4 backdrop-blur-2xl sm:px-6 sm:py-6"
+          className="fixed inset-0 z-[75] bg-noir/90 px-4 py-4 backdrop-blur-2xl sm:px-6 sm:py-6"
           role="dialog"
           aria-modal="true"
           aria-label={dict.menu}
         >
-          <div className="mx-auto flex h-full max-w-luxe flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.55))] shadow-halo">
+          <div className="mx-auto flex h-full max-w-luxe flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.50))] shadow-halo">
             {/* Header */}
             <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-6 py-5">
-              <p className="text-[11px] uppercase tracking-[0.32em] text-white/40">
+              <p className="text-[11px] uppercase tracking-[0.32em] text-canvas/40">
                 {dict.menu}
               </p>
               <button
@@ -65,7 +64,7 @@ export function MobileMenu() {
                   closeMobileMenu();
                 }}
                 aria-label={dict.closeMenu}
-                className="rounded-full border border-white/10 p-2.5 text-white/60 transition hover:bg-white/8 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+                className="rounded-full border border-white/10 p-2.5 text-canvas/60 transition hover:bg-white/8 hover:text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-leather"
               >
                 <X className="size-4" />
               </button>
@@ -78,7 +77,7 @@ export function MobileMenu() {
             >
               {publicNavGroups.map((group) => (
                 <div key={group.key} className="mb-6">
-                  <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.38em] text-white/25">
+                  <p className="mb-3 text-[9px] font-semibold uppercase tracking-[0.38em] text-canvas/25">
                     {dict.groups[group.key]}
                   </p>
                   <div className="space-y-1">
@@ -93,12 +92,12 @@ export function MobileMenu() {
                           aria-current={active ? "page" : undefined}
                           className={`flex items-center justify-between rounded-[16px] border px-4 py-3 font-display text-[22px] tracking-[-0.3px] transition duration-200 hover:-translate-y-0.5 sm:text-[26px] ${
                             active
-                              ? "border-gold/30 bg-[rgba(198,169,107,0.08)] text-[#C6A96B]"
-                              : "border-white/8 bg-white/[0.02] text-white hover:border-gold/25 hover:bg-white/[0.04]"
+                              ? "border-leather/30 bg-[rgba(122,92,62,0.08)] text-leather"
+                              : "border-white/8 bg-white/[0.02] text-canvas hover:border-leather/25 hover:bg-white/[0.04]"
                           }`}
                         >
                           {label}
-                          {active && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold" />}
+                          {active && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-leather" />}
                         </Link>
                       );
                     })}
@@ -114,7 +113,7 @@ export function MobileMenu() {
                     MobileMenuAnalytics.dropListClick();
                     closeMobileMenu();
                   }}
-                  className="flex w-full items-center justify-between rounded-[16px] border border-gold/25 bg-[rgba(198,169,107,0.06)] px-5 py-4 text-sm uppercase tracking-[0.2em] text-gold transition hover:bg-[rgba(198,169,107,0.12)]"
+                  className="flex w-full items-center justify-between rounded-[16px] border border-leather/25 bg-[rgba(122,92,62,0.06)] px-5 py-4 text-sm uppercase tracking-[0.2em] text-leather transition hover:bg-[rgba(122,92,62,0.12)]"
                 >
                   {dict.items.joinDropList}
                   <ArrowRight className="size-4 shrink-0" />
@@ -131,7 +130,7 @@ export function MobileMenu() {
                     closeMobileMenu();
                     openSearch();
                   }}
-                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-white/10 py-3 text-white/50 transition hover:bg-white/[0.04] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-white/10 py-3 text-canvas/50 transition hover:bg-white/[0.04] hover:text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-leather"
                 >
                   <Search className="size-4" />
                   <span className="text-[10px] uppercase tracking-[0.18em]">{dict.items.search}</span>
@@ -140,7 +139,7 @@ export function MobileMenu() {
                 <Link
                   href="/brands/moda?sort=new"
                   onClick={() => handleLinkClick("shopNewArrivals")}
-                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-gold/20 bg-gold/[0.06] py-3 text-gold/80 transition hover:bg-gold/[0.12] hover:text-gold"
+                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-leather/20 bg-leather/[0.06] py-3 text-leather/80 transition hover:bg-leather/[0.12] hover:text-leather"
                 >
                   <ArrowRight className="size-4" />
                   <span className="text-[10px] uppercase tracking-[0.14em]">{dict.items.shopNewArrivals}</span>
@@ -152,7 +151,7 @@ export function MobileMenu() {
                     MobileMenuAnalytics.cartClick();
                     closeMobileMenu();
                   }}
-                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-white/10 py-3 text-white/50 transition hover:bg-white/[0.04] hover:text-white"
+                  className="flex flex-col items-center gap-1.5 rounded-[14px] border border-white/10 py-3 text-canvas/50 transition hover:bg-white/[0.04] hover:text-canvas"
                 >
                   <ShoppingBag className="size-4" />
                   <span className="text-[10px] uppercase tracking-[0.18em]">{dict.items.cart}</span>

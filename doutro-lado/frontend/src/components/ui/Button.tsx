@@ -6,10 +6,11 @@ const baseClassName =
   "inline-flex items-center justify-center rounded-full border px-5 py-3 text-sm tracking-[0.08em] transition duration-300 ease-out hover:-translate-y-0.5";
 
 const variants = {
-  primary: "border-gold bg-gold text-black hover:bg-[#d8bc84]",
-  secondary: "border-white/16 bg-white/5 text-white hover:bg-white/10",
-  ghost: "border-white/20 bg-transparent text-white hover:bg-white/8",
-  light: "border-black/10 bg-black text-white hover:bg-black/85"
+  primary:  "border-leather bg-leather text-canvas hover:bg-leather/85",
+  secondary: "border-ink/12 bg-ink/5 text-ink hover:bg-ink/10",
+  ghost:    "border-ink/15 bg-transparent text-ink hover:bg-ink/8",
+  outline:  "border-canvas/25 bg-transparent text-canvas hover:bg-canvas/10",
+  light:    "border-noir/10 bg-noir text-canvas hover:bg-noir/85"
 } as const;
 
 type ButtonProps = {

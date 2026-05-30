@@ -54,7 +54,6 @@ export function ProductPurchaseActions({
   const { countryCode } = useCountryPreference();
   const [availableForCountry, setAvailableForCountry] = useState<boolean | null>(null);
 
-  // Check availability client-side when a country preference is stored.
   useEffect(() => {
     if (!countryCode) {
       setAvailableForCountry(null);
@@ -84,7 +83,6 @@ export function ProductPurchaseActions({
     };
   }
 
-  /** Fire-and-forget backend sync — does not block navigation. */
   async function syncToBackend() {
     try {
       const supabase = createClient();
@@ -115,7 +113,7 @@ export function ProductPurchaseActions({
   return (
     <div className="space-y-4">
       {unavailable && (
-        <div className="rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-xl border border-red-500/25 bg-red-50 px-4 py-3 text-sm text-red-600">
           {dict?.notAvailable ?? "Not available for delivery to your selected destination."}
         </div>
       )}
@@ -123,14 +121,14 @@ export function ProductPurchaseActions({
         <button
           onClick={handleAddToCart}
           disabled={unavailable}
-          className="rounded-full border border-gold bg-gold px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-black transition duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          className="rounded-full border border-leather bg-leather px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-canvas transition duration-300 hover:-translate-y-0.5 hover:bg-leather/85 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
         >
           {dict?.addToCart ?? "Add to cart"}
         </button>
         <button
           onClick={handleBuyNow}
           disabled={unavailable}
-          className="rounded-full border border-black/15 bg-black/8 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-[#17120d] transition duration-300 hover:-translate-y-0.5 hover:bg-black/14 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+          className="rounded-full border border-ink/15 bg-ink/8 px-5 py-4 text-center text-sm uppercase tracking-[0.18em] text-ink transition duration-300 hover:-translate-y-0.5 hover:bg-ink/14 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
         >
           {dict?.buyNow ?? "Buy now"}
         </button>
@@ -143,7 +141,7 @@ export function ProductPurchaseActions({
           { icon: "↩", text: dict?.returns ?? "Returns by destination" },
           { icon: "✦", text: dict?.leather ?? "Brazilian leather" },
         ].map((item) => (
-          <div key={item.text} className="flex items-center gap-1.5 text-[11px] text-black/45">
+          <div key={item.text} className="flex items-center gap-1.5 text-[11px] text-ink-mid">
             <span className="text-[13px]" aria-hidden>{item.icon}</span>
             {item.text}
           </div>

@@ -19,7 +19,6 @@ export function ProductCard({
   dict?: ProductCardDict;
 }) {
   const primaryMedia = product.media?.[0] ?? null;
-  // Use image URL directly; for videos, prefer poster_url as card thumbnail
   const cardImageUrl = primaryMedia
     ? (primaryMedia.asset.mediaType === "video"
         ? (primaryMedia.asset.posterUrl ?? null)
@@ -31,9 +30,9 @@ export function ProductCard({
     <motion.article
       whileHover={{ y: -6 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="group overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] shadow-luxe"
+      className="group overflow-hidden rounded-[24px] border border-ink-ghost/30 bg-white shadow-luxe-light"
     >
-      <div className="relative aspect-[0.82] overflow-hidden bg-[radial-gradient(circle_at_top,rgba(245,245,245,0.2),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(217,221,227,0.16),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.08),rgba(0,0,0,0.82))]">
+      <div className="relative aspect-[0.82] overflow-hidden bg-[radial-gradient(circle_at_top,rgba(242,237,230,0.9),transparent_50%),linear-gradient(135deg,rgba(250,248,245,0.85),rgba(200,186,165,0.45))]">
         {cardImageUrl ? (
           <Image
             src={cardImageUrl}
@@ -44,12 +43,12 @@ export function ProductCard({
             loading="lazy"
           />
         ) : null}
-        {/* Gradient overlay — always present so badge text stays readable */}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(0,0,0,0.55))]" />
+        {/* Gradient overlay — ensures badge text readability over photo */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_50%,rgba(28,23,18,0.42))]" />
         {/* Video indicator */}
         {primaryMedia?.asset.mediaType === "video" && !primaryMedia.asset.posterUrl && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-black/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-canvas/20 bg-noir/40">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="white" opacity={0.8}>
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
@@ -57,26 +56,26 @@ export function ProductCard({
           </div>
         )}
         <div className="absolute inset-x-6 bottom-6 flex items-end justify-between">
-          <span className="rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/72">
+          <span className="rounded-full border border-canvas/30 bg-canvas/75 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-ink/80">
             {product.badge ?? product.category}
           </span>
-          <span className="text-sm text-white/60">{product.weightRange}</span>
+          <span className="text-sm text-canvas/75">{product.weightRange}</span>
         </div>
       </div>
       <div className="space-y-4 p-4 md:p-6">
         <div className="space-y-2">
-          <p className="text-[12px] uppercase tracking-[0.26em] text-white/45">{product.category}</p>
-          <h3 className="font-display text-[20px] leading-[1.08] tracking-[-0.5px] text-white md:text-[28px]">{product.name}</h3>
-          <p className="text-sm leading-6 text-white/58">{product.shortDescription}</p>
+          <p className="text-[12px] uppercase tracking-[0.26em] text-ink-soft">{product.category}</p>
+          <h3 className="font-display text-[20px] leading-[1.08] tracking-[-0.5px] text-ink md:text-[28px]">{product.name}</h3>
+          <p className="text-sm leading-6 text-ink-mid">{product.shortDescription}</p>
         </div>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-white/35">{dict?.from ?? "From"}</p>
-            <PriceDisplay brl={product.retailPriceBRL} className="text-lg text-white" />
+            <p className="text-[11px] uppercase tracking-[0.22em] text-ink-soft">{dict?.from ?? "From"}</p>
+            <PriceDisplay brl={product.retailPriceBRL} className="text-lg text-ink" />
           </div>
           <Link
             href={`/products/${product.slug}?site=${brandMode}&next=${encodeURIComponent(getBrandCartPath(brandMode))}`}
-            className="rounded-full border border-white/12 px-4 py-3 text-sm uppercase tracking-[0.18em] text-white transition duration-300 hover:-translate-y-0.5 hover:border-gold/60 hover:text-gold"
+            className="rounded-full border border-ink-ghost/40 px-4 py-3 text-sm uppercase tracking-[0.18em] text-ink-mid transition duration-300 hover:-translate-y-0.5 hover:border-leather/60 hover:text-leather"
           >
             {dict?.viewProduct ?? "View product"}
           </Link>

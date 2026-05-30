@@ -12,10 +12,7 @@ html {
 }
 
 body {
-  @apply bg-obsidian text-ivory antialiased;
-  background-image:
-    radial-gradient(circle at top, rgba(198, 169, 107, 0.08), transparent 28%),
-    linear-gradient(180deg, #101010 0%, #0a0a0a 100%);
+  @apply bg-canvas text-ink antialiased;
 }
 
 a,
@@ -25,7 +22,7 @@ button {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(198, 169, 107, 0.35) rgba(255, 255, 255, 0.04);
+  scrollbar-color: rgba(122, 92, 62, 0.35) rgba(28, 23, 18, 0.04);
 }
 
 *::-webkit-scrollbar {
@@ -39,10 +36,10 @@ button {
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(28, 23, 18, 0.04);
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(198, 169, 107, 0.38);
+  background: rgba(122, 92, 62, 0.38);
   border-radius: 999px;
 }

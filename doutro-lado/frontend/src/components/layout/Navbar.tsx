@@ -26,8 +26,10 @@ function IconControl({
       href={href}
       aria-label={label}
       className={cn(
-        "flex h-12 w-12 items-center justify-center rounded-full border text-white/75 transition duration-300 hover:-translate-y-0.5 hover:text-white",
-        active ? "border-gold/50 bg-gold/12 text-white" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.08]"
+        "flex h-12 w-12 items-center justify-center rounded-full border transition duration-300 hover:-translate-y-0.5",
+        active
+          ? "border-leather/50 bg-leather/12 text-ink"
+          : "border-ink-ghost/40 bg-ink/[0.03] text-ink-mid hover:bg-ink/[0.06] hover:text-ink"
       )}
     >
       {children}
@@ -45,14 +47,14 @@ export function Navbar() {
   const cartHref = currentBrand ? getBrandCartPath(currentBrand) : "/cart";
 
   return (
-    <div className="border-b border-white/8 bg-black/40 backdrop-blur-2xl">
+    <div className="border-b border-ink-ghost/30 bg-canvas/85 backdrop-blur-2xl">
       <div className="mx-auto flex min-h-[72px] max-w-luxe items-center justify-between gap-4 px-6 lg:min-h-[78px] lg:px-8">
         <div className="flex items-center justify-start gap-3">
           <motion.button
             whileHover={{ y: -2 }}
             onClick={() => { MobileMenuAnalytics.open(); toggleMobileMenu(); }}
             aria-label="Open menu"
-            className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/75 transition duration-300 hover:bg-white/[0.08] hover:text-white"
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-ink-ghost/40 bg-ink/[0.03] text-ink-mid transition duration-300 hover:bg-ink/[0.06] hover:text-ink"
           >
             <Menu className="size-4" />
           </motion.button>

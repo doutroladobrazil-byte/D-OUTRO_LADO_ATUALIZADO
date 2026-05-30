@@ -27,8 +27,8 @@ export function AddToCartButton({ item, brand, className }: Props) {
       onClick={handleAdd}
       className={`flex items-center gap-2 rounded-full border px-5 py-3 text-sm uppercase tracking-[0.18em] transition duration-300 hover:-translate-y-0.5 ${
         added
-          ? "border-green-400/50 bg-green-400/10 text-green-300"
-          : "border-gold/60 bg-gold/10 text-white hover:bg-gold/20"
+          ? "border-green-600/50 bg-green-600/10 text-green-700"
+          : "border-leather/60 bg-leather/10 text-ink hover:bg-leather/20"
       } ${className ?? ""}`}
     >
       {added ? <Check size={15} /> : <ShoppingBag size={15} />}

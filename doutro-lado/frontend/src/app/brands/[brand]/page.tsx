@@ -42,7 +42,6 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
 
   let products = await getProducts("moda");
 
-  // Category filter — uses alias map for robust matching
   if (categoryParam) {
     const filtered = products.filter((p) =>
       matchesCategory(
@@ -53,11 +52,9 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
         p.name,
       ),
     );
-    // Keep full list when no product matches (avoid empty state on bad slug)
     if (filtered.length > 0) products = filtered;
   }
 
-  // Sort
   if (sortParam === "new") {
     products = [...products].sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
   } else if (sortParam === "best-sellers") {
@@ -79,24 +76,24 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="px-4 pb-8 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-luxe">
-          <GlassCard className="relative overflow-hidden p-8 md:p-14">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(198,169,107,0.12),transparent_38%),linear-gradient(160deg,rgba(255,255,255,0.04),rgba(0,0,0,0.92))]" />
+          <GlassCard tone="contrast" className="relative overflow-hidden p-8 md:p-14">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(122,92,62,0.14),transparent_38%),linear-gradient(160deg,rgba(255,255,255,0.03),rgba(0,0,0,0.72))]" />
             <div className="relative grid gap-12 xl:grid-cols-[1fr_0.7fr] xl:items-end">
               <div className="space-y-8">
-                <p className="text-[11px] uppercase tracking-[0.42em] text-white/35">
+                <p className="text-[11px] uppercase tracking-[0.42em] text-canvas/35">
                   {dict.hero.eyebrow}
                 </p>
-                <h1 className="max-w-3xl font-display text-[36px] leading-[1.02] tracking-[-1px] text-white sm:text-[48px] md:text-[72px]">
+                <h1 className="max-w-3xl font-display text-[36px] leading-[1.02] tracking-[-1px] text-canvas sm:text-[48px] md:text-[72px]">
                   {dict.hero.h1Lines[0]}
                   <br />
                   {dict.hero.h1Lines[1]}
                 </h1>
-                <p className="max-w-xl text-base leading-[1.88] text-white/55 md:text-[17px]">
+                <p className="max-w-xl text-base leading-[1.88] text-canvas/55 md:text-[17px]">
                   {dict.hero.subheadline}
                 </p>
                 <div className="flex flex-wrap gap-3 pt-2">
                   <ButtonLink href="#products">{dict.hero.ctaPrimary}</ButtonLink>
-                  <ButtonLink href="/gift-builder" variant="secondary">
+                  <ButtonLink href="/gift-builder" variant="outline">
                     {dict.hero.ctaSecondary}
                   </ButtonLink>
                 </div>
@@ -105,9 +102,9 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
                 {dict.hero.badges.map((badge) => (
                   <div
                     key={badge}
-                    className="rounded-[16px] border border-[#C6A96B]/20 bg-[rgba(198,169,107,0.06)] px-5 py-3"
+                    className="rounded-[16px] border border-leather/20 bg-[rgba(122,92,62,0.06)] px-5 py-3"
                   >
-                    <p className="text-[12px] uppercase tracking-[0.22em] text-[#C6A96B]/70">{badge}</p>
+                    <p className="text-[12px] uppercase tracking-[0.22em] text-leather/70">{badge}</p>
                   </div>
                 ))}
               </div>
@@ -126,14 +123,14 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
                   key={item.label}
                   className={`flex items-center gap-4 rounded-[20px] border px-6 py-5 ${
                     i % 2 === 0
-                      ? "border-[#C6A96B]/20 bg-[rgba(198,169,107,0.06)]"
-                      : "border-white/8 bg-white/[0.03]"
+                      ? "border-leather/20 bg-[rgba(122,92,62,0.06)]"
+                      : "border-ink-ghost/25 bg-surface/50"
                   }`}
                 >
-                  <div className="size-2 shrink-0 rounded-full bg-[#C6A96B]/60" />
+                  <div className="size-2 shrink-0 rounded-full bg-leather/60" />
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.3em] text-white/35">{item.label}</p>
-                    <p className="mt-1 text-sm text-white/60">{item.desc}</p>
+                    <p className="text-[11px] uppercase tracking-[0.3em] text-ink-soft">{item.label}</p>
+                    <p className="mt-1 text-sm text-ink-mid">{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -178,12 +175,12 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
                 <ProductCard key={product.id} product={product} brandMode="moda" dict={productDict} />
               ))
             ) : (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-gold/20 bg-gold/[0.02] py-20 text-center">
-                <div className="mb-4 h-1 w-10 rounded-full bg-gold/30" />
-                <p className="text-[13px] uppercase tracking-[0.28em] text-gold/70">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-[22px] border border-dashed border-leather/20 bg-leather/[0.02] py-20 text-center">
+                <div className="mb-4 h-1 w-10 rounded-full bg-leather/30" />
+                <p className="text-[13px] uppercase tracking-[0.28em] text-leather/70">
                   {dict.products.emptyTitle}
                 </p>
-                <p className="mt-3 max-w-xs text-sm text-white/35">
+                <p className="mt-3 max-w-xs text-sm text-ink-soft">
                   {dict.products.emptyBody}
                 </p>
                 <ButtonLink href="/#drop-list" variant="ghost" className="mt-6">
@@ -206,11 +203,11 @@ export default async function BrandPage({ params, searchParams }: PageProps) {
           <GlassCard tone="warm" className="overflow-hidden p-8 md:p-10">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="space-y-3">
-                <p className="text-[11px] uppercase tracking-[0.38em] text-black/32">{dict.gift.eyebrow}</p>
-                <h3 className="font-display text-[24px] leading-[1.08] tracking-[-0.5px] text-[#17120d] md:text-[34px]">
+                <p className="text-[11px] uppercase tracking-[0.38em] text-ink-soft">{dict.gift.eyebrow}</p>
+                <h3 className="font-display text-[24px] leading-[1.08] tracking-[-0.5px] text-ink md:text-[34px]">
                   {dict.gift.title}
                 </h3>
-                <p className="max-w-lg text-sm leading-7 text-black/55">
+                <p className="max-w-lg text-sm leading-7 text-ink-mid">
                   {dict.gift.description}
                 </p>
               </div>

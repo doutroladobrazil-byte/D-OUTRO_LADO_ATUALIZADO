@@ -15,7 +15,6 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const { brand } = await params;
   if (!isBrand(brand)) notFound();
 
-  // Redireciona casa para moda
   if (brand === "casa") redirect("/categories/moda");
 
   const resolvedSearchParams = await searchParams;
@@ -26,7 +25,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
   const products = await getProducts({ brand: "moda", category, sort, countryCode });
 
   return (
-    <main className="min-h-screen px-6 py-10 bg-[rgb(12,12,12)]">
+    <main className="min-h-screen bg-canvas px-6 py-10">
       <div className="mx-auto grid max-w-luxe gap-8 lg:grid-cols-[260px_1fr]">
         <div className="hidden lg:block relative">
           <ProductFilterSidebar />
@@ -34,8 +33,8 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
         {/* Mobile Filters (Simplified) */}
         <div className="lg:hidden">
-          <GlassCard tone="dark" className="p-4 rounded-[16px]">
-            <p className="text-sm text-white/70">
+          <GlassCard tone="warm" className="p-4 rounded-[16px]">
+            <p className="text-sm text-ink-mid">
               Filtros disponiveis via desktop
             </p>
           </GlassCard>
@@ -46,11 +45,10 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
             eyebrow={category ? `Buscando em ${category}` : "Colecao Completa"}
             title="Couro e acessorios com identidade."
             description="Pecas premium com materialidade de referencia e origem brasileira."
-            tone="dark"
           />
 
           {products.length === 0 ? (
-            <div className="py-20 text-center text-white/50">
+            <div className="py-20 text-center text-ink-mid">
               Nenhum produto encontrado nesta combinacao de filtros.
             </div>
           ) : (

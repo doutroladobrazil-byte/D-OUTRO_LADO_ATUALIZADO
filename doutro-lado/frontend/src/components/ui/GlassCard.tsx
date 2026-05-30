@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 const tones = {
-  dark: "border-white/10 bg-white/[0.04] text-white",
-  warm: "border-[#D9D9D9]/65 bg-[linear-gradient(180deg,rgba(245,245,245,0.99),rgba(236,236,236,0.97))] text-[#16120f]",
-  contrast: "border-white/20 bg-[linear-gradient(180deg,rgba(245,245,245,0.08),rgba(0,0,0,0.52))] text-white"
+  dark:     "border-ink-ghost/30 bg-white text-ink shadow-luxe-light",
+  warm:     "border-ink-ghost/40 bg-surface text-ink shadow-luxe-light",
+  contrast: "border-white/10 bg-noir text-canvas shadow-halo"
 } as const;
 
 export function GlassCard({
@@ -19,7 +19,7 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "rounded-[24px] border p-6 shadow-luxe backdrop-blur-xl",
+        "rounded-[24px] border p-6 backdrop-blur-xl",
         tones[tone],
         className
       )}

@@ -42,7 +42,6 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
   const previewRates = freightRates.filter((rate) => rate.weightRange === product.weightRange).slice(0, 3);
   const relatedProducts = related.filter((item) => item.id !== product.id).slice(0, 3);
 
-  // Dynamic badge: category / subcategory / material
   const badgeLabel = [product.category, product.subcategory].filter(Boolean).join(" / ") || "Moda / Couro";
 
   return (
@@ -56,42 +55,42 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
           <div className="space-y-5">
             {/* Header */}
             <div className="space-y-4">
-              <p className="text-[13px] uppercase tracking-[0.28em] text-white/45">
+              <p className="text-[13px] uppercase tracking-[0.28em] text-ink-soft">
                 {product.category}
                 {product.subcategory ? ` / ${product.subcategory}` : ""}
               </p>
-              <h1 className="font-display text-[32px] leading-[1.05] tracking-[-0.5px] text-white md:text-[48px]">
+              <h1 className="font-display text-[32px] leading-[1.05] tracking-[-0.5px] text-ink md:text-[48px]">
                 {product.name}
               </h1>
-              <p className="max-w-xl text-base leading-8 text-white/60">{product.longDescription}</p>
-              <div className="inline-flex rounded-full border border-gold/40 bg-gold/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white">
+              <p className="max-w-xl text-base leading-8 text-ink-mid">{product.longDescription}</p>
+              <div className="inline-flex rounded-full border border-leather/40 bg-leather/10 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-ink">
                 {badgeLabel}
               </div>
             </div>
 
             {/* Pricing card */}
             <GlassCard tone="warm" className="space-y-5">
-              <div className="border-b border-black/10 pb-5">
-                <p className="mb-1.5 text-[11px] uppercase tracking-[0.22em] text-black/40">{dict.retailPrice}</p>
-                <strong className="text-[30px] font-semibold tracking-[-0.5px] text-[#17120d]">
+              <div className="border-b border-ink-ghost/30 pb-5">
+                <p className="mb-1.5 text-[11px] uppercase tracking-[0.22em] text-ink-soft">{dict.retailPrice}</p>
+                <strong className="text-[30px] font-semibold tracking-[-0.5px] text-ink">
                   R$ {product.retailPriceBRL.toFixed(2)}
                 </strong>
               </div>
-              <div className="grid gap-3 text-sm text-black/65 sm:grid-cols-2">
-                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.wholesale}</span>
+              <div className="grid gap-3 text-sm text-ink-mid sm:grid-cols-2">
+                <div className="rounded-[16px] border border-ink-ghost/30 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft block mb-1">{dict.wholesale}</span>
                   {dict.wholesalePrefix} {product.wholesaleMinQty} {dict.wholesaleSuffix}
                 </div>
-                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.weight}</span>
+                <div className="rounded-[16px] border border-ink-ghost/30 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft block mb-1">{dict.weight}</span>
                   {product.weightRange} — {dict.weightSuffix}
                 </div>
-                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.material}</span>
+                <div className="rounded-[16px] border border-ink-ghost/30 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft block mb-1">{dict.material}</span>
                   {product.material}
                 </div>
-                <div className="rounded-[16px] border border-black/8 bg-white/55 px-4 py-3">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-black/40 block mb-1">{dict.sku}</span>
+                <div className="rounded-[16px] border border-ink-ghost/30 bg-white/55 px-4 py-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft block mb-1">{dict.sku}</span>
                   {product.sku}
                 </div>
               </div>
@@ -112,10 +111,10 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
                   {previewRates.map((rate) => (
                     <div
                       key={`${rate.region}-${rate.weightRange}`}
-                      className="flex items-center justify-between rounded-[16px] border border-white/8 bg-black/20 px-4 py-3 text-sm"
+                      className="flex items-center justify-between rounded-[16px] border border-ink-ghost/25 bg-ink/[0.03] px-4 py-3 text-sm"
                     >
-                      <span className="text-white/55">{rate.region}</span>
-                      <span className="text-white">R$ {rate.amountBRL.toFixed(2)}</span>
+                      <span className="text-ink-mid">{rate.region}</span>
+                      <span className="text-ink">R$ {rate.amountBRL.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>

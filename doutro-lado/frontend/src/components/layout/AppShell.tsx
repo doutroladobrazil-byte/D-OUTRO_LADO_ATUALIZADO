@@ -4,7 +4,7 @@ import { Header } from "./Header";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-obsidian text-ivory">
+    <div className="min-h-screen bg-canvas text-ink">
       <Header />
       {children}
       <Footer />
